@@ -1,0 +1,43 @@
+# ---------------------------------------------------------------- weights
+# Trained artefacts are rebuilt by models/train_all.py and models/train_vlm.py
+# in about an hour on CPU. Vocabularies and normalisation statistics ARE
+# tracked, because inference must reuse exactly the numbers training fitted.
+models/weights/*.pt
+models/weights/*.onnx
+models/weights/*.gguf
+models/weights/*.safetensors
+
+# ---------------------------------------------------------------- datasets
+data/bigearthnet_txt/
+data/worldcover/
+data/indiasat/patches/
+data/indiasat/*.parquet
+data/uploads/
+data/aoi_fetch/
+data/*.zip
+data/Images_*/
+
+# ------------------------------------------------------------- generated
+# Run notes are written by every query; model and AOI notes are regenerated
+# by `python -m agent.trace`.
+vault/runs/
+logs_*.txt
+
+# ------------------------------------------------------------------- web
+web/node_modules/
+web/.next/
+web/.next-build/
+web/out/
+*.tsbuildinfo
+.vercel/
+
+# ---------------------------------------------------------------- python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+
+# local overrides
+web/.env.local
+*.log
