@@ -1,3 +1,7 @@
 # Agent, service and inference. CPU only -- no CUDA anywhere in this file.
 langgraph>=1.2
 fastapi>=0.115
+uvicorn[standard]>=0.32
+pydantic>=2.9
+python-multipart>=0.0.9
+
