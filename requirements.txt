@@ -1,0 +1,3 @@
+# Agent, service and inference. CPU only -- no CUDA anywhere in this file.
+langgraph>=1.2
+fastapi>=0.115
