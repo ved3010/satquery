@@ -5,3 +5,7 @@ uvicorn[standard]>=0.32
 pydantic>=2.9
 python-multipart>=0.0.9
 
+torch>=2.5            # CPU wheel; see README for the --index-url
+numpy>=1.26
+pillow>=10.4
+onnxruntime>=1.19
