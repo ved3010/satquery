@@ -9,3 +9,7 @@ torch>=2.5            # CPU wheel; see README for the --index-url
 numpy>=1.26
 pillow>=10.4
 onnxruntime>=1.19
+
+# IndiaSat build + the live Sentinel fetch
+rasterio>=1.3
+pyarrow>=17.0
