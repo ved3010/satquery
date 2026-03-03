@@ -3,3 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "dev": "next dev -p 3001",
+    "build": "node scripts/with-dist-dir.mjs build",
+    "start": "node scripts/with-dist-dir.mjs start -p 3001",
+    "lint": "next lint"
+  },
