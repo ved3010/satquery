@@ -8,3 +8,8 @@
     "start": "node scripts/with-dist-dir.mjs start -p 3001",
     "lint": "next lint"
   },
+  "dependencies": {
+    "lucide-react": "^1.42.0",
+    "maplibre-gl": "^6.8.0",
+    "next": "15.5.25",
+    "react": "19.1.0",
