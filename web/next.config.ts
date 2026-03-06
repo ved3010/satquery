@@ -17,3 +17,12 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   distDir: process.env.NEXT_DIST_DIR ?? ".next",
+
+  // The FastAPI service in serve/ owns orchestration and inference; the site
+  // proxies to it so the browser never needs a second origin (and so CORS
+  // never enters the picture in dev or behind a single reverse proxy).
+  async rewrites() {
+    const api = process.env.SATQUERY_API ?? "http://127.0.0.1:8000";
+    return [
+      { source: "/api/:path*", destination: `${api}/:path*` },
+      { source: "/preview", destination: `${api}/preview` },
