@@ -26,3 +26,8 @@ const nextConfig: NextConfig = {
     return [
       { source: "/api/:path*", destination: `${api}/:path*` },
       { source: "/preview", destination: `${api}/preview` },
+    ];
+  },
+};
+
+export default nextConfig;
