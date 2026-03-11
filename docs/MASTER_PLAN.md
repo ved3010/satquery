@@ -66,3 +66,63 @@ regardless of how good the rest is.
 | M-1 | ≥1 component **fine-tuned on BigEarthNet.txt** or open RS data | Models 1, 3, 4, 6, 7 |
 | M-2 | **Single-image VQA** | Model 2 |
 | M-3 | **One more** single-image task (captioning *or* grounding) | Models 3 **and** 4 — we do both |
+| M-4 | **Bi-temporal change** description or change-VQA | Model 5 |
+| M-5 | **Optical–SAR pair** joint analysis | Model 6 |
+| M-6 | **Agentic orchestration** with auditable execution trace | LangGraph controller (§5) |
+
+The PS states plainly: *"A generic LLM or VLM without remote-sensing adaptation
+will not satisfy the requirements."* Wrapping GPT-4o in a nice UI scores **zero**.
+Domain adaptation is the gate.
+
+It also demands something most teams will skim past and lose points on:
+
+> *"provide an auditable execution summary containing the selected task,
+> model/tool names, and key parameters"* … *"only the observable execution trace
+> … will be evaluated."*
+
+**Internal reasoning is explicitly not evaluated. The trace is.** We therefore
+treat the execution trace as a first-class product surface, not a log file — see
+§6, where it becomes our biggest differentiator.
+
+---
+
+## 2. The dataset situation — what to download and what to skip
+
+### BigEarthNet.txt (the primary training set)
+
+Published April 2026, arXiv:2603.29630. The crucial structural fact:
+
+- **Text annotations: one 467 MB parquet file** — 9,553,962 rows. Downloadable
+  on your laptop in minutes.
+- **Images: separate**, from BigEarthNet v2.0 / reBEN — 549,488 co-registered
+  S1+S2 patch pairs, ~120 GB. **Not** downloadable here.
+
+Licence: **CDLA-Permissive-1.0** on the text, CC-BY on the imagery — both allow
+competition use. Cite them in the deck.
+
+It contains exactly three annotation types, and they map 1:1 onto three of our
+mandatory tasks:
+
+| Annotation type | Feeds |
+|---|---|
+| Geographically-anchored captions (LULC classes, spatial relations, context) | Model 3 (captioning) |
+| Visual question answering pairs | Model 2, Model 7 |
+| Referring-expression instructions with bounding boxes | Model 4 (grounding) |
+
+Plus a **1,082-pair manually verified benchmark split** — use this for every
+number you put on a slide, because it is human-checked.
+
+**Strategy: text-first, images-on-demand.** Pull the parquet locally, decide
+which ~60–80k patches we actually need, and fetch only those inside Kaggle. That
+turns 120 GB into ~18 GB of scratch.
+
+#### Verified schema
+
+I streamed the real dataset rather than assuming its shape
+(`python scripts/get_bigearthnet_txt.py --peek`). The actual columns:
+
+| column | example | why it matters |
+|---|---|---|
+| `ID` | `2` | row id |
+| `s1_name` | `S1B_IW_GRDH_1SDV_20170612T165809_33UUP_26_57` | **exact reBEN S1 patch to fetch** |
+| `patch_id` | `S2A_MSIL2A_20170613T101031_N9999_R022_T33UUP_26_57` | **exact reBEN S2 patch to fetch** |
