@@ -67,3 +67,73 @@ That's it. Obsidian indexes the folder and the notes appear.
 
 If the vault looks empty, populate it:
 
+```bash
+python -m agent.trace
+```
+
+That writes one note per registered model into `vault/models/` plus a demo run.
+Re-run it whenever the registry changes so metrics stay in sync.
+
+Then run some queries — each one writes `vault/runs/<run_id>.md`:
+
+```bash
+python -m agent.graph
+```
+
+### 3.3 Turn on the settings that matter
+
+**Settings → Appearance → Theme:** dark reads better on a projector.
+
+**Settings → Files & Links:**
+- *New link format* → **Shortest path when possible**
+- *Use [[Wikilinks]]* → **on** (this is what makes the graph work)
+- *Detect all file extensions* → on, so `.json` sidecars are visible
+
+**Settings → Core plugins** — enable:
+
+| plugin | why |
+|---|---|
+| **Graph view** | the provenance picture — the whole point |
+| **Backlinks** | "which runs used M5?" answered instantly |
+| **Outgoing links** | navigate run → model → dataset |
+| **Page preview** | hover a `[[M6-fusion]]` link to see its metrics |
+| **Properties** | renders the YAML frontmatter as a clean table |
+
+### 3.4 Make the graph readable
+
+Open **Graph view** (the ⚛ icon, or `Ctrl+G`) → click the **settings gear** in
+the top-right of the graph pane:
+
+- **Groups** → *New group* three times, and set:
+
+| search query | colour | what it highlights |
+|---|---|---|
+| `path:models` | blue | the seven models |
+| `path:runs` | green | individual query runs |
+| `tag:#satquery/aoi` | orange | geographic areas of interest |
+
+- **Display** → turn **Arrows** on, set *Text fade threshold* fairly low so
+  labels stay visible when you zoom out.
+- **Forces** → raise *Repel* to about 15 and lower *Link force* to about 0.5, so
+  clusters separate instead of collapsing into a hairball.
+
+Now every model is a hub, and you can see at a glance which specialists carry
+the most traffic.
+
+---
+
+## 4. What the notes look like
+
+### A run note — `vault/runs/<id>.md`
+
+```markdown
+---
+run_id: "20260907T132631Z-329a"
+query: "What changed between these two dates?"
+input_config: "bi-temporal-pair"
+task: "change_vqa"
+models_invoked: ["M5a", "M5b"]
+confidence: 0.87
+latency_ms: 1420
+aoi: "[[AOI-Ahmedabad-23.02N-72.57E]]"
+tags: ["satquery/run"]
