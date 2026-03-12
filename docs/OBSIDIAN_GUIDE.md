@@ -206,3 +206,73 @@ GROUP BY model
 
 The PS asks for **downloadable reports**. Open any run note →
 `Ctrl+P` → **Export to PDF**. The Markdown, tables and embedded evidence images
+render directly. No extra code.
+
+*(The test console at `http://127.0.0.1:8000` also has a **Download report
+(.md)** button on every result, which produces the identical file.)*
+
+---
+
+## 6. Demoing it (the part that wins marks)
+
+A three-step sequence that takes ninety seconds:
+
+1. **Run three or four different queries** in the test console — a single-image
+   VQA, a bi-temporal change query, an optical-SAR pair, and one that gets
+   **refused**. Each writes a note.
+2. **Switch to Obsidian and open Graph view.** Zoom out. The models sit as hubs;
+   the runs cluster around whichever specialists they invoked. Say: *"every node
+   is real — this is the actual execution history, not a diagram we drew."*
+3. **Click into one run note.** Show the frontmatter, then the execution trace
+   table with per-step models, parameters, latencies and confidences. Say:
+   *"this is the auditable execution summary the problem statement asks for, and
+   it is generated automatically by the orchestrator — it cannot drift out of
+   sync with what actually ran."*
+
+Then open the refused run and point out that the system **explained why** the
+input could not answer the query, rather than returning something plausible and
+wrong.
+
+---
+
+## 7. Optional: let the agent read the vault back
+
+The community plugin **Local REST API** exposes the vault over
+`http://127.0.0.1:27123` with a token. That would let the agent ask *"have we
+analysed this AOI before?"* and give the system longitudinal memory across
+sessions.
+
+Genuinely nice, and a real differentiator — but it is the only part of this
+guide that puts Obsidian in the request path, so treat it as strictly optional
+and always keep a fallback that works with Obsidian closed. Skip it if time is
+short; the graph view alone carries the demo.
+
+---
+
+## 8. Practical cautions
+
+- **Do not edit run notes by hand.** They are generated output. Editing them
+  makes the "auditable" claim false, and a judge is entitled to ask.
+- **`vault/runs/` is gitignored**, so your repo does not fill with run history.
+  Model notes *are* committed, because they are derived from the registry.
+- **Obsidian sync is a paid service — you do not need it.** The vault is a
+  folder; commit it or zip it.
+- **If the graph looks empty**, you have no runs yet. Run
+  `python -m agent.graph` and press `Ctrl+G` again.
+- **If wikilinks show as plain text**, turn on *Use [[Wikilinks]]* in
+  Settings → Files & Links.
+- **Never let a vault write failure break a query.** `trace.write()` already
+  catches `OSError` and returns the trace over the API regardless — a full disk
+  must not lose an answer that was already computed.
+
+---
+
+## 9. One-minute checklist
+
+- [ ] Obsidian installed, `satquery-core/vault` opened as a vault
+- [ ] `python -m agent.trace` run → model notes exist
+- [ ] A few queries run → `vault/runs/` has notes
+- [ ] Graph view groups coloured (`path:models`, `path:runs`)
+- [ ] Dataview installed, low-confidence query note created
+- [ ] One run exported to PDF as a sample deliverable
+- [ ] Demo sequence rehearsed once end to end
