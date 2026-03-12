@@ -137,3 +137,72 @@ confidence: 0.87
 latency_ms: 1420
 aoi: "[[AOI-Ahmedabad-23.02N-72.57E]]"
 tags: ["satquery/run"]
+---
+
+# Run `20260907T132631Z-329a` — change_vqa
+
+> What changed between these two dates?
+
+## Answer
+Built-up area increased. 1,204 px (3.2% of the scene) changed …
+
+## Execution trace
+| # | step | model | key parameters | ms | conf |
+|---|---|---|---|---:|---:|
+| 3 | M5a | [[M5a-change_map]] | `threshold=0.5, tile=256` | 1180 | 0.91 |
+| 4 | M5b | [[M5b-change_vqa]] | `top_k=1` | 240 | 0.83 |
+
+Related: [[M5a-change_map]] · [[M5b-change_vqa]] · [[AOI-Ahmedabad-23.02N-72.57E]]
+```
+
+The YAML block at the top is what Obsidian calls **Properties** — it renders as
+a sortable table, and it is queryable.
+
+### A model note — `vault/models/M6-fusion.md`
+
+Auto-generated from the registry, carrying real measured metrics. Untrained
+models say so explicitly rather than showing a placeholder number.
+
+---
+
+## 5. Three things to do once it is set up
+
+### 5.1 Find every low-confidence run
+
+Obsidian's built-in search (`Ctrl+Shift+F`):
+
+```
+path:runs "confidence: 0.6"
+```
+
+Better, install the **Dataview** community plugin
+(Settings → Community plugins → Browse → "Dataview" → Install → Enable), then
+put this in a new note:
+
+````markdown
+```dataview
+TABLE task, models_invoked, confidence, latency_ms
+FROM "runs"
+WHERE confidence < 0.7
+SORT confidence ASC
+```
+````
+
+That is a live table of every run the system was unsure about — genuinely useful
+for finding weak spots, and it looks impressive on screen.
+
+### 5.2 Per-model traffic
+
+````markdown
+```dataview
+TABLE length(rows) AS runs, round(average(rows.confidence),3) AS avg_conf
+FROM "runs"
+FLATTEN models_invoked AS model
+GROUP BY model
+```
+````
+
+### 5.3 Export a run as a PDF report
+
+The PS asks for **downloadable reports**. Open any run note →
+`Ctrl+P` → **Export to PDF**. The Markdown, tables and embedded evidence images
