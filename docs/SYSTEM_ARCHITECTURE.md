@@ -15,3 +15,13 @@ flowchart TD
         AOI --> S1[Sentinel-1 GRD SAR]
     end
 
+    subgraph AgentGraph ["7-Step LangGraph State Machine"]
+        API --> Ingest[01. INGEST - GeoTIFF / BBox / CRS]
+        Ingest --> Validate[02. VALIDATE - Modality & Task Fit]
+        Validate --> Route[03. ROUTE - Rule-Table / Intent Classifier]
+        Route --> Execute[04. EXECUTE - Specialist Model Dispatch]
+        Execute --> Measure[05. MEASURE - NDVI / NDBI / MNDWI Indices]
+        Measure --> Synth[06. SYNTHESIS - M7 VLM / Answer Composition]
+        Synth --> Evidence[07. EVIDENCE - Spatial Mask & Trace Audit]
+    end
+
