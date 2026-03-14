@@ -25,3 +25,13 @@ flowchart TD
         Synth --> Evidence[07. EVIDENCE - Spatial Mask & Trace Audit]
     end
 
+    subgraph DualSurveillance ["Orbit-to-Ground Correlation"]
+        WebUI --> CCTV[web/lib/puneCctvFeeds.ts - Smart City Streams]
+        CCTV --> Cockpit[DualSurveillanceCockpit - Side-by-Side View]
+    end
+
+    Evidence --> Vault[vault/runs/ Markdown Run Trace]
+    Vault --> WebUI
+```
+
+## Key Architectural Principles
