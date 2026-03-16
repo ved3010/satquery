@@ -43,3 +43,8 @@ flowchart TD
   - **NDBI** = $(SWIR - NIR) / (SWIR + NIR)$ (Built-up infrastructure)
 - Models narrate and ground observations, but are barred from fabricating quantitative coverage metrics.
 
+### 2. Multi-City Ground Correlation
+- Satellite passes (10m GSD) are correlated with real-time ground CCTV surveillance camera streams at high-density transit choke points (Pune, Mumbai BKC, Bengaluru Silk Board, Delhi Connaught Place, Hyderabad HITEC City).
+
+### 3. Auditable Execution Traces
+- Every request produces an immutable run record with model IDs, parameter thresholds, execution latencies, and step outcomes saved to `vault/runs/<run_id>.md`.
