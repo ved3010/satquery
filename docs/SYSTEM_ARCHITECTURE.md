@@ -35,3 +35,11 @@ flowchart TD
 ```
 
 ## Key Architectural Principles
+
+### 1. Measured, Not Hallucinated
+- Quantitative land-cover percentages (e.g. built-up 37.6%, vegetation 14.2%, water 48.2%) are strictly computed directly from pixel reflectance values using validated spectral indices:
+  - **NDVI** = $(NIR - RED) / (NIR + RED)$ (Vegetation vigor)
+  - **MNDWI** = $(GREEN - SWIR) / (GREEN + SWIR)$ (Open water)
+  - **NDBI** = $(SWIR - NIR) / (SWIR + NIR)$ (Built-up infrastructure)
+- Models narrate and ground observations, but are barred from fabricating quantitative coverage metrics.
+
