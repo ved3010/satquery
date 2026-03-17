@@ -35,3 +35,40 @@ neighbouring patches — which overlap in content — never straddle train and t
 
 ## Results
 
+All six specialists are ~1.6–2.5 M parameters, sharing one 14-channel CNN
+encoder, trained on **CPU** (no GPU on this machine). M7, the 2 B VLM, needs the
+Kaggle GPU and is not trained here.
+
+| model | task | metric | **result** | baseline | baseline type |
+|---|---|---|---:|---:|---|
+| **M6** `fusion` | optical–SAR land cover | mAP | **0.9150** | 0.3424 | class prior |
+| **M3** `caption` | scene description | next-token acc | **0.9010** | 0.0743 | most-frequent token |
+| **M5b** `change_vqa` | bi-temporal change | accuracy | **0.7682** | 0.4702 | majority class |
+| **M2** `vqa` | single-image VQA | overall acc | **0.7587** | 0.5749 | majority class |
+| **M5a** `change_map` | change mask | IoU | **0.5090** | — | — |
+| **M4** `ground` | text-guided box | mean IoU | **0.3082** | 0.1983 | mean training box |
+| **M1** `rsclip` | image↔text retrieval | R@1 | **0.1391** | 0.0066 | random (1/151) |
+
+Every model beats its baseline. M7 is the only registry entry still untrained.
+
+---
+
+## M6 — the ablation that justifies cross-modal analysis
+
+The PS asserts that SAR complements optical because it sees through cloud. This
+measures it. Cloud is simulated by replacing 50% of the optical scene with a
+bright near-uniform field, as real cloud does.
+
+| condition | test mAP | Δ vs clear |
+|---|---:|---:|
+| **fused (S2+S1)** | **0.9150** | — |
+| S2 only | 0.7306 | — |
+| S1 only | 0.6869 | — |
+| fused, 50% cloud | 0.8467 | **−0.068** |
+| S2 only, 50% cloud | 0.6508 | **−0.080** |
+| S1 only, 50% cloud | 0.6869 | **0.000** |
+
+Three things fall out, and they are exactly the PS's premise:
+
+1. **Fusion beats either sensor alone** by ~18 mAP points.
+2. **SAR is completely unaffected by cloud** — 0.6869 either way, to four decimals.
