@@ -109,3 +109,40 @@ figure. 21× chance is the honest framing.
 **M2 has a known defect, documented since v1.** On comparison questions it
 scores *below* its own blind (question-only) ablation, −0.8 pt, because
 mean-pooled bag-of-words discards word order: *"more roads than forests"* and
+*"more forests than roads"* are the same vector. The fix is the BiGRU encoder
+used in every other model here.
+
+**All test splits are small** (151 patches, 180 boxes). Per-class numbers carry
+several points of sampling noise. Do not over-claim any single figure.
+
+---
+
+## What runs live
+
+Verified end-to-end on imagery fetched from the map at query time:
+
+| query | routed to | real models | latency |
+|---|---|---|---:|
+| "Describe the land-cover visible in this image." | `caption` | M3 | 6.7 s * |
+| "Highlight the water body referred to in the query." | `grounding` | M4 | 196 ms |
+| "Has the built-up area increased, decreased, or unchanged?" | `change_vqa` | M5a + M5b | 754 ms |
+| "What changed between these two dates?" *(one image)* | — | — | **refused, 10 ms** |
+
+\* first call includes torch import and model load; warm calls are ~200 ms.
+
+The refusal is a feature, not a failure: *"Change analysis needs two images
+acquired at different times; one was supplied."* PS 26167 requires input
+compatibility checking, and a system that correctly refuses an impossible
+request demonstrates it where one that silently returns garbage does not.
+
+---
+
+## Still to do on Kaggle
+
+M7 (Qwen3.5-2B-VL + QLoRA) is the one model that cannot train on this laptop —
+`bitsandbytes` is CUDA-only. Until it lands, the agent's synthesis step reports
+specialist findings verbatim and says so, rather than inventing prose.
+
+The Kaggle notebook (`notebooks/M1_rsclip_indiasat.ipynb`) trains the full-size
+M1 (ViT-B/32, 160 M params) which should lift M3/M4/M6 further, since all three
+share the encoder.
