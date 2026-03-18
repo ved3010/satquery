@@ -72,3 +72,40 @@ Three things fall out, and they are exactly the PS's premise:
 
 1. **Fusion beats either sensor alone** by ~18 mAP points.
 2. **SAR is completely unaffected by cloud** — 0.6869 either way, to four decimals.
+3. **Fusion degrades gracefully** where optical alone degrades more.
+
+This is the strongest single chart in the project. 8 of 11 WorldCover classes
+appear in the test split and are scored; the other 3 are absent from these
+regions and are excluded rather than scored as free zeros.
+
+---
+
+## Honest caveats — read before putting a number on a slide
+
+**M3's 0.9010 is inflated by templated captions.** The captions are generated
+from WorldCover labels, so much of each sentence is boilerplate the model learns
+fast. The *content* is right — it described a central-Ahmedabad tile as
+*"predominantly built up … arid steppe hot climate zone … approximately 97% of
+the scene"* — but do **not** present this as comparable to a free-text CIDEr
+score on VRSBench.
+
+**M5 is supervised on ΔNDVI, not semantic change labels.** WorldCover is a
+single 2021 product and provides no change ground truth. So M5 measures
+**vegetation** change, which ΔNDVI genuinely answers — and nothing else. Asked
+*"has the built-up area increased?"* it still reports vegetation change. The
+runtime now appends an explicit scope note whenever the question is not about
+vegetation, so the trace cannot mislead. Real semantic change detection needs
+LEVIR-CD or SECOND masks.
+
+**M4's 0.3082 IoU is weak in absolute terms.** It beats the mean-training-box
+baseline (0.1983) but Acc@0.5 is only 0.2389. Grounding from 798 training boxes
+with a 1.6 M-parameter model is genuinely hard; this is the model most improved
+by moving to the Kaggle backbone.
+
+**M1's R@1 of 0.1391 is on a 151-patch gallery.** R@k depends on gallery size —
+always report *n* beside it, or the number is not comparable to any published
+figure. 21× chance is the honest framing.
+
+**M2 has a known defect, documented since v1.** On comparison questions it
+scores *below* its own blind (question-only) ablation, −0.8 pt, because
+mean-pooled bag-of-words discards word order: *"more roads than forests"* and
