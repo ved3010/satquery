@@ -24,3 +24,17 @@ tags: ["satquery/model"]
 {
   "source": "models/reports/m1_rsclip_small.json",
   "model": "M1",
+  "test": {
+    "i2t_R@1": 0.13907285034656525,
+    "i2t_R@5": 0.5165562629699707,
+    "i2t_R@10": 0.7880794405937195
+  },
+  "chance_R@1": 0.006622516556291391,
+  "gallery": 151,
+  "n_train": 684
+}
+```
+
+## Notes
+
+Domain-adaptation core. ViT-B/32 with patch-embed inflated 3->14 channels (12 S2 bands + VV/VH). Its frozen image tower is the backbone of M2, M3, M4 and M6 -- train first.
