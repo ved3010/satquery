@@ -35,3 +35,23 @@ tags: ["satquery/model"]
     },
     "count": {
       "acc": 0.6939,
+      "n": 2947,
+      "blind": 0.6023
+    },
+    "comp": {
+      "acc": 0.6952,
+      "n": 4002,
+      "blind": 0.7034
+    },
+    "rural_urban": {
+      "acc": 0.79,
+      "n": 100,
+      "blind": 0.56
+    }
+  }
+}
+```
+
+## Notes
+
+v1 shipped. KNOWN DEFECT: comp scores BELOW its own blind ablation (-0.8pt) because mean-pooled bag-of-words discards word order, so 'more roads than forests' == 'more forests than roads'. v2 replaces the question encoder with a BiGRU and the backbone with M1.
