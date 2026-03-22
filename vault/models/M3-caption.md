@@ -22,3 +22,16 @@ tags: ["satquery/model"]
 
 ```json
 {
+  "source": "models/reports/m3_caption.json",
+  "model": "M3",
+  "test_token_acc": 0.9005385392123864,
+  "mode_token_baseline": 0.07434761201378631,
+  "n_train": 684,
+  "n_test": 151,
+  "sample": "this satellite image captured during the winter season in india ahmedabad gujarat showcases a predominantly built up landscape within the arid steppe hot climate zone built up covers approximately 97 of the scene"
+}
+```
+
+## Notes
+
+Prefix-tuned: M1 embedding -> 10 soft prompt tokens -> small causal decoder. ~50ms on CPU vs ~4s for M7, and a working fallback if the VLM fails on demo day.
