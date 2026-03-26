@@ -27,3 +27,19 @@ tags: ["satquery/model"]
   "test_mAP": 0.9149570621718361,
   "prior_baseline_mAP": 0.3423946125551708,
   "n_classes_scored": 8,
+  "n_train": 684,
+  "n_test": 151,
+  "ablation_mAP": {
+    "fused": 0.915,
+    "s2_only": 0.7306,
+    "s1_only": 0.6869,
+    "fused_cloud50": 0.8467,
+    "s2_only_cloud50": 0.6508,
+    "s1_only_cloud50": 0.6869
+  }
+}
+```
+
+## Notes
+
+S2 (12-band) + S1 (VV/VH) branches -> cross-attention -> BEN-19 multilabel. Init from BIFOLD resnet50-s2 / resnet101-s1. MUST normalise per-sensor from metadata -- ISRO evaluates on Cartosat-2S + RISAT, not Sentinel. Never hardcode Sentinel stats.
