@@ -11,3 +11,10 @@ tags: ["satquery/aoi"]
 ---
 
 # Guwahati, Assam
+
+**Location.** 26.14N, 91.73E
+**Climate zone.** Humid subtropical
+**Landscape.** Brahmaputra monsoon floodplain
+**Best acquisition window.** winter
+
+This Köppen zone is **absent from BigEarthNet.txt**, which covers only Cold and Temperate European regions. That gap is why [[IndiaSat]] exists.
