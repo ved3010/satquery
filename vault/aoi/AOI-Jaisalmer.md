@@ -11,3 +11,10 @@ tags: ["satquery/aoi"]
 ---
 
 # Jaisalmer, Rajasthan
+
+**Location.** 26.91N, 70.92E
+**Climate zone.** Arid, desert, hot
+**Landscape.** sandy desert with sparse vegetation
+**Best acquisition window.** winter
+
+This Köppen zone is **absent from BigEarthNet.txt**, which covers only Cold and Temperate European regions. That gap is why [[IndiaSat]] exists.
