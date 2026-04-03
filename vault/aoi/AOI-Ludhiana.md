@@ -11,3 +11,10 @@ tags: ["satquery/aoi"]
 ---
 
 # Ludhiana, Punjab
+
+**Location.** 30.90N, 75.85E
+**Climate zone.** Arid, steppe, hot
+**Landscape.** intensively irrigated alluvial cropland
+**Best acquisition window.** winter
+
+This Köppen zone is **absent from BigEarthNet.txt**, which covers only Cold and Temperate European regions. That gap is why [[IndiaSat]] exists.
