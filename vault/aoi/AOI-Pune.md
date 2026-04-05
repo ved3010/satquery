@@ -11,3 +11,10 @@ tags: ["satquery/aoi"]
 ---
 
 # Pune, Maharashtra
+
+**Location.** 18.52N, 73.86E
+**Climate zone.** Tropical, savannah
+**Landscape.** Deccan plateau mixed agriculture
+**Best acquisition window.** winter
+
+This Köppen zone is **absent from BigEarthNet.txt**, which covers only Cold and Temperate European regions. That gap is why [[IndiaSat]] exists.
