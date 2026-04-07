@@ -11,3 +11,10 @@ tags: ["satquery/aoi"]
 ---
 
 # Shimla, Himachal Pradesh
+
+**Location.** 31.10N, 77.17E
+**Climate zone.** Temperate, dry winter, warm summer
+**Landscape.** montane forest and snow
+**Best acquisition window.** autumn
+
+This Köppen zone is **absent from BigEarthNet.txt**, which covers only Cold and Temperate European regions. That gap is why [[IndiaSat]] exists.
