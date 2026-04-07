@@ -11,3 +11,10 @@ tags: ["satquery/aoi"]
 ---
 
 # Sundarbans, West Bengal
+
+**Location.** 21.95N, 88.90E
+**Climate zone.** Tropical, savannah
+**Landscape.** tidal mangrove delta
+**Best acquisition window.** winter
+
+This Köppen zone is **absent from BigEarthNet.txt**, which covers only Cold and Temperate European regions. That gap is why [[IndiaSat]] exists.
