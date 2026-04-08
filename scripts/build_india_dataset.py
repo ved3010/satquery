@@ -145,3 +145,85 @@ def build_region(region, window_px: int, start: str, end: str,
         return 0, []
     # A region near a tile edge may admit no full-size window. Shrink rather
     # than drop the region entirely -- Shimla is the only montane/snow site in
+    # the sample set, so losing it would remove a whole climate zone.
+    s2 = None
+    for wp in (window_px, window_px // 2, window_px // 4, PATCH_PX * 2):
+        s2, rc = pick_scene(feats, region, wp,
+                            lambda f: f["properties"]["eo:cloud_cover"])
+        if s2 is not None:
+            if wp != window_px:
+                print(f"  ! no {window_px}px window fits; using {wp}px")
+            window_px = wp
+            break
+    if s2 is None:
+        print(f"  ! {len(feats)} scenes matched but none contains even a "
+              f"{PATCH_PX*2}px window around the AOI")
+        return 0, []
+    print(f"  S2 {s2['id']}  {s2['properties']['datetime'][:10]}  "
+          f"cloud {s2['properties']['eo:cloud_cover']:.1f}%")
+
+    # --- read the S2 block, band by band, one window each ------------------ #
+    t0 = time.time()
+    row, col = rc
+    with rasterio.open(s2["assets"]["red"]["href"]) as ref:
+        half = window_px // 2
+        win = Window(col - half, row - half, window_px, window_px)
+        dst_transform = ref.window_transform(win)
+        dst_crs = ref.crs
+        H, W = int(win.height), int(win.width)
+
+    with rasterio.open(s2["assets"]["red"]["href"]) as _r:
+        refw = _r.width
+    cube = read_s2_block(s2, win, H, W, refw)
+    print(f"    S2 block {cube.shape} in {time.time()-t0:.0f}s")
+
+    # --- optional second date, for bi-temporal change analysis (M5) -------- #
+    cube_t2 = None
+    if start2 and end2:
+        f2 = stac("sentinel-2-l2a", point(region), start2, end2,
+                  {"eo:cloud_cover": {"lt": max_cloud}})
+        s2b, rc2 = pick_scene(f2, region, window_px,
+                              lambda f: f["properties"]["eo:cloud_cover"])
+        if s2b is None:
+            print("  ! no usable second-date scene (patches stay single-date)")
+        elif s2b["id"] == s2["id"]:
+            print("  ! second-date search returned the same scene")
+        else:
+            r2, c2 = rc2
+            with rasterio.open(s2b["assets"]["red"]["href"]) as ref2:
+                half2 = window_px // 2
+                win2 = Window(c2 - half2, r2 - half2, window_px, window_px)
+                refw2 = ref2.width
+            t1 = time.time()
+            cube_t2 = read_s2_block(s2b, win2, H, W, refw2)
+            print(f"  S2(t2) {s2b['id']}  {s2b['properties']['datetime'][:10]}  "
+                  f"cloud {s2b['properties']['eo:cloud_cover']:.1f}%  "
+                  f"({time.time()-t1:.0f}s)")
+
+    # --- Sentinel-1 VV/VH over the same footprint -------------------------- #
+    sar = None
+    if want_sar:
+        sfeats = stac("sentinel-1-grd", point(region), start, end)
+        if sfeats:
+            s1 = sfeats[0]
+            sar = np.zeros((len(S1_BANDS), H, W), dtype=np.float32)
+            got = 0
+            for i, b in enumerate(S1_BANDS):
+                href = s1["assets"].get(b, {}).get("href")
+                if not href:
+                    continue
+                try:
+                    with rasterio.open(href) as ds:
+                        reproject(rasterio.band(ds, 1), sar[i],
+                                  dst_transform=dst_transform, dst_crs=dst_crs,
+                                  resampling=Resampling.bilinear)
+                    got += 1
+                except Exception as exc:
+                    print(f"    S1 {b} failed: {type(exc).__name__}")
+            if got:
+                print(f"  S1 {s1['id']}  {s1['properties']['datetime'][:10]}  "
+                      f"{got}/{len(S1_BANDS)} pol")
+            else:
+                sar = None
+        else:
+            print("  ! no Sentinel-1 scene in window (optical-only patches)")
