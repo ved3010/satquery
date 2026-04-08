@@ -227,3 +227,62 @@ def build_region(region, window_px: int, start: str, end: str,
                 sar = None
         else:
             print("  ! no Sentinel-1 scene in window (optical-only patches)")
+
+    # --- WorldCover reprojected once onto the S2 grid ---------------------- #
+    lab_block = np.zeros((H, W), dtype=np.uint8)
+    with rasterio.open(wc_path) as wc:
+        reproject(rasterio.band(wc, 1), lab_block,
+                  dst_transform=dst_transform, dst_crs=dst_crs,
+                  resampling=Resampling.nearest)   # nearest: labels, not values
+
+    # --- cut patches ------------------------------------------------------- #
+    os.makedirs(os.path.join(OUT, "patches"), exist_ok=True)
+    n_patch = 0
+    rows: list[dict] = []
+    ny, nx = H // PATCH_PX, W // PATCH_PX
+    for gy in range(ny):
+        for gx in range(nx):
+            sy, sx = gy * PATCH_PX, gx * PATCH_PX
+            lab = lab_block[sy:sy+PATCH_PX, sx:sx+PATCH_PX]
+            img = cube[:, sy:sy+PATCH_PX, sx:sx+PATCH_PX]
+
+            # Skip no-data patches: an all-zero optical patch is scene edge or
+            # cloud mask, and a labelless patch cannot be annotated.
+            if (img == 0).all() or (lab == 0).all():
+                continue
+            valid = sum(f for c, f in
+                        ((int(v), n / lab.size)
+                         for v, n in zip(*np.unique(lab, return_counts=True)))
+                        if c in WORLDCOVER)
+            if valid < 0.90:                     # mostly unmapped -> drop
+                continue
+
+            pid = f"IND_{region.key}_{gy:03d}{gx:03d}"
+            blob = {"s2": img, "label": lab}
+            if sar is not None:
+                blob["s1"] = sar[:, sy:sy+PATCH_PX, sx:sx+PATCH_PX]
+            if cube_t2 is not None:
+                t2 = cube_t2[:, sy:sy+PATCH_PX, sx:sx+PATCH_PX]
+                if not (t2 == 0).all():
+                    blob["s2_t2"] = t2
+            np.savez_compressed(os.path.join(OUT, "patches", f"{pid}.npz"), **blob)
+
+            # Deterministic split by grid position, so re-running is stable and
+            # neighbouring patches (which overlap in content) cannot straddle
+            # train and test.
+            h = (gy * 7919 + gx * 104729) % 100
+            split = "train" if h < 70 else "validation" if h < 85 else "test"
+            rows += annotate_patch(lab, region, pid,
+                                   s1["id"] if sar is not None else "",
+                                   region.lat, region.lon, split,
+                                   seed=gy * 1000 + gx)
+            n_patch += 1
+
+    print(f"  -> {n_patch} patches, {len(rows)} annotations")
+    return n_patch, rows
+
+
+def _to_crs(lon: float, lat: float, crs):
+    from rasterio.warp import transform
+    xs, ys = transform("EPSG:4326", crs, [lon], [lat])
+    return xs[0], ys[0]
