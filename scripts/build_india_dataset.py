@@ -286,3 +286,43 @@ def _to_crs(lon: float, lat: float, crs):
     from rasterio.warp import transform
     xs, ys = transform("EPSG:4326", crs, [lon], [lat])
     return xs[0], ys[0]
+
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--window", type=int, default=1200,
+                    help="pixels per side of the block read per region "
+                         "(1200 = 12x12 km = up to 100 patches)")
+    ap.add_argument("--regions", default="all")
+    ap.add_argument("--start", default="2024-01-01")
+    ap.add_argument("--end", default="2024-04-30")
+    ap.add_argument("--max-cloud", type=int, default=15)
+    ap.add_argument("--no-sar", action="store_true")
+    ap.add_argument("--start2", default=None, help="second-date start (bi-temporal)")
+    ap.add_argument("--end2", default=None)
+    a = ap.parse_args()
+
+    regions = (REGIONS if a.regions == "all"
+               else [REGION_BY_KEY[k] for k in a.regions.split(",")])
+    os.makedirs(OUT, exist_ok=True)
+
+    all_rows: list[dict] = []
+    total_patches = 0
+    for r in regions:
+        print(f"\n=== {r.name}, {r.state} ({r.climate_zone}) ===")
+        try:
+            n, rows = build_region(r, a.window, a.start, a.end,
+                                   a.max_cloud, not a.no_sar, a.start2, a.end2)
+            total_patches += n
+            all_rows += rows
+        except Exception as exc:
+            print(f"  ! {type(exc).__name__}: {exc}")
+
+    if all_rows:
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+        tb = pa.Table.from_pylist(all_rows)
+        dest = os.path.join(OUT, "IndiaSat.txt.parquet")
+        pq.write_table(tb, dest)
+        print(f"\n{total_patches} patches, {len(all_rows)} annotations")
+        print(f"parquet -> {dest}")
