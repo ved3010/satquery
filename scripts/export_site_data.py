@@ -90,3 +90,41 @@ def headline_metrics() -> list[dict]:
         "baseline": blind.get("exact_match"),
         "baseline_label": "same weights, image zeroed",
         "n": mcq.get("n"),
+    })
+    return rows
+
+
+def main() -> None:
+    models = []
+    for s in REGISTRY.values():
+        models.append({
+            "id": s.id, "name": s.name, "version": s.version,
+            "tasks": [t.value for t in s.tasks],
+            "modalities": [m.value for m in s.modalities],
+            "n_images": s.n_images, "runtime": s.runtime,
+            "params_m": s.params_m, "trained": s.is_trained,
+        })
+        # `notes`, `train_data` and `trainable_on` stay out: the site does not
+        # render them, and they are two thirds of the file. /models serves the
+        # full spec for anyone who wants it.
+
+    m6 = _report("m6_fusion.json")
+    m7 = _report("m7_vlm.json")
+    payload = {
+        "generated_by": "scripts/export_site_data.py",
+        "models": models,
+        "trained_count": sum(1 for m in models if m["trained"]),
+        "headline": headline_metrics(),
+        "coverage": assert_mandatory_coverage(),
+        # The cloud ablation is the single most persuasive measured result in
+        # the project: it shows *why* the fusion model exists.
+        "cloud_ablation": m6.get("ablation_mAP", {}),
+        "vlm": {
+            "architecture": m7.get("architecture"),
+            "epochs": m7.get("epochs"),
+            "seconds": m7.get("seconds"),
+            "test": m7.get("test"),
+            "blind_ablation": m7.get("blind_ablation"),
+            "caveat": m7.get("caveat"),
+        },
+        "dataset": {
