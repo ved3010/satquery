@@ -128,3 +128,27 @@ def main() -> None:
             "caveat": m7.get("caveat"),
         },
         "dataset": {
+            "name": "IndiaSat",
+            "patches": 985,
+            "annotations": 8962,
+            "regions": 8,
+            "bands": "Sentinel-2 (12) + Sentinel-1 (VV/VH) + ESA WorldCover",
+            "note": "BigEarthNet contains zero Indian data — its labels come "
+                    "from CORINE, a Europe-only product. Swapping CORINE for "
+                    "ESA WorldCover reproduces the recipe over India.",
+        },
+    }
+
+    os.makedirs(os.path.dirname(OUT), exist_ok=True)
+    with open(OUT, "w", encoding="utf-8") as fh:
+        json.dump(payload, fh, indent=2)
+    print(f"wrote {OUT}")
+    print(f"  {payload['trained_count']}/{len(models)} models trained")
+    for r in payload["headline"]:
+        v, b = _pct(r["value"]), _pct(r["baseline"])
+        print(f"  {r['id']:<4} {r['metric']:<22} {v or 'not measured':<8} "
+              f"vs {b or '—'}")
+
+
+if __name__ == "__main__":
+    main()
