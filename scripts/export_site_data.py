@@ -44,3 +44,49 @@ def headline_metrics() -> list[dict]:
     """
     m1, m3, m4 = _report("m1_rsclip_small.json"), _report("m3_caption.json"), \
         _report("m4_ground.json")
+    m5, m6, m7 = _report("m5_change.json"), _report("m6_fusion.json"), \
+        _report("m7_vlm.json")
+    m2 = REGISTRY["M2"].metrics
+
+    rows = [
+        {"id": "M6", "name": "fusion", "task": "Optical–SAR land cover",
+         "metric": "mAP", "value": m6.get("test_mAP"),
+         "baseline": m6.get("prior_baseline_mAP"), "baseline_label": "class prior",
+         "n": m6.get("n_test")},
+        {"id": "M3", "name": "caption", "task": "Scene description",
+         "metric": "next-token accuracy", "value": m3.get("test_token_acc"),
+         "baseline": m3.get("mode_token_baseline"), "baseline_label": "most frequent token",
+         "n": m3.get("n_test")},
+        {"id": "M5b", "name": "change_vqa", "task": "Bi-temporal change VQA",
+         "metric": "accuracy", "value": m5.get("test_changevqa_acc"),
+         "baseline": m5.get("majority_baseline"), "baseline_label": "majority class",
+         "n": m5.get("n_test")},
+        {"id": "M2", "name": "vqa", "task": "Single-image VQA",
+         "metric": "overall accuracy", "value": m2.get("overall_accuracy"),
+         "baseline": m2.get("majority_baseline"), "baseline_label": "majority answer",
+         "n": 10004},
+        {"id": "M5a", "name": "change_map", "task": "Change mask",
+         "metric": "IoU", "value": m5.get("test_mask_iou"),
+         "baseline": None, "baseline_label": None, "n": m5.get("n_test")},
+        {"id": "M4", "name": "ground", "task": "Referring-expression grounding",
+         "metric": "mean IoU", "value": m4.get("test_mean_iou"),
+         "baseline": m4.get("mean_box_baseline_iou"), "baseline_label": "mean training box",
+         "n": m4.get("n_test")},
+        {"id": "M1", "name": "rsclip", "task": "Image–text retrieval",
+         "metric": "R@1", "value": (m1.get("test") or {}).get("i2t_R@1"),
+         "baseline": m1.get("chance_R@1"), "baseline_label": "chance",
+         "n": m1.get("gallery")},
+    ]
+
+    # Multiple choice, not captioning, is M7's headline: the blind ablation
+    # moves 40 points there against 8 on captioning, because a language prior
+    # can carry a caption a long way and cannot guess which of four land-cover
+    # classes dominates a scene it has not seen.
+    mcq = ((m7.get("test") or {}).get("mcq") or {})
+    blind = ((m7.get("blind_ablation") or {}).get("mcq") or {})
+    rows.append({
+        "id": "M7", "name": "vlm", "task": "Instruction-following VLM",
+        "metric": "MCQ exact match", "value": mcq.get("exact_match"),
+        "baseline": blind.get("exact_match"),
+        "baseline_label": "same weights, image zeroed",
+        "n": mcq.get("n"),
