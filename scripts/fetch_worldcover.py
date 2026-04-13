@@ -60,3 +60,15 @@ def fetch(tile: str) -> str:
 
 if __name__ == "__main__":
     tiles = worldcover_tiles()
+    print(f"ESA WorldCover v200 2021 -- {len(tiles)} tiles for "
+          f"{len(REGIONS)} Indian regions\n")
+    ok = 0
+    for t in tiles:
+        try:
+            fetch(t)
+            ok += 1
+        except Exception as exc:                      # network, 404, disk
+            print(f"\r  {t}  FAILED: {type(exc).__name__}: {exc}")
+    total = sum(os.path.getsize(os.path.join(OUT, f))
+                for f in os.listdir(OUT) if f.endswith(".tif"))
+    print(f"\n{ok}/{len(tiles)} tiles, {total/1e6:.0f} MB in {OUT}")
