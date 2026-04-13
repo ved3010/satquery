@@ -42,3 +42,21 @@ def fetch(tile: str) -> str:
     req = urllib.request.Request(url)
     if have:
         req.add_header("Range", f"bytes={have}-")
+        print(f"  {tile}  resuming at {have/1e6:.0f} MB")
+
+    t0 = time.time()
+    with urllib.request.urlopen(req, timeout=120) as r, open(part, "ab") as fh:
+        while chunk := r.read(1 << 20):
+            fh.write(chunk)
+            have += len(chunk)
+            pct = 100 * have / expected
+            print(f"\r  {tile}  {have/1e6:6.0f}/{expected/1e6:.0f} MB  {pct:5.1f}%",
+                  end="", flush=True)
+    os.replace(part, dest)
+    print(f"\r  {tile}  {expected/1e6:.0f} MB in {time.time()-t0:.0f}s"
+          f"{' ':20}")
+    return dest
+
+
+if __name__ == "__main__":
+    tiles = worldcover_tiles()
