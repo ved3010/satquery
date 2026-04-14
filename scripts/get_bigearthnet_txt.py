@@ -37,3 +37,43 @@ def peek(n: int = 5) -> int:
     try:
         from datasets import load_dataset
     except ImportError:
+        print("Needs the datasets library:  pip install datasets")
+        return 1
+
+    print(f"streaming {REPO} (no download)...\n")
+    ds = load_dataset(REPO, split="all_data", streaming=True)
+    it = iter(ds)
+    first = next(it)
+
+    print("COLUMNS")
+    for k, v in first.items():
+        t = type(v).__name__
+        s = str(v).replace("\n", " ")
+        print(f"  {k:<24} {t:<8} {s[:88]}{'...' if len(s) > 88 else ''}")
+
+    print(f"\nFIRST {n} ROWS")
+    for i, row in enumerate([first] + [next(it) for _ in range(n - 1)], 1):
+        print(f"\n--- row {i} ---")
+        for k, v in row.items():
+            s = str(v).replace("\n", " ")
+            print(f"  {k}: {s[:150]}{'...' if len(s) > 150 else ''}")
+    return 0
+
+
+def download() -> int:
+    try:
+        from huggingface_hub import snapshot_download
+    except ImportError:
+        print("Needs huggingface_hub:  pip install huggingface_hub")
+        return 1
+
+    os.makedirs(OUT_DIR, exist_ok=True)
+    print(f"downloading {REPO} -> {OUT_DIR}\n(~467 MB; resumes if interrupted)")
+    path = snapshot_download(repo_id=REPO, repo_type="dataset",
+                             local_dir=OUT_DIR, allow_patterns=["*.parquet", "*.md", "*.json"])
+    total = sum(os.path.getsize(os.path.join(r, f))
+                for r, _, fs in os.walk(path) for f in fs)
+    print(f"\ndone: {total / 1e6:.0f} MB in {path}")
+    return 0
+
+
