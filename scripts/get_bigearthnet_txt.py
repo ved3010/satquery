@@ -77,3 +77,38 @@ def download() -> int:
     return 0
 
 
+def stats() -> int:
+    """Summarise a downloaded copy: row counts per annotation type.
+
+    This is what tells us how many caption / VQA / grounding samples exist, and
+    therefore how to weight the M7 instruction mix.
+    """
+    try:
+        import pyarrow.parquet as pq
+    except ImportError:
+        print("Needs pyarrow:  pip install pyarrow")
+        return 1
+
+    files = [os.path.join(r, f) for r, _, fs in os.walk(OUT_DIR)
+             for f in fs if f.endswith(".parquet")]
+    if not files:
+        print(f"no parquet under {OUT_DIR} — run without --stats first")
+        return 1
+
+    for f in files:
+        pf = pq.ParquetFile(f)
+        print(f"\n{os.path.basename(f)}")
+        print(f"  rows    {pf.metadata.num_rows:,}")
+        print(f"  columns {[c for c in pf.schema_arrow.names]}")
+        print(f"  size    {os.path.getsize(f) / 1e6:.0f} MB")
+    return 0
+
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--peek", action="store_true", help="stream a few rows, no download")
+    ap.add_argument("--stats", action="store_true", help="summarise a downloaded copy")
+    ap.add_argument("-n", type=int, default=5)
+    a = ap.parse_args()
+    sys.exit(peek(a.n) if a.peek else stats() if a.stats else download())
