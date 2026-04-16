@@ -35,3 +35,40 @@ EMB = 256
 
 
 def conv_block(cin: int, cout: int) -> nn.Sequential:
+    return nn.Sequential(
+        nn.Conv2d(cin, cout, 3, padding=1, bias=False),
+        nn.BatchNorm2d(cout), nn.ReLU(inplace=True),
+        nn.Conv2d(cout, cout, 3, stride=2, padding=1, bias=False),
+        nn.BatchNorm2d(cout), nn.ReLU(inplace=True),
+    )
+
+
+class RSEncoder(nn.Module):
+    """14-channel CNN encoder. Returns (pooled 256-d, spatial 256x8x8)."""
+
+    def __init__(self, in_ch: int = IN_CH, emb: int = EMB):
+        super().__init__()
+        self.in_ch = in_ch
+        self.stem = nn.Sequential(
+            conv_block(in_ch, 32),      # 120 -> 60
+            conv_block(32, 64),         # 60  -> 30
+            conv_block(64, 128),        # 30  -> 15
+            conv_block(128, emb),       # 15  -> 8
+        )
+
+    def forward(self, x):
+        f = self.stem(x)                       # (B, 256, 8, 8)
+        return F.adaptive_avg_pool2d(f, 1).flatten(1), f
+
+
+class TextEncoder(nn.Module):
+    """Small BiGRU over a word-level vocabulary.
+
+    A BiGRU, not mean-pooled bag-of-words. The v1 VQA model's own ablation
+    showed bag-of-words scoring *below* its blind baseline on comparison
+    questions, because mean-pooling discards word order and makes
+    "more roads than forests" identical to "more forests than roads".
+    Order-awareness is the fix, and it is why every text path here is recurrent.
+    """
+
+    def __init__(self, vocab: int, emb: int = EMB, dim: int = 128):
