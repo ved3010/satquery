@@ -183,3 +183,40 @@ class M4Ground(nn.Module):
         t = self.txt(ids, mask)
         gamma, beta = self.film(t).chunk(2, dim=-1)
         grid = grid * (1 + gamma[:, :, None, None]) + beta[:, :, None, None]
+        pooled = F.adaptive_avg_pool2d(F.relu(grid), 1).flatten(1)
+        # sigmoid keeps boxes inside the frame; predicts (x0, y0, x1, y1)
+        return torch.sigmoid(self.head(pooled))
+
+
+class M5Change(nn.Module):
+    """Siamese bi-temporal model with two heads.
+
+    A shared trunk encodes both dates; the difference feeds a mask decoder
+    (M5a) and an answer classifier (M5b). Sharing means the mask supervision
+    also improves the answer head, and it is one model to serve, not two.
+    """
+
+    def __init__(self, vocab: int, n_answers: int, emb: int = EMB):
+        super().__init__()
+        self.enc = RSEncoder(in_ch=N_S2, emb=emb)
+        self.txt = TextEncoder(vocab, emb)
+        self.mask_head = nn.Sequential(
+            nn.Conv2d(emb, 128, 3, padding=1), nn.ReLU(inplace=True),
+            nn.Conv2d(128, 32, 3, padding=1), nn.ReLU(inplace=True),
+            nn.Conv2d(32, 1, 1))
+        self.ans_head = nn.Sequential(
+            nn.Linear(emb * 2, emb), nn.ReLU(inplace=True),
+            nn.Dropout(0.2), nn.Linear(emb, n_answers))
+
+    def forward(self, a, b, ids=None, mask=None):
+        pa, fa = self.enc(a)
+        pb, fb = self.enc(b)
+        diff = fb - fa
+        logits_mask = F.interpolate(self.mask_head(diff), size=a.shape[-2:],
+                                    mode="bilinear", align_corners=False)
+        ans = None
+        if ids is not None:
+            t = self.txt(ids, mask)
+            pooled = F.adaptive_avg_pool2d(diff, 1).flatten(1)
+            ans = self.ans_head(torch.cat([pooled, t], 1))
+        return logits_mask.squeeze(1), ans
