@@ -72,3 +72,40 @@ class TextEncoder(nn.Module):
     """
 
     def __init__(self, vocab: int, emb: int = EMB, dim: int = 128):
+        super().__init__()
+        self.embed = nn.Embedding(vocab, dim, padding_idx=0)
+        self.gru = nn.GRU(dim, dim, batch_first=True, bidirectional=True)
+        self.proj = nn.Linear(dim * 2, emb)
+
+    def forward(self, ids, mask):
+        h, _ = self.gru(self.embed(ids))              # (B, T, 2*dim)
+        m = mask.unsqueeze(-1)
+        pooled = (h * m).sum(1) / m.sum(1).clamp(min=1)   # masked mean over time
+        return self.proj(pooled)
+
+
+# --------------------------------------------------------------------------- #
+# heads
+# --------------------------------------------------------------------------- #
+class M1Clip(nn.Module):
+    """Contrastive image/text alignment — the domain-adaptation core."""
+
+    def __init__(self, vocab: int, emb: int = EMB):
+        super().__init__()
+        self.enc = RSEncoder(emb=emb)
+        self.txt = TextEncoder(vocab, emb)
+        self.img_proj = nn.Linear(emb, emb)
+        self.logit_scale = nn.Parameter(torch.tensor(2.6592))   # ln(1/0.07)
+
+    def encode_image(self, x):
+        pooled, _ = self.enc(x)
+        return F.normalize(self.img_proj(pooled), dim=-1)
+
+    def encode_text(self, ids, mask):
+        return F.normalize(self.txt(ids, mask), dim=-1)
+
+    def forward(self, x, ids, mask):
+        return self.encode_image(x), self.encode_text(ids, mask)
+
+
+class M6Fusion(nn.Module):
