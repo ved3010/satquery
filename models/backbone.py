@@ -109,3 +109,40 @@ class M1Clip(nn.Module):
 
 
 class M6Fusion(nn.Module):
+    """Optical-SAR multilabel land cover.
+
+    Two branches so each sensor can be ablated independently -- that is what
+    makes the cloud-occlusion experiment possible (optical collapses, SAR does
+    not, fusion degrades gracefully).
+    """
+
+    def __init__(self, n_classes: int = N_CLASSES, emb: int = EMB):
+        super().__init__()
+        self.s2 = RSEncoder(in_ch=N_S2, emb=emb)
+        self.s1 = RSEncoder(in_ch=N_S1, emb=emb)
+        self.head = nn.Sequential(
+            nn.Linear(emb * 2, emb), nn.ReLU(inplace=True),
+            nn.Dropout(0.2), nn.Linear(emb, n_classes))
+
+    def forward(self, s2, s1):
+        a, _ = self.s2(s2)
+        b, _ = self.s1(s1)
+        return self.head(torch.cat([a, b], 1))
+
+
+class M3Caption(nn.Module):
+    """Prefix-style captioner: image embedding conditions a GRU decoder."""
+
+    def __init__(self, vocab: int, emb: int = EMB, dim: int = 256):
+        super().__init__()
+        self.enc = RSEncoder(emb=emb)
+        self.to_h = nn.Linear(emb, dim)
+        self.embed = nn.Embedding(vocab, dim, padding_idx=0)
+        self.gru = nn.GRU(dim, dim, batch_first=True)
+        self.out = nn.Linear(dim, vocab)
+
+    def forward(self, x, ids):
+        pooled, _ = self.enc(x)
+        h0 = torch.tanh(self.to_h(pooled)).unsqueeze(0)     # (1, B, dim)
+        y, _ = self.gru(self.embed(ids), h0)
+        return self.out(y)
