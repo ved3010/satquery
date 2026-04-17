@@ -146,3 +146,40 @@ class M3Caption(nn.Module):
         h0 = torch.tanh(self.to_h(pooled)).unsqueeze(0)     # (1, B, dim)
         y, _ = self.gru(self.embed(ids), h0)
         return self.out(y)
+
+    @torch.no_grad()
+    def generate(self, x, bos: int, eos: int, max_len: int = 60):
+        pooled, _ = self.enc(x)
+        h = torch.tanh(self.to_h(pooled)).unsqueeze(0)
+        tok = torch.full((x.size(0), 1), bos, dtype=torch.long, device=x.device)
+        out = []
+        for _ in range(max_len):
+            y, h = self.gru(self.embed(tok), h)
+            tok = self.out(y[:, -1]).argmax(-1, keepdim=True)
+            out.append(tok)
+            if (tok == eos).all():
+                break
+        return torch.cat(out, 1)
+
+
+class M4Ground(nn.Module):
+    """Text-guided box regression.
+
+    The text embedding modulates the spatial grid (FiLM-style scale/shift)
+    before pooling, so the predicted box depends on *which* phrase was asked --
+    without that conditioning the head would collapse to one box per image.
+    """
+
+    def __init__(self, vocab: int, emb: int = EMB):
+        super().__init__()
+        self.enc = RSEncoder(emb=emb)
+        self.txt = TextEncoder(vocab, emb)
+        self.film = nn.Linear(emb, emb * 2)
+        self.head = nn.Sequential(
+            nn.Linear(emb, 128), nn.ReLU(inplace=True), nn.Linear(128, 4))
+
+    def forward(self, x, ids, mask):
+        _, grid = self.enc(x)                      # (B, 256, 8, 8)
+        t = self.txt(ids, mask)
+        gamma, beta = self.film(t).chunk(2, dim=-1)
+        grid = grid * (1 + gamma[:, :, None, None]) + beta[:, :, None, None]
