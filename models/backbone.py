@@ -220,3 +220,28 @@ class M5Change(nn.Module):
             pooled = F.adaptive_avg_pool2d(diff, 1).flatten(1)
             ans = self.ans_head(torch.cat([pooled, t], 1))
         return logits_mask.squeeze(1), ans
+
+
+def count_params(m: nn.Module) -> float:
+    return sum(p.numel() for p in m.parameters() if p.requires_grad) / 1e6
+
+
+if __name__ == "__main__":
+    V = 500
+    for name, m, args in [
+        ("M1 rsclip",  M1Clip(V),      (torch.randn(2, IN_CH, 120, 120),
+                                        torch.randint(1, V, (2, 20)), torch.ones(2, 20))),
+        ("M3 caption", M3Caption(V),   (torch.randn(2, IN_CH, 120, 120),
+                                        torch.randint(1, V, (2, 20)))),
+        ("M4 ground",  M4Ground(V),    (torch.randn(2, IN_CH, 120, 120),
+                                        torch.randint(1, V, (2, 20)), torch.ones(2, 20))),
+        ("M5 change",  M5Change(V, 5), (torch.randn(2, N_S2, 120, 120),
+                                        torch.randn(2, N_S2, 120, 120),
+                                        torch.randint(1, V, (2, 20)), torch.ones(2, 20))),
+        ("M6 fusion",  M6Fusion(),     (torch.randn(2, N_S2, 120, 120),
+                                        torch.randn(2, N_S1, 120, 120))),
+    ]:
+        out = m(*args)
+        shapes = ([tuple(o.shape) for o in out if o is not None]
+                  if isinstance(out, tuple) else [tuple(out.shape)])
+        print(f"{name:<12} {count_params(m):5.2f}M params  out {shapes}")
