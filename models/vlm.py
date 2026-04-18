@@ -42,3 +42,26 @@ class M7VLM(nn.Module):
                  dropout: float = 0.1):
         super().__init__()
         self.d, self.maxlen, self.vocab = d, maxlen, vocab
+        self.enc = RSEncoder(in_ch=IN_CH, emb=EMB)          # frozen at train time
+        self.proj_global = nn.Linear(EMB, d)
+        self.proj_grid = nn.Linear(EMB, d)
+        self.vis_norm = nn.LayerNorm(d)
+
+        self.tok = nn.Embedding(vocab, d, padding_idx=0)
+        self.pos = nn.Embedding(maxlen, d)
+        layer = nn.TransformerEncoderLayer(
+            d, heads, ff, dropout=dropout, batch_first=True,
+            norm_first=True, activation="gelu")
+        self.dec = nn.TransformerEncoder(layer, layers)
+        self.ln = nn.LayerNorm(d)
+        self.head = nn.Linear(d, vocab)
+        self.head.weight = self.tok.weight                  # tied embeddings
+        self.apply(self._init)
+
+    @staticmethod
+    def _init(m):
+        """GPT-style small init. With torch's default N(0,1) embedding and
+        tied output weights the initial logits have a standard deviation of
+        sqrt(d) ~ 16, so the first epoch is spent shrinking the head instead
+        of learning. std=0.02 starts the loss at ln(vocab) where it belongs."""
+        if isinstance(m, nn.Embedding):
