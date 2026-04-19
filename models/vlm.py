@@ -65,3 +65,25 @@ class M7VLM(nn.Module):
         sqrt(d) ~ 16, so the first epoch is spent shrinking the head instead
         of learning. std=0.02 starts the loss at ln(vocab) where it belongs."""
         if isinstance(m, nn.Embedding):
+            nn.init.normal_(m.weight, std=0.02)
+            if m.padding_idx is not None:
+                with torch.no_grad():
+                    m.weight[m.padding_idx].zero_()
+        elif isinstance(m, nn.Linear):
+            nn.init.normal_(m.weight, std=0.02)
+            if m.bias is not None:
+                nn.init.zeros_(m.bias)
+
+    # -- vision ----------------------------------------------------------- #
+    @torch.no_grad()
+    def encode_image(self, x):
+        """Frozen tower. Returns (pooled 256, grid 256x8x8)."""
+        return self.enc(x)
+
+    def visual_tokens(self, pooled, grid):
+        """(B,256), (B,256,8,8) -> (B, 17, d)."""
+        g = F.adaptive_avg_pool2d(grid, GRID)               # (B,256,4,4)
+        g = g.flatten(2).transpose(1, 2)                    # (B,16,256)
+        v = torch.cat([self.proj_global(pooled).unsqueeze(1),
+                       self.proj_grid(g)], 1)               # (B,17,d)
+        return self.vis_norm(v)
