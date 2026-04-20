@@ -109,3 +109,26 @@ class M7VLM(nn.Module):
         h = self.dec(h, mask=self._mask(n, ids.device),
                      is_causal=False)
         return self.head(self.ln(h[:, N_VIS:]))             # (B, T, vocab)
+
+    # -- generation ------------------------------------------------------- #
+    @torch.no_grad()
+    def generate(self, pooled, grid, prompt_ids, eos: int,
+                 max_new: int = 48, temperature: float = 0.0):
+        """Greedy by default. Deterministic output is what an auditable trace
+        needs — the same imagery and question must produce the same answer."""
+        ids = prompt_ids
+        for _ in range(max_new):
+            if ids.size(1) + N_VIS >= self.maxlen:
+                break
+            logits = self.forward(pooled, grid, ids)[:, -1]
+            if temperature > 0:
+                nxt = torch.multinomial(
+                    F.softmax(logits / temperature, -1), 1)
+            else:
+                nxt = logits.argmax(-1, keepdim=True)
+            ids = torch.cat([ids, nxt], 1)
+            if bool((nxt == eos).all()):
+                break
+        return ids[:, prompt_ids.size(1):]
+
+
