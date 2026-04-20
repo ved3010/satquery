@@ -87,3 +87,25 @@ class M7VLM(nn.Module):
         v = torch.cat([self.proj_global(pooled).unsqueeze(1),
                        self.proj_grid(g)], 1)               # (B,17,d)
         return self.vis_norm(v)
+
+    # -- attention mask --------------------------------------------------- #
+    def _mask(self, total: int, device) -> torch.Tensor:
+        """Prefix-LM mask: the visual tokens see each other in both directions,
+        text is strictly causal. A fully causal mask over the prefix would make
+        the first visual token blind to the rest of the image for no benefit."""
+        m = torch.full((total, total), float("-inf"), device=device)
+        m = torch.triu(m, diagonal=1)                       # causal
+        m[:N_VIS, :N_VIS] = 0.0                             # prefix is bidirectional
+        return m
+
+    def forward(self, pooled, grid, ids):
+        """ids: (B,T) text token ids. Returns logits over the text positions."""
+        B, T = ids.shape
+        v = self.visual_tokens(pooled, grid)
+        t = self.tok(ids)
+        h = torch.cat([v, t], 1)                            # (B, 17+T, d)
+        n = h.size(1)
+        h = h + self.pos(torch.arange(n, device=ids.device))[None]
+        h = self.dec(h, mask=self._mask(n, ids.device),
+                     is_causal=False)
+        return self.head(self.ln(h[:, N_VIS:]))             # (B, T, vocab)
