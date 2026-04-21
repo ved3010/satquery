@@ -175,3 +175,62 @@ def train(epochs=15, bs=32, lr=3e-4):
                 sched.step()
             step += 1
             tot += float(loss.detach()) * len(rows)
+            n += len(rows)
+        hist.append({"epoch": ep, "loss": tot / max(n, 1)})
+        print("  ep %2d  loss %.4f  [%.0fs]"
+              % (ep, tot / max(n, 1), time.perf_counter() - t0), flush=True)
+
+    return m7, D, C, hist
+
+
+# --------------------------------------------------------------------------- #
+# evaluate
+# --------------------------------------------------------------------------- #
+@torch.no_grad()
+def evaluate(m7, D, blind=False, split="test"):
+    m7.eval()
+    te, tr = D.rows[split], D.rows["train"]
+    per = {}
+
+    n_by_type = Counter(r["type"] for r in tr)
+    maj = {}
+    for t in {r["type"] for r in te}:
+        c = Counter(r["gold"] for r in tr if r["type"] == t).most_common(1)
+        maj[t] = c[0][1] / max(1, n_by_type[t]) if c else 0.0
+
+    for r in te:
+        pooled, grid, ids = D.prompt(r)
+        if blind:
+            pooled, grid = torch.zeros_like(pooled), torch.zeros_like(grid)
+        t = per.setdefault(r["type"], {"n": 0, "exact": 0, "hit": 0, "tot": 0})
+        t["n"] += 1
+
+        if r["type"] == "captioning":
+            # Teacher-forced next-token accuracy. Greedy free generation of a
+            # 40-word caption is dominated by the first divergence and says
+            # little about how well the model tracks the scene.
+            _, _, x, y, keep = D.batch([r])
+            if blind:
+                p0, g0 = torch.zeros_like(pooled), torch.zeros_like(grid)
+            else:
+                p0, g0 = pooled, grid
+            logits = m7(p0, g0, x)
+            t["hit"] += int(((logits.argmax(-1) == y).float() * keep).sum())
+            t["tot"] += int(keep.sum())
+            continue
+
+        out = m7.generate(pooled, grid, ids, eos=D.EOS,
+                          max_new=min(MAX_ANS, len(r["ans"]) + 4))
+        t["exact"] += int(D.decode(out[0].tolist()) == r["gold"])
+
+    report = {}
+    for k, v in per.items():
+        report[k] = {"n": v["n"], "majority_baseline": round(maj.get(k, 0.0), 4)}
+        if v["tot"]:
+            report[k]["next_token_acc"] = round(v["hit"] / v["tot"], 4)
+        else:
+            report[k]["exact_match"] = round(v["exact"] / v["n"], 4)
+    return report
+
+
+def _line(k, s, b):
