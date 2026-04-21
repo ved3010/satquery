@@ -57,3 +57,62 @@ class VLMData:
         self.w2i = {w: i for i, w in enumerate(self.vocab)}
         self.BOS, self.EOS, self.SEP = 2, 3, len(self.vocab) - 1
 
+        t0 = time.perf_counter()
+        pooled, grid = [], []
+        m7.eval()
+        with torch.no_grad():
+            for i in range(0, len(C.ids), 16):
+                chunk = C.ids[i:i + 16]
+                x = torch.from_numpy(np.stack([C.x14(p) for p in chunk]))
+                p, g = m7.encode_image(x)
+                pooled.append(p)
+                grid.append(g)
+        self.pooled = torch.cat(pooled)
+        self.grid = torch.cat(grid)
+        self.pidx = {p: i for i, p in enumerate(C.ids)}
+        print("  cached %d patch features in %.0fs (%.0f MB)"
+              % (len(C.ids), time.perf_counter() - t0, self.grid.numel() * 4 / 1e6),
+              flush=True)
+
+        self.rows = {"train": [], "validation": [], "test": []}
+        for r in C.rows:
+            pid = r["patch_id"]
+            if pid not in self.pidx or r["split"] not in self.rows:
+                continue
+            self.rows[r["split"]].append({
+                "pid": pid,
+                "instr": self._ids(r["input"], MAX_INSTR),
+                "ans": self._ids(r["output"], MAX_ANS),
+                "type": r["type"],
+                "gold": " ".join(tokenize(r["output"])[:MAX_ANS]),
+            })
+
+    def _ids(self, text, cap):
+        return [self.w2i.get(w, 1) for w in tokenize(text)[:cap]]
+
+    def decode(self, ids):
+        return " ".join(self.vocab[i] for i in ids
+                        if 3 < i < len(self.vocab) - 1)
+
+    def batch(self, rows):
+        """Returns pooled, grid, inputs, targets, loss_mask."""
+        seqs = [[self.BOS] + r["instr"] + [self.SEP] + r["ans"] + [self.EOS]
+                for r in rows]
+        L = max(len(s) for s in seqs)
+        ids = torch.zeros(len(rows), L, dtype=torch.long)
+        keep = torch.zeros(len(rows), L - 1)
+        for i, (s, r) in enumerate(zip(seqs, rows)):
+            ids[i, :len(s)] = torch.tensor(s)
+            # targets are seq[1:], so the answer span begins at index
+            # len(instr) + 1 and runs through the terminating <eos>.
+            a0 = len(r["instr"]) + 1
+            keep[i, a0:len(s) - 1] = 1.0
+        j = torch.tensor([self.pidx[r["pid"]] for r in rows])
+        return self.pooled[j], self.grid[j], ids[:, :-1], ids[:, 1:], keep
+
+    def prompt(self, row):
+        """Prompt tokens for one row. One row at a time: right-padding a batch
+        of different-length prompts would generate from the wrong position."""
+        ids = torch.tensor([[self.BOS] + row["instr"] + [self.SEP]])
+        j = torch.tensor([self.pidx[row["pid"]]])
+        return self.pooled[j], self.grid[j], ids
