@@ -72,3 +72,83 @@ def reseed(tag: str) -> None:
     np.random.seed(h)
 
 
+# --------------------------------------------------------------------------- #
+# data
+# --------------------------------------------------------------------------- #
+def tokenize(s: str) -> list[str]:
+    return re.findall(r"[a-z0-9]+", s.lower())
+
+
+class Corpus:
+    """Loads every patch into RAM once. 489 patches x 14 x 120 x 120 is ~200 MB
+    as float32 -- small enough that repeated disk reads would dominate runtime."""
+
+    def __init__(self):
+        import pyarrow.parquet as pq
+        rows = pq.read_table(os.path.join(DATA, "IndiaSat.txt.parquet")).to_pylist()
+        self.rows = rows
+        self.by_patch: dict[str, list[dict]] = {}
+        for r in rows:
+            self.by_patch.setdefault(r["patch_id"], []).append(r)
+
+        self.patches: dict[str, dict] = {}
+        for f in sorted(glob.glob(os.path.join(DATA, "patches", "*.npz"))):
+            pid = os.path.basename(f)[:-4]
+            if pid in self.by_patch:
+                self.patches[pid] = dict(np.load(f))
+        self.ids = sorted(self.patches)
+        self.split = {r["patch_id"]: r["split"] for r in rows}
+
+        # per-sensor normalisation from TRAIN patches only (no test leakage)
+        tr = [p for p in self.ids if self.split[p] == "train"] or self.ids
+        s2 = np.stack([self.patches[p]["s2"] for p in tr]).astype(np.float32)
+        self.m2, self.s2s = s2.mean((0, 2, 3)), s2.std((0, 2, 3)) + 1e-6
+        if "s1" in self.patches[self.ids[0]]:
+            s1 = np.stack([self.patches[p]["s1"] for p in tr]).astype(np.float32)
+            self.m1, self.s1s = s1.mean((0, 2, 3)), s1.std((0, 2, 3)) + 1e-6
+        else:
+            self.m1, self.s1s = np.zeros(N_S1, np.float32), np.ones(N_S1, np.float32)
+
+        words = Counter()
+        for r in rows:
+            words.update(tokenize(str(r["input"])))
+            words.update(tokenize(str(r["output"])))
+        self.vocab = ["<pad>", "<unk>", "<bos>", "<eos>"] + \
+                     [w for w, c in words.most_common() if c >= 2]
+        self.w2i = {w: i for i, w in enumerate(self.vocab)}
+
+    # -- tensors ---------------------------------------------------------- #
+    def s2_of(self, pid, key="s2"):
+        a = self.patches[pid][key].astype(np.float32)
+        return (a - self.m2[:, None, None]) / self.s2s[:, None, None]
+
+    def s1_of(self, pid):
+        p = self.patches[pid]
+        if "s1" not in p:
+            return np.zeros((N_S1, 120, 120), np.float32)
+        a = p["s1"].astype(np.float32)
+        return (a - self.m1[:, None, None]) / self.s1s[:, None, None]
+
+    def x14(self, pid):
+        return np.concatenate([self.s2_of(pid), self.s1_of(pid)], 0)
+
+    def encode(self, text, maxlen=32, bos=False):
+        t = tokenize(str(text))[:maxlen - (2 if bos else 0)]
+        ids = [self.w2i.get(w, 1) for w in t]
+        if bos:
+            ids = [2] + ids + [3]
+        mask = [1.0] * len(ids) + [0.0] * (maxlen - len(ids))
+        ids = ids + [0] * (maxlen - len(ids))
+        return ids[:maxlen], mask[:maxlen]
+
+    def split_ids(self, s):
+        return [p for p in self.ids if self.split.get(p) == s]
+
+    def multilabel(self, pid, floor=0.05):
+        lab = self.patches[pid]["label"]
+        v, c = np.unique(lab, return_counts=True)
+        y = np.zeros(N_CLASSES, np.float32)
+        for cls, n in zip(v, c):
+            if int(cls) in CLS_INDEX and n / lab.size >= floor:
+                y[CLS_INDEX[int(cls)]] = 1.0
+        return y
