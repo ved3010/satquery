@@ -116,3 +116,62 @@ class VLMData:
         ids = torch.tensor([[self.BOS] + row["instr"] + [self.SEP]])
         j = torch.tensor([self.pidx[row["pid"]]])
         return self.pooled[j], self.grid[j], ids
+
+
+# --------------------------------------------------------------------------- #
+# train
+# --------------------------------------------------------------------------- #
+def train(epochs=15, bs=32, lr=3e-4):
+    reseed("M7")
+    print("=== M7 vlm -- instruction-following VLM on IndiaSat ===", flush=True)
+    C = Corpus()
+    m7 = M7VLM(vocab=len(C.vocab) + 1)
+
+    # frozen vision tower, initialised from the trained M1 encoder
+    m1p = os.path.join(WEIGHTS, "m1_rsclip_small.pt")
+    if os.path.exists(m1p):
+        sd = torch.load(m1p, map_location="cpu")
+        enc = {k[4:]: v for k, v in sd.items() if k.startswith("enc.")}
+        info = m7.enc.load_state_dict(enc, strict=False)
+        print("  vision tower <- M1 (%d missing, %d unexpected)"
+              % (len(info.missing_keys), len(info.unexpected_keys)))
+    else:
+        print("  WARNING: m1_rsclip_small.pt not found -- random vision tower")
+    for p in m7.enc.parameters():
+        p.requires_grad = False
+
+    D = VLMData(C, m7)
+    tr, te = D.rows["train"], D.rows["test"]
+    print("  %.2fM trainable of %.2fM | train %d test %d | vocab %d"
+          % (count_params(m7), count_params(m7, False), len(tr), len(te),
+             len(D.vocab)))
+    print("  types: %s" % dict(Counter(r["type"] for r in tr)), flush=True)
+
+    opt = torch.optim.AdamW([p for p in m7.parameters() if p.requires_grad],
+                            lr=lr, weight_decay=0.01)
+    steps = max(2, epochs * (len(tr) // bs))
+    sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=lr,
+                                                total_steps=steps,
+                                                pct_start=0.1)
+    hist, step = [], 0
+    for ep in range(epochs):
+        m7.train()
+        tot = n = 0.0
+        order = np.random.permutation(len(tr))
+        t0 = time.perf_counter()
+        for i in range(0, len(order) - bs + 1, bs):
+            rows = [tr[j] for j in order[i:i + bs]]
+            pooled, grid, x, y, keep = D.batch(rows)
+            logits = m7(pooled, grid, x)
+            loss = F.cross_entropy(logits.reshape(-1, logits.size(-1)),
+                                   y.reshape(-1), reduction="none")
+            loss = (loss * keep.reshape(-1)).sum() / keep.sum().clamp(min=1)
+            opt.zero_grad()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(
+                [p for p in m7.parameters() if p.requires_grad], 1.0)
+            opt.step()
+            if step < steps - 1:
+                sched.step()
+            step += 1
+            tot += float(loss.detach()) * len(rows)
