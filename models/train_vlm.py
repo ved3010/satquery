@@ -234,3 +234,62 @@ def evaluate(m7, D, blind=False, split="test"):
 
 
 def _line(k, s, b):
+    if "exact_match" in s:
+        return ("  %-14s exact %.4f  blind %.4f  majority %.4f  (n=%d)"
+                % (k, s["exact_match"], b.get("exact_match", float("nan")),
+                   s["majority_baseline"], s["n"]))
+    return ("  %-14s next-token %.4f  blind %.4f  (n=%d)"
+            % (k, s["next_token_acc"], b.get("next_token_acc", float("nan")),
+               s["n"]))
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--epochs", type=int, default=15)
+    ap.add_argument("--bs", type=int, default=32)
+    ap.add_argument("--lr", type=float, default=3e-4)
+    a = ap.parse_args()
+
+    t0 = time.perf_counter()
+    m7, D, C, hist = train(a.epochs, a.bs, a.lr)
+
+    print("\n  evaluating on the held-out test split ...", flush=True)
+    seen = evaluate(m7, D, blind=False)
+    print("  blind ablation (same weights, image zeroed) ...", flush=True)
+    unseen = evaluate(m7, D, blind=True)
+    for k in sorted(seen):
+        print(_line(k, seen[k], unseen[k]), flush=True)
+
+    os.makedirs(WEIGHTS, exist_ok=True)
+    os.makedirs(REPORTS, exist_ok=True)
+    torch.save(m7.state_dict(), os.path.join(WEIGHTS, "m7_vlm.pt"))
+    with open(os.path.join(WEIGHTS, "m7_vlm_vocab.json"), "w",
+              encoding="utf-8") as fh:
+        json.dump({"vocab": D.vocab, "bos": D.BOS, "eos": D.EOS,
+                   "sep": D.SEP, "n_vis": N_VIS,
+                   "max_instr": MAX_INSTR, "max_ans": MAX_ANS}, fh)
+
+    report = {
+        "model": "M7",
+        "architecture": "frozen M1 vision tower -> 17 visual tokens -> "
+                        "4-layer causal decoder (d=256, 2.34M trainable)",
+        "train_data": "IndiaSat instruction mix, 985 patches, %d train / %d test"
+                      % (len(D.rows["train"]), len(D.rows["test"])),
+        "epochs": a.epochs, "batch_size": a.bs, "lr": a.lr,
+        "test": seen, "blind_ablation": unseen, "history": hist,
+        "seconds": round(time.perf_counter() - t0, 1),
+        "caveat": "Word-level vocabulary of 265 tokens over one corpus. It "
+                  "answers IndiaSat-style instructions about Indian Sentinel "
+                  "patches; it is not a general-purpose VLM. Quantitative "
+                  "percentages in a report come from the measured spectral "
+                  "indices, never from this model.",
+    }
+    with open(os.path.join(REPORTS, "m7_vlm.json"), "w", encoding="utf-8") as fh:
+        json.dump(report, fh, indent=2)
+    print("\n  saved models/weights/m7_vlm.pt (%.1f MB)"
+          % (os.path.getsize(os.path.join(WEIGHTS, "m7_vlm.pt")) / 1e6))
+    print("  report models/reports/m7_vlm.json  [%.0fs]" % report["seconds"])
+
+
+if __name__ == "__main__":
+    main()
