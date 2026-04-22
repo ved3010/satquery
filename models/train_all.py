@@ -461,3 +461,83 @@ def train_m4(C, epochs=40, bs=32):
     model.eval()
     P, T = [], []
     with torch.no_grad():
+        for b in batches(te, 64, shuffle=False):
+            x, i_, m_, y = pack(b)
+            P.append(model(x, i_, m_).numpy()); T.append(y.numpy())
+    P, T = np.concatenate(P), np.concatenate(T)
+    ious = iou(P, T)
+    mean_box = np.tile(np.array([b for _, _, b, _ in tr]).mean(0), (len(T), 1))
+    base = iou(mean_box, T)
+    print(f"  TEST mean IoU {ious.mean():.4f}  Acc@0.5 {(ious>0.5).mean():.4f}  "
+          f"(mean-train-box baseline IoU {base.mean():.4f})")
+    rep = {"model": "M4", "test_mean_iou": float(ious.mean()),
+           "test_acc@0.5": float((ious > 0.5).mean()),
+           "mean_box_baseline_iou": float(base.mean()),
+           "n_train": len(tr), "n_test": len(te), "history": hist}
+    save(model, "m4_ground", rep)
+    return rep
+
+
+# --------------------------------------------------------------------------- #
+# M5 — bi-temporal change (mandatory M-4)
+# --------------------------------------------------------------------------- #
+CHANGE_ANSWERS = ["increased", "decreased", "unchanged"]
+CHANGE_Q = ["Has the vegetation increased, decreased, or remained unchanged?",
+            "What changed between these two dates?",
+            "Describe the change in vegetation cover between the two acquisitions.",
+            "Has vegetation cover grown or shrunk since the earlier image?"]
+
+
+def ndvi_np(cube):
+    nir = cube[7].astype(np.float32); red = cube[3].astype(np.float32)
+    return (nir - red) / (nir + red + 1e-6)
+
+
+def train_m5(C, epochs=30, bs=16, thresh=0.10):
+    reseed("M5")
+    print("\n=== M5 change — bi-temporal (mandatory M-4) ===")
+    ids = [p for p in C.ids if "s2_t2" in C.patches[p]]
+    if len(ids) < 16:
+        print(f"  ! only {len(ids)} bi-temporal patches — skipped. "
+              f"Rebuild with --start2/--end2.")
+        return None
+    tr = [p for p in ids if C.split[p] == "train"]
+    te = [p for p in ids if C.split[p] == "test"]
+
+    # Supervision from NDVI difference. This is a real, verifiable spectral
+    # measurement, NOT a semantic change label -- WorldCover is a single 2021
+    # product and provides no change ground truth. The report says so, and the
+    # question set is scoped to vegetation change, which dNDVI genuinely answers.
+    dn, masks, ans = {}, {}, {}
+    for p in ids:
+        d = ndvi_np(C.patches[p]["s2_t2"]) - ndvi_np(C.patches[p]["s2"])
+        dn[p] = d
+        masks[p] = (np.abs(d) > thresh).astype(np.float32)
+        m = float(d.mean())
+        ans[p] = 0 if m > 0.02 else 1 if m < -0.02 else 2
+
+    dist = Counter(ans[p] for p in tr)
+    print(f"  {len(ids)} bi-temporal patches | train {len(tr)} test {len(te)}")
+    print(f"  answer distribution (train): "
+          f"{ {CHANGE_ANSWERS[k]: v for k, v in sorted(dist.items())} }")
+    print(f"  changed pixels: {np.mean([masks[p].mean() for p in ids])*100:.1f}%")
+
+    model = M5Change(len(C.vocab), len(CHANGE_ANSWERS))
+    opt = torch.optim.AdamW(model.parameters(), lr=2e-3)
+    print(f"  {count_params(model):.2f}M params")
+
+    rng = np.random.RandomState(0)
+
+    def pack(b):
+        a = torch.from_numpy(np.stack([C.s2_of(p) for p in b]))
+        c = torch.from_numpy(np.stack([C.s2_of(p, "s2_t2") for p in b]))
+        qs = [CHANGE_Q[rng.randint(len(CHANGE_Q))] for _ in b]
+        enc = [C.encode(q) for q in qs]
+        return (a, c, torch.tensor([e[0] for e in enc]),
+                torch.tensor([e[1] for e in enc]),
+                torch.from_numpy(np.stack([masks[p] for p in b])),
+                torch.tensor([ans[p] for p in b]))
+
+    hist = []
+    for ep in range(epochs):
+        model.train(); tot = nb = 0
