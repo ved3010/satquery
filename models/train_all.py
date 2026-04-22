@@ -152,3 +152,83 @@ class Corpus:
             if int(cls) in CLS_INDEX and n / lab.size >= floor:
                 y[CLS_INDEX[int(cls)]] = 1.0
         return y
+
+
+def batches(items, bs, shuffle=True):
+    idx = np.random.permutation(len(items)) if shuffle else np.arange(len(items))
+    for i in range(0, len(idx), bs):
+        yield [items[j] for j in idx[i:i + bs]]
+
+
+def save(model, name, report):
+    os.makedirs(WEIGHTS, exist_ok=True)
+    os.makedirs(REPORTS, exist_ok=True)
+    torch.save(model.state_dict(), os.path.join(WEIGHTS, f"{name}.pt"))
+    with open(os.path.join(REPORTS, f"{name}.json"), "w") as fh:
+        json.dump(report, fh, indent=2)
+
+
+# --------------------------------------------------------------------------- #
+# M6 — optical-SAR fusion (mandatory M-5)
+# --------------------------------------------------------------------------- #
+def train_m6(C, epochs=30, bs=32):
+    reseed("M6")
+    print("\n=== M6 fusion — optical+SAR multilabel land cover ===")
+    tr, va, te = (C.split_ids("train"), C.split_ids("validation"), C.split_ids("test"))
+    model = M6Fusion()
+    opt = torch.optim.AdamW(model.parameters(), lr=2e-3, weight_decay=1e-4)
+    print(f"  {count_params(model):.2f}M params | train {len(tr)} val {len(va)} test {len(te)}")
+
+    Y = {p: C.multilabel(p) for p in C.ids}
+    prior = np.stack([Y[p] for p in tr]).mean(0)
+
+    def evaluate(ids, s2_only=False, s1_only=False, cloud=0.0):
+        model.eval()
+        P, T = [], []
+        with torch.no_grad():
+            for b in batches(ids, 64, shuffle=False):
+                s2 = torch.from_numpy(np.stack([C.s2_of(p) for p in b]))
+                s1 = torch.from_numpy(np.stack([C.s1_of(p) for p in b]))
+                if cloud > 0:
+                    # simulate cloud: replace a fraction of the optical scene
+                    # with a bright, near-uniform patch, as real cloud does
+                    n = int(120 * cloud)
+                    s2[:, :, :n, :] = 3.0
+                if s2_only:
+                    s1 = torch.zeros_like(s1)
+                if s1_only:
+                    s2 = torch.zeros_like(s2)
+                P.append(torch.sigmoid(model(s2, s1)).numpy())
+                T.append(np.stack([Y[p] for p in b]))
+        return np.concatenate(P), np.concatenate(T)
+
+    def mAP(P, T):
+        aps = []
+        for k in range(N_CLASSES):
+            if T[:, k].sum() == 0:
+                continue
+            o = np.argsort(-P[:, k])
+            t = T[o, k]
+            cum = np.cumsum(t)
+            prec = cum / (np.arange(len(t)) + 1)
+            aps.append((prec * t).sum() / t.sum())
+        return float(np.mean(aps)), len(aps)
+
+    best, hist = -1.0, []
+    for ep in range(epochs):
+        model.train()
+        tot = nb = 0
+        for b in batches(tr, bs):
+            s2 = torch.from_numpy(np.stack([C.s2_of(p) for p in b]))
+            s1 = torch.from_numpy(np.stack([C.s1_of(p) for p in b]))
+            y = torch.from_numpy(np.stack([Y[p] for p in b]))
+            loss = F.binary_cross_entropy_with_logits(model(s2, s1), y)
+            opt.zero_grad(); loss.backward(); opt.step()
+            tot += loss.item(); nb += 1
+        P, T = evaluate(va)
+        m, _ = mAP(P, T)
+        hist.append({"epoch": ep, "loss": tot / max(nb, 1), "val_mAP": m})
+        if m > best:
+            best = m
+            torch.save(model.state_dict(), os.path.join(WEIGHTS, "_m6_best.pt"))
+        if ep % 5 == 0 or ep == epochs - 1:
