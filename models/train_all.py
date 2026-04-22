@@ -381,3 +381,83 @@ def train_m3(C, epochs=40, bs=32, maxlen=48):
 
     tok = Counter()
     for p in tr:
+        tok.update(C.encode(caps[p], maxlen, bos=True)[0])
+    tok.pop(0, None)
+    mode = tok.most_common(1)[0][0]
+    bt = bn = 0
+    for p in te:
+        t = torch.tensor(C.encode(caps[p], maxlen, bos=True)[0])
+        m = t != 0
+        bt += (t[m] == mode).sum().item(); bn += m.sum().item()
+    base = bt / max(bn, 1)
+
+    sample = ""
+    if te:
+        x = torch.from_numpy(np.stack([C.x14(te[0])]))
+        g = model.generate(x, bos=2, eos=3, max_len=maxlen)[0].tolist()
+        sample = " ".join(C.vocab[i] for i in g if i > 3)
+    print(f"  TEST next-token acc {acc:.4f}  (most-frequent-token baseline {base:.4f})")
+    print(f"  sample: {sample[:150]}")
+    rep = {"model": "M3", "test_token_acc": acc, "mode_token_baseline": base,
+           "n_train": len(tr), "n_test": len(te), "sample": sample, "history": hist}
+    save(model, "m3_caption", rep)
+    return rep
+
+
+# --------------------------------------------------------------------------- #
+# M4 — grounding
+# --------------------------------------------------------------------------- #
+def parse_box(s):
+    v = [float(x) for x in re.findall(r"[0-9.]+", str(s))]
+    return v[:4] if len(v) >= 4 else None
+
+
+def iou(a, b):
+    x0 = np.maximum(a[:, 0], b[:, 0]); y0 = np.maximum(a[:, 1], b[:, 1])
+    x1 = np.minimum(a[:, 2], b[:, 2]); y1 = np.minimum(a[:, 3], b[:, 3])
+    inter = np.clip(x1 - x0, 0, None) * np.clip(y1 - y0, 0, None)
+    ar = lambda z: np.clip(z[:, 2] - z[:, 0], 0, None) * np.clip(z[:, 3] - z[:, 1], 0, None)
+    return inter / (ar(a) + ar(b) - inter + 1e-9)
+
+
+def train_m4(C, epochs=40, bs=32):
+    reseed("M4")
+    print("\n=== M4 ground — text-guided box regression ===")
+    items = []
+    for r in C.rows:
+        if r["type"] != "bounding box":
+            continue
+        b = parse_box(r["output"])
+        if b and r["patch_id"] in C.patches:
+            items.append((r["patch_id"], str(r["input"]), b, r["split"]))
+    tr = [i for i in items if i[3] == "train"]
+    te = [i for i in items if i[3] == "test"]
+    if len(tr) < 8 or len(te) < 2:
+        print(f"  ! too few box samples (train {len(tr)}, test {len(te)}) — skipped")
+        return None
+    model = M4Ground(len(C.vocab))
+    opt = torch.optim.AdamW(model.parameters(), lr=2e-3)
+    print(f"  {count_params(model):.2f}M params | train {len(tr)} test {len(te)}")
+
+    def pack(bat):
+        x = torch.from_numpy(np.stack([C.x14(p) for p, _, _, _ in bat]))
+        enc = [C.encode(q) for _, q, _, _ in bat]
+        return (x, torch.tensor([e[0] for e in enc]),
+                torch.tensor([e[1] for e in enc]),
+                torch.tensor([b for _, _, b, _ in bat], dtype=torch.float32))
+
+    hist = []
+    for ep in range(epochs):
+        model.train(); tot = nb = 0
+        for b in batches(tr, bs):
+            x, i_, m_, y = pack(b)
+            loss = F.l1_loss(model(x, i_, m_), y)
+            opt.zero_grad(); loss.backward(); opt.step()
+            tot += loss.item(); nb += 1
+        if ep % 10 == 0 or ep == epochs - 1:
+            hist.append({"epoch": ep, "l1": tot / max(nb, 1)})
+            print(f"  ep {ep:2d}  L1 {tot/max(nb,1):.4f}")
+
+    model.eval()
+    P, T = [], []
+    with torch.no_grad():
