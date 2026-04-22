@@ -232,3 +232,78 @@ def train_m6(C, epochs=30, bs=32):
             best = m
             torch.save(model.state_dict(), os.path.join(WEIGHTS, "_m6_best.pt"))
         if ep % 5 == 0 or ep == epochs - 1:
+            print(f"  ep {ep:2d}  loss {tot/max(nb,1):.4f}  val mAP {m:.4f}")
+
+    model.load_state_dict(torch.load(os.path.join(WEIGHTS, "_m6_best.pt")))
+    os.remove(os.path.join(WEIGHTS, "_m6_best.pt"))
+
+    P, T = evaluate(te)
+    test_map, n_cls = mAP(P, T)
+    prior_map, _ = mAP(np.tile(prior, (len(T), 1)), T)
+
+    # the ablation that justifies cross-modal analysis at all
+    abl = {}
+    for tag, kw in [("fused", {}), ("s2_only", {"s2_only": True}),
+                    ("s1_only", {"s1_only": True}),
+                    ("fused_cloud50", {"cloud": 0.5}),
+                    ("s2_only_cloud50", {"s2_only": True, "cloud": 0.5}),
+                    ("s1_only_cloud50", {"s1_only": True, "cloud": 0.5})]:
+        p, t = evaluate(te, **kw)
+        abl[tag] = round(mAP(p, t)[0], 4)
+
+    print(f"  TEST mAP {test_map:.4f}  (class-prior baseline {prior_map:.4f}, "
+          f"{n_cls} classes present)")
+    print("  ablation:", json.dumps(abl))
+    rep = {"model": "M6", "test_mAP": test_map, "prior_baseline_mAP": prior_map,
+           "n_classes_scored": n_cls, "n_train": len(tr), "n_test": len(te),
+           "ablation_mAP": abl, "history": hist}
+    save(model, "m6_fusion", rep)
+    return rep
+
+
+# --------------------------------------------------------------------------- #
+# M1 — contrastive image/text
+# --------------------------------------------------------------------------- #
+def train_m1(C, epochs=40, bs=32):
+    reseed("M1")
+    print("\n=== M1 rsclip — contrastive image/text ===")
+    caps = {r["patch_id"]: r["output"] for r in C.rows if r["type"] == "captioning"}
+    ids = [p for p in C.ids if p in caps]
+    tr = [p for p in ids if C.split[p] == "train"]
+    te = [p for p in ids if C.split[p] == "test"]
+    model = M1Clip(len(C.vocab))
+    opt = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4)
+    print(f"  {count_params(model):.2f}M params | vocab {len(C.vocab)} | "
+          f"train {len(tr)} test {len(te)}")
+
+    def emb(pids):
+        model.eval()
+        I, T = [], []
+        with torch.no_grad():
+            for b in batches(pids, 64, shuffle=False):
+                x = torch.from_numpy(np.stack([C.x14(p) for p in b]))
+                enc = [C.encode(caps[p]) for p in b]
+                i_ = torch.tensor([e[0] for e in enc])
+                m_ = torch.tensor([e[1] for e in enc])
+                a, t = model(x, i_, m_)
+                I.append(a); T.append(t)
+        return torch.cat(I), torch.cat(T)
+
+    def recall(pids):
+        if len(pids) < 2:
+            return {}
+        I, T = emb(pids)
+        S = I @ T.t(); n = len(I)
+        gt = torch.arange(n)
+        out = {}
+        for k in (1, 5, 10):
+            if k <= n:
+                out[f"i2t_R@{k}"] = (S.topk(k, 1).indices == gt[:, None]).any(1).float().mean().item()
+        return out
+
+    hist = []
+    for ep in range(epochs):
+        model.train()
+        tot = nb = 0
+        for b in batches(tr, bs):
+            if len(b) < 2:
