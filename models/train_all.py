@@ -541,3 +541,78 @@ def train_m5(C, epochs=30, bs=16, thresh=0.10):
     hist = []
     for ep in range(epochs):
         model.train(); tot = nb = 0
+        for b in batches(tr, bs):
+            a, c, i_, m_, ym, ya = pack(b)
+            lm, la = model(a, c, i_, m_)
+            loss = F.binary_cross_entropy_with_logits(lm, ym) + F.cross_entropy(la, ya)
+            opt.zero_grad(); loss.backward(); opt.step()
+            tot += loss.item(); nb += 1
+        if ep % 10 == 0 or ep == epochs - 1:
+            hist.append({"epoch": ep, "loss": tot / max(nb, 1)})
+            print(f"  ep {ep:2d}  loss {tot/max(nb,1):.4f}")
+
+    model.eval()
+    inter = union = 0.0
+    ok = n = 0
+    with torch.no_grad():
+        for b in batches(te, 32, shuffle=False):
+            a, c, i_, m_, ym, ya = pack(b)
+            lm, la = model(a, c, i_, m_)
+            pm = (torch.sigmoid(lm) > 0.5).float()
+            inter += (pm * ym).sum().item()
+            union += ((pm + ym) > 0).float().sum().item()
+            ok += (la.argmax(1) == ya).sum().item(); n += len(b)
+    miou = inter / max(union, 1e-9)
+    acc = ok / max(n, 1)
+    maj = Counter(ans[p] for p in tr).most_common(1)[0][0]
+    majacc = float(np.mean([ans[p] == maj for p in te])) if te else 0.0
+    print(f"  TEST change-mask IoU {miou:.4f} | change-VQA acc {acc:.4f} "
+          f"(majority baseline {majacc:.4f})")
+    rep = {"model": "M5", "test_mask_iou": miou, "test_changevqa_acc": acc,
+           "majority_baseline": majacc, "n_train": len(tr), "n_test": len(te),
+           "answers": CHANGE_ANSWERS,
+           "supervision": "dNDVI threshold %.2f — spectral vegetation change, "
+                          "not semantic change labels" % thresh,
+           "history": hist}
+    save(model, "m5_change", rep)
+    return rep
+
+
+# --------------------------------------------------------------------------- #
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--only", default=None, help="M1|M3|M4|M5|M6")
+    ap.add_argument("--epochs", type=int, default=None)
+    a = ap.parse_args()
+
+    if not os.path.exists(os.path.join(DATA, "IndiaSat.txt.parquet")):
+        print("no IndiaSat — run scripts/build_india_dataset.py first")
+        sys.exit(1)
+
+    t0 = time.time()
+    C = Corpus()
+    print(f"IndiaSat: {len(C.ids)} patches | {len(C.rows)} annotations | "
+          f"vocab {len(C.vocab)}")
+    print(f"splits: train {len(C.split_ids('train'))} "
+          f"val {len(C.split_ids('validation'))} test {len(C.split_ids('test'))}")
+    bt = sum(1 for p in C.ids if "s2_t2" in C.patches[p])
+    print(f"bi-temporal patches: {bt}")
+
+    jobs = {"M6": train_m6, "M1": train_m1, "M3": train_m3,
+            "M4": train_m4, "M5": train_m5}
+    run = {a.only: jobs[a.only]} if a.only else jobs
+    out = {}
+    for k, fn in run.items():
+        kw = {"epochs": a.epochs} if a.epochs else {}
+        try:
+            out[k] = fn(C, **kw)
+        except Exception as exc:
+            import traceback
+            print(f"  ! {k} failed: {type(exc).__name__}: {exc}")
+            traceback.print_exc()
+            out[k] = None
+
+    os.makedirs(REPORTS, exist_ok=True)
+    with open(os.path.join(REPORTS, "summary.json"), "w") as fh:
+        json.dump(out, fh, indent=2)
+    print(f"\nall done in {time.time()-t0:.0f}s — reports in models/reports/")
