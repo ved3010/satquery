@@ -307,3 +307,77 @@ def train_m1(C, epochs=40, bs=32):
         tot = nb = 0
         for b in batches(tr, bs):
             if len(b) < 2:
+                continue
+            x = torch.from_numpy(np.stack([C.x14(p) for p in b]))
+            enc = [C.encode(caps[p]) for p in b]
+            i_ = torch.tensor([e[0] for e in enc])
+            m_ = torch.tensor([e[1] for e in enc])
+            im, tx = model(x, i_, m_)
+            logits = model.logit_scale.exp().clamp(max=100) * im @ tx.t()
+            lbl = torch.arange(len(b))
+            loss = (F.cross_entropy(logits, lbl) + F.cross_entropy(logits.t(), lbl)) / 2
+            opt.zero_grad(); loss.backward(); opt.step()
+            tot += loss.item(); nb += 1
+        if ep % 10 == 0 or ep == epochs - 1:
+            r = recall(te)
+            hist.append({"epoch": ep, "loss": tot / max(nb, 1), **r})
+            print(f"  ep {ep:2d}  loss {tot/max(nb,1):.4f}  test i2t_R@1 {r.get('i2t_R@1',0):.3f}")
+
+    r = recall(te)
+    chance = 1.0 / max(len(te), 1)
+    print(f"  TEST {json.dumps({k: round(v,4) for k,v in r.items()})}  "
+          f"(random chance R@1 = {chance:.4f}, gallery {len(te)})")
+    rep = {"model": "M1", "test": r, "chance_R@1": chance, "gallery": len(te),
+           "n_train": len(tr), "history": hist}
+    save(model, "m1_rsclip_small", rep)
+    return rep
+
+
+# --------------------------------------------------------------------------- #
+# M3 — captioning
+# --------------------------------------------------------------------------- #
+def train_m3(C, epochs=40, bs=32, maxlen=48):
+    reseed("M3")
+    print("\n=== M3 caption ===")
+    caps = {r["patch_id"]: r["output"] for r in C.rows if r["type"] == "captioning"}
+    ids = [p for p in C.ids if p in caps]
+    tr = [p for p in ids if C.split[p] == "train"]
+    te = [p for p in ids if C.split[p] == "test"]
+    model = M3Caption(len(C.vocab))
+    opt = torch.optim.AdamW(model.parameters(), lr=2e-3)
+    print(f"  {count_params(model):.2f}M params | train {len(tr)} test {len(te)}")
+
+    def seq(pids):
+        s = [C.encode(caps[p], maxlen, bos=True)[0] for p in pids]
+        return torch.tensor(s)
+
+    hist = []
+    for ep in range(epochs):
+        model.train(); tot = nb = 0
+        for b in batches(tr, bs):
+            x = torch.from_numpy(np.stack([C.x14(p) for p in b]))
+            y = seq(b)
+            logits = model(x, y[:, :-1])
+            loss = F.cross_entropy(logits.reshape(-1, logits.size(-1)),
+                                   y[:, 1:].reshape(-1), ignore_index=0)
+            opt.zero_grad(); loss.backward(); opt.step()
+            tot += loss.item(); nb += 1
+        if ep % 10 == 0 or ep == epochs - 1:
+            hist.append({"epoch": ep, "loss": tot / max(nb, 1)})
+            print(f"  ep {ep:2d}  loss {tot/max(nb,1):.4f}")
+
+    # token-level accuracy on the test split, against a most-frequent-token baseline
+    model.eval()
+    correct = total = 0
+    with torch.no_grad():
+        for b in batches(te, 32, shuffle=False):
+            x = torch.from_numpy(np.stack([C.x14(p) for p in b]))
+            y = seq(b)
+            pred = model(x, y[:, :-1]).argmax(-1)
+            tgt = y[:, 1:]
+            m = tgt != 0
+            correct += (pred[m] == tgt[m]).sum().item(); total += m.sum().item()
+    acc = correct / max(total, 1)
+
+    tok = Counter()
+    for p in tr:
