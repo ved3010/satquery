@@ -1,0 +1,32 @@
+{
+  "model": "M5",
+  "test_mask_iou": 0.4419672566231462,
+  "test_changevqa_acc": 0.7947019867549668,
+  "majority_baseline": 0.47019867549668876,
+  "n_train": 684,
+  "n_test": 151,
+  "answers": [
+    "increased",
+    "decreased",
+    "unchanged"
+  ],
+  "supervision": "dNDVI threshold 0.10 \u2014 spectral vegetation change, not semantic change labels",
+  "history": [
+    {
+      "epoch": 0,
+      "loss": 1.6360649896222492
+    },
+    {
+      "epoch": 10,
+      "loss": 1.238246576730595
+    },
+    {
+      "epoch": 20,
+      "loss": 1.1746294775674508
+    },
+    {
+      "epoch": 29,
+      "loss": 1.030700754287631
+    }
+  ]
+}
