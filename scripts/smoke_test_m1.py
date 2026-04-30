@@ -120,3 +120,56 @@ def main() -> int:
         lbl = torch.arange(len(batch))
         loss = (F.cross_entropy(logits, lbl) + F.cross_entropy(logits.t(), lbl)) / 2
 
+        opt.zero_grad(set_to_none=True)
+        loss.backward()
+        opt.step()
+        losses.append(loss.item())
+        print(f"  step {step}  loss {loss.item():.4f}  "
+              f"img_emb {tuple(im.shape)}  txt_emb {tuple(tx.shape)}")
+        assert np.isfinite(loss.item()), "loss went non-finite"
+
+    # --- ONNX export path (the bit that breaks silently at the end) -------- #
+    class ImageTower(nn.Module):
+        def __init__(self, m):
+            super().__init__()
+            self.m = m
+
+        def forward(self, z):
+            return F.normalize(self.m.encode_image(z), dim=-1)
+
+    dest = os.path.join(ROOT, "models", "weights", "_smoke_m1.onnx")
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    torch.onnx.export(ImageTower(model).eval(), torch.randn(1, IN_CH, 224, 224), dest,
+                      input_names=["image"], output_names=["embedding"],
+                      dynamic_axes={"image": {0: "batch"}, "embedding": {0: "batch"}},
+                      opset_version=17, dynamo=False)
+    size = os.path.getsize(dest) / 1e6
+
+    import onnxruntime as ort
+    sess = ort.InferenceSession(dest, providers=["CPUExecutionProvider"])
+
+    # Test batch=2, NOT just batch=1. An earlier version of this test checked
+    # only batch=1 and passed, while the exported graph actually failed at
+    # batch=2 with
+    #   Reshape: input {50,2,2304}, requested {50,1,3,768}
+    # because the dynamo exporter silently ignores `dynamic_axes` (it wants
+    # `dynamic_shapes`). A batch-1-only check cannot see that class of bug.
+    x = np.random.randn(2, IN_CH, 224, 224).astype(np.float32)
+    emb = sess.run(None, {"image": x})[0]
+    with torch.no_grad():
+        ref = F.normalize(model.eval().encode_image(torch.from_numpy(x)), dim=-1).numpy()
+    diff = float(np.abs(ref - emb).max())
+    os.remove(dest)
+
+    print(f"\nONNX export {size:.0f} MB (single file, weights embedded)")
+    print(f"  batch-2 output {emb.shape}  norms {np.round(np.linalg.norm(emb,axis=1),3)}")
+    print(f"  max abs diff vs torch: {diff:.3e}")
+    assert emb.shape == (2, 512), f"batch-2 export broken: got {emb.shape}"
+    assert diff < 1e-3, f"ONNX disagrees with PyTorch by {diff:.3e}"
+
+    print("\nSMOKE TEST PASSED - the notebook's training path is sound.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
