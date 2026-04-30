@@ -59,3 +59,64 @@ def main() -> int:
     import open_clip
     model, _, _ = open_clip.create_model_and_transforms("ViT-B-32", pretrained=None)
     tokenizer = open_clip.get_tokenizer("ViT-B-32")
+
+    old = model.visual.conv1
+    assert old.in_channels == 3, f"expected a 3-channel patch-embed, got {old.in_channels}"
+    new = nn.Conv2d(IN_CH, old.out_channels, old.kernel_size, old.stride, bias=False)
+    with torch.no_grad():
+        w = old.weight.data
+        rep = w.repeat(1, (IN_CH + 2) // 3, 1, 1)[:, :IN_CH]
+        new.weight.copy_(rep * (3.0 / IN_CH))
+    model.visual.conv1 = new
+    print(f"patch-embed 3 -> {model.visual.conv1.in_channels} channels  "
+          f"({sum(p.numel() for p in model.parameters())/1e6:.1f}M params)")
+
+    # magnitude preservation is the whole point of the rescale -- verify it
+    x3 = torch.randn(2, 3, 224, 224)
+    x14 = x3.repeat(1, (IN_CH + 2) // 3, 1, 1)[:, :IN_CH]
+    with torch.no_grad():
+        a = F.conv2d(x3, w, stride=old.stride).std().item()
+        b = F.conv2d(x14, new.weight, stride=old.stride).std().item()
+    print(f"activation std  3ch {a:.4f}  ->  14ch {b:.4f}  (ratio {b/a:.2f})")
+
+    # --- normalisation from the train split only --------------------------- #
+    tr = [f for f in files if caps[os.path.basename(f)[:-4]]["split"] == "train"] or files
+    samp = [np.load(f) for f in tr[:64]]
+    s2s = np.stack([s["s2"] for s in samp]).astype(np.float32)
+    m2, sd2 = s2s.mean((0, 2, 3)), s2s.std((0, 2, 3)) + 1e-6
+    has_s1 = "s1" in samp[0]
+    if has_s1:
+        s1s = np.stack([s["s1"] for s in samp]).astype(np.float32)
+        m1_, sd1 = s1s.mean((0, 2, 3)), s1s.std((0, 2, 3)) + 1e-6
+    else:
+        m1_, sd1 = np.zeros(S1_N, np.float32), np.ones(S1_N, np.float32)
+    print(f"S1 present: {has_s1}")
+
+    def load(f):
+        pid = os.path.basename(f)[:-4]
+        d = np.load(f)
+        s2 = (d["s2"].astype(np.float32) - m2[:, None, None]) / sd2[:, None, None]
+        s1 = ((d["s1"].astype(np.float32) - m1_[:, None, None]) / sd1[:, None, None]
+              if "s1" in d else np.zeros((S1_N, PATCH_PX, PATCH_PX), np.float32))
+        x = torch.from_numpy(np.concatenate([s2, s1], 0))
+        x = F.interpolate(x[None], size=224, mode="bilinear", align_corners=False)[0]
+        return x, caps[pid]["output"]
+
+    # --- a few real training steps ----------------------------------------- #
+    opt = torch.optim.AdamW(model.parameters(), lr=1e-5)
+    bs = min(4, len(files))
+    model.train()
+    losses = []
+    for step in range(3):
+        batch = files[step * bs:(step + 1) * bs] or files[:bs]
+        xs, ts = zip(*[load(f) for f in batch])
+        x = torch.stack(xs)
+        t = tokenizer(list(ts))
+        assert x.shape == (len(batch), IN_CH, 224, 224), f"bad image shape {x.shape}"
+
+        im = F.normalize(model.encode_image(x), dim=-1)
+        tx = F.normalize(model.encode_text(t), dim=-1)
+        logits = model.logit_scale.exp().clamp(max=100) * im @ tx.t()
+        lbl = torch.arange(len(batch))
+        loss = (F.cross_entropy(logits, lbl) + F.cross_entropy(logits.t(), lbl)) / 2
+
