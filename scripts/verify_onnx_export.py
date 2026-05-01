@@ -71,3 +71,35 @@ def main() -> int:
         print("files produced by the exporter:")
         for f in produced:
             print(f"  {os.path.basename(f):<34} {os.path.getsize(f)/1e6:9.1f} MB")
+        print(f"  {'TOTAL':<34} {total/1e6:9.1f} MB")
+
+        x = np.random.randn(2, IN_CH, 224, 224).astype(np.float32)
+        import onnxruntime as ort
+        sess = ort.InferenceSession(path, providers=["CPUExecutionProvider"])
+        onnx_out = sess.run(None, {"image": x})[0]
+        with torch.no_grad():
+            torch_out = tower(torch.from_numpy(x)).numpy()
+
+        diff = float(np.abs(torch_out - onnx_out).max())
+        cos = float((torch_out * onnx_out).sum(1).mean())
+        norms = np.linalg.norm(onnx_out, axis=1)
+
+        print(f"\ntorch {torch_out.shape}  onnx {onnx_out.shape}")
+        print(f"max abs diff : {diff:.3e}")
+        print(f"cosine sim   : {cos:.6f}   (1.0 = identical)")
+        print(f"output norms : {np.round(norms, 4)}   (expect 1.0)")
+
+        # A random-weight tower would still give unit norms and the right shape,
+        # so norms alone prove nothing. Agreement with PyTorch is the real test.
+        ok = diff < 1e-3 and cos > 0.999
+        weights_present = total > n_params * 2       # >2 bytes/param = real weights
+        print(f"\nweights embedded : {'yes' if weights_present else 'NO — '
+                                     'only a graph was written'}")
+        print(f"VERDICT: {'EXPORT OK' if ok and weights_present else 'EXPORT BROKEN'}")
+        return 0 if (ok and weights_present) else 1
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
