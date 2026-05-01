@@ -34,3 +34,40 @@ IN_CH = 14
 class ImageTower(nn.Module):
     def __init__(self, m):
         super().__init__()
+        self.m = m
+
+    def forward(self, x):
+        return F.normalize(self.m.encode_image(x), dim=-1)
+
+
+def main() -> int:
+    import open_clip
+
+    model, _, _ = open_clip.create_model_and_transforms("ViT-B-32", pretrained=None)
+    old = model.visual.conv1
+    new = nn.Conv2d(IN_CH, old.out_channels, old.kernel_size, old.stride, bias=False)
+    with torch.no_grad():
+        w = old.weight.data
+        new.weight.copy_(w.repeat(1, (IN_CH + 2) // 3, 1, 1)[:, :IN_CH] * (3.0 / IN_CH))
+    model.visual.conv1 = new
+    model.eval()
+
+    tower = ImageTower(model).eval()
+    n_params = sum(p.numel() for p in tower.parameters())
+
+    tmp = tempfile.mkdtemp(prefix="onnxchk_")
+    path = os.path.join(tmp, "m1.onnx")
+    try:
+        torch.onnx.export(
+            tower, torch.randn(1, IN_CH, 224, 224), path,
+            input_names=["image"], output_names=["embedding"],
+            dynamic_axes={"image": {0: "batch"}, "embedding": {0: "batch"}},
+            opset_version=17, dynamo=False)
+
+        produced = sorted(glob.glob(os.path.join(tmp, "*")))
+        total = sum(os.path.getsize(f) for f in produced)
+        print(f"model: {n_params/1e6:.1f}M params "
+              f"(~{n_params*4/1e6:.0f} MB as fp32)\n")
+        print("files produced by the exporter:")
+        for f in produced:
+            print(f"  {os.path.basename(f):<34} {os.path.getsize(f)/1e6:9.1f} MB")
