@@ -91,3 +91,38 @@ class M1Clip(nn.Module):
     """Contrastive image/text alignment — the domain-adaptation core."""
 
     def __init__(self, vocab: int, emb: int = EMB):
+        super().__init__()
+        self.enc = RSEncoder(emb=emb)
+        self.txt = TextEncoder(vocab, emb)
+        self.img_proj = nn.Linear(emb, emb)
+        self.logit_scale = nn.Parameter(torch.tensor(2.6592))   # ln(1/0.07)
+
+    def encode_image(self, x):
+        pooled, _ = self.enc(x)
+        return F.normalize(self.img_proj(pooled), dim=-1)
+
+    def encode_text(self, ids, mask):
+        return F.normalize(self.txt(ids, mask), dim=-1)
+
+    def forward(self, x, ids, mask):
+        return self.encode_image(x), self.encode_text(ids, mask)
+
+
+class M6Fusion(nn.Module):
+    """Optical-SAR multilabel land cover.
+
+    Two branches so each sensor can be ablated independently -- that is what
+    makes the cloud-occlusion experiment possible (optical collapses, SAR does
+    not, fusion degrades gracefully).
+    """
+
+    def __init__(self, n_classes: int = N_CLASSES, emb: int = EMB):
+        super().__init__()
+        self.s2 = RSEncoder(in_ch=N_S2, emb=emb)
+        self.s1 = RSEncoder(in_ch=N_S1, emb=emb)
+        self.head = nn.Sequential(
+            nn.Linear(emb * 2, emb), nn.ReLU(inplace=True),
+            nn.Dropout(0.2), nn.Linear(emb, n_classes))
+
+    def forward(self, s2, s1):
+        a, _ = self.s2(s2)
