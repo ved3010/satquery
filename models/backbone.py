@@ -47,3 +47,47 @@ class RSEncoder(nn.Module):
     """14-channel CNN encoder. Returns (pooled 256-d, spatial 256x8x8)."""
 
     def __init__(self, in_ch: int = IN_CH, emb: int = EMB):
+        super().__init__()
+        self.in_ch = in_ch
+        self.stem = nn.Sequential(
+            conv_block(in_ch, 32),      # 120 -> 60
+            conv_block(32, 64),         # 60  -> 30
+            conv_block(64, 128),        # 30  -> 15
+            conv_block(128, emb),       # 15  -> 8
+        )
+
+    def forward(self, x):
+        f = self.stem(x)                       # (B, 256, 8, 8)
+        return F.adaptive_avg_pool2d(f, 1).flatten(1), f
+
+
+class TextEncoder(nn.Module):
+    """Small BiGRU over a word-level vocabulary.
+
+    A BiGRU, not mean-pooled bag-of-words. The v1 VQA model's own ablation
+    showed bag-of-words scoring *below* its blind baseline on comparison
+    questions, because mean-pooling discards word order and makes
+    "more roads than forests" identical to "more forests than roads".
+    Order-awareness is the fix, and it is why every text path here is recurrent.
+    """
+
+    def __init__(self, vocab: int, emb: int = EMB, dim: int = 128):
+        super().__init__()
+        self.embed = nn.Embedding(vocab, dim, padding_idx=0)
+        self.gru = nn.GRU(dim, dim, batch_first=True, bidirectional=True)
+        self.proj = nn.Linear(dim * 2, emb)
+
+    def forward(self, ids, mask):
+        h, _ = self.gru(self.embed(ids))              # (B, T, 2*dim)
+        m = mask.unsqueeze(-1)
+        pooled = (h * m).sum(1) / m.sum(1).clamp(min=1)   # masked mean over time
+        return self.proj(pooled)
+
+
+# --------------------------------------------------------------------------- #
+# heads
+# --------------------------------------------------------------------------- #
+class M1Clip(nn.Module):
+    """Contrastive image/text alignment — the domain-adaptation core."""
+
+    def __init__(self, vocab: int, emb: int = EMB):
