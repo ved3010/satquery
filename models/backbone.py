@@ -126,3 +126,42 @@ class M6Fusion(nn.Module):
 
     def forward(self, s2, s1):
         a, _ = self.s2(s2)
+        b, _ = self.s1(s1)
+        return self.head(torch.cat([a, b], 1))
+
+
+class M3Caption(nn.Module):
+    """Prefix-style captioner: image embedding conditions a GRU decoder."""
+
+    def __init__(self, vocab: int, emb: int = EMB, dim: int = 256):
+        super().__init__()
+        self.enc = RSEncoder(emb=emb)
+        self.to_h = nn.Linear(emb, dim)
+        self.embed = nn.Embedding(vocab, dim, padding_idx=0)
+        self.gru = nn.GRU(dim, dim, batch_first=True)
+        self.out = nn.Linear(dim, vocab)
+
+    def forward(self, x, ids):
+        pooled, _ = self.enc(x)
+        h0 = torch.tanh(self.to_h(pooled)).unsqueeze(0)     # (1, B, dim)
+        y, _ = self.gru(self.embed(ids), h0)
+        return self.out(y)
+
+    @torch.no_grad()
+    def generate(self, x, bos: int, eos: int, max_len: int = 60):
+        pooled, _ = self.enc(x)
+        h = torch.tanh(self.to_h(pooled)).unsqueeze(0)
+        tok = torch.full((x.size(0), 1), bos, dtype=torch.long, device=x.device)
+        out = []
+        for _ in range(max_len):
+            y, h = self.gru(self.embed(tok), h)
+            tok = self.out(y[:, -1]).argmax(-1, keepdim=True)
+            out.append(tok)
+            if (tok == eos).all():
+                break
+        return torch.cat(out, 1)
+
+
+class M4Ground(nn.Module):
+    """Text-guided box regression.
+
