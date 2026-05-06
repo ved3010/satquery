@@ -30,3 +30,27 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from models.backbone import EMB, IN_CH, RSEncoder
+
+N_VIS = 17           # 1 global token + 4x4 pooled grid
+GRID = 4
+
+
+class M7VLM(nn.Module):
+    def __init__(self, vocab: int, d: int = 256, layers: int = 4,
+                 heads: int = 4, ff: int = 512, maxlen: int = 128,
+                 dropout: float = 0.1):
+        super().__init__()
+        self.d, self.maxlen, self.vocab = d, maxlen, vocab
+        self.enc = RSEncoder(in_ch=IN_CH, emb=EMB)          # frozen at train time
+        self.proj_global = nn.Linear(EMB, d)
+        self.proj_grid = nn.Linear(EMB, d)
+        self.vis_norm = nn.LayerNorm(d)
+
+        self.tok = nn.Embedding(vocab, d, padding_idx=0)
+        self.pos = nn.Embedding(maxlen, d)
+        layer = nn.TransformerEncoderLayer(
+            d, heads, ff, dropout=dropout, batch_first=True,
+            norm_first=True, activation="gelu")
+        self.dec = nn.TransformerEncoder(layer, layers)
+        self.ln = nn.LayerNorm(d)
