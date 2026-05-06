@@ -54,3 +54,28 @@ class M7VLM(nn.Module):
             norm_first=True, activation="gelu")
         self.dec = nn.TransformerEncoder(layer, layers)
         self.ln = nn.LayerNorm(d)
+        self.head = nn.Linear(d, vocab)
+        self.head.weight = self.tok.weight                  # tied embeddings
+        self.apply(self._init)
+
+    @staticmethod
+    def _init(m):
+        """GPT-style small init. With torch's default N(0,1) embedding and
+        tied output weights the initial logits have a standard deviation of
+        sqrt(d) ~ 16, so the first epoch is spent shrinking the head instead
+        of learning. std=0.02 starts the loss at ln(vocab) where it belongs."""
+        if isinstance(m, nn.Embedding):
+            nn.init.normal_(m.weight, std=0.02)
+            if m.padding_idx is not None:
+                with torch.no_grad():
+                    m.weight[m.padding_idx].zero_()
+        elif isinstance(m, nn.Linear):
+            nn.init.normal_(m.weight, std=0.02)
+            if m.bias is not None:
+                nn.init.zeros_(m.bias)
+
+    # -- vision ----------------------------------------------------------- #
+    @torch.no_grad()
+    def encode_image(self, x):
+        """Frozen tower. Returns (pooled 256, grid 256x8x8)."""
+        return self.enc(x)
