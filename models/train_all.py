@@ -109,3 +109,89 @@ class Corpus:
         else:
             self.m1, self.s1s = np.zeros(N_S1, np.float32), np.ones(N_S1, np.float32)
 
+        words = Counter()
+        for r in rows:
+            words.update(tokenize(str(r["input"])))
+            words.update(tokenize(str(r["output"])))
+        self.vocab = ["<pad>", "<unk>", "<bos>", "<eos>"] + \
+                     [w for w, c in words.most_common() if c >= 2]
+        self.w2i = {w: i for i, w in enumerate(self.vocab)}
+
+    # -- tensors ---------------------------------------------------------- #
+    def s2_of(self, pid, key="s2"):
+        a = self.patches[pid][key].astype(np.float32)
+        return (a - self.m2[:, None, None]) / self.s2s[:, None, None]
+
+    def s1_of(self, pid):
+        p = self.patches[pid]
+        if "s1" not in p:
+            return np.zeros((N_S1, 120, 120), np.float32)
+        a = p["s1"].astype(np.float32)
+        return (a - self.m1[:, None, None]) / self.s1s[:, None, None]
+
+    def x14(self, pid):
+        return np.concatenate([self.s2_of(pid), self.s1_of(pid)], 0)
+
+    def encode(self, text, maxlen=32, bos=False):
+        t = tokenize(str(text))[:maxlen - (2 if bos else 0)]
+        ids = [self.w2i.get(w, 1) for w in t]
+        if bos:
+            ids = [2] + ids + [3]
+        mask = [1.0] * len(ids) + [0.0] * (maxlen - len(ids))
+        ids = ids + [0] * (maxlen - len(ids))
+        return ids[:maxlen], mask[:maxlen]
+
+    def split_ids(self, s):
+        return [p for p in self.ids if self.split.get(p) == s]
+
+    def multilabel(self, pid, floor=0.05):
+        lab = self.patches[pid]["label"]
+        v, c = np.unique(lab, return_counts=True)
+        y = np.zeros(N_CLASSES, np.float32)
+        for cls, n in zip(v, c):
+            if int(cls) in CLS_INDEX and n / lab.size >= floor:
+                y[CLS_INDEX[int(cls)]] = 1.0
+        return y
+
+
+def batches(items, bs, shuffle=True):
+    idx = np.random.permutation(len(items)) if shuffle else np.arange(len(items))
+    for i in range(0, len(idx), bs):
+        yield [items[j] for j in idx[i:i + bs]]
+
+
+def save(model, name, report):
+    os.makedirs(WEIGHTS, exist_ok=True)
+    os.makedirs(REPORTS, exist_ok=True)
+    torch.save(model.state_dict(), os.path.join(WEIGHTS, f"{name}.pt"))
+    with open(os.path.join(REPORTS, f"{name}.json"), "w") as fh:
+        json.dump(report, fh, indent=2)
+
+
+# --------------------------------------------------------------------------- #
+# M6 — optical-SAR fusion (mandatory M-5)
+# --------------------------------------------------------------------------- #
+def train_m6(C, epochs=30, bs=32):
+    reseed("M6")
+    print("\n=== M6 fusion — optical+SAR multilabel land cover ===")
+    tr, va, te = (C.split_ids("train"), C.split_ids("validation"), C.split_ids("test"))
+    model = M6Fusion()
+    opt = torch.optim.AdamW(model.parameters(), lr=2e-3, weight_decay=1e-4)
+    print(f"  {count_params(model):.2f}M params | train {len(tr)} val {len(va)} test {len(te)}")
+
+    Y = {p: C.multilabel(p) for p in C.ids}
+    prior = np.stack([Y[p] for p in tr]).mean(0)
+
+    def evaluate(ids, s2_only=False, s1_only=False, cloud=0.0):
+        model.eval()
+        P, T = [], []
+        with torch.no_grad():
+            for b in batches(ids, 64, shuffle=False):
+                s2 = torch.from_numpy(np.stack([C.s2_of(p) for p in b]))
+                s1 = torch.from_numpy(np.stack([C.s1_of(p) for p in b]))
+                if cloud > 0:
+                    # simulate cloud: replace a fraction of the optical scene
+                    # with a bright, near-uniform patch, as real cloud does
+                    n = int(120 * cloud)
+                    s2[:, :, :n, :] = 3.0
+                if s2_only:
