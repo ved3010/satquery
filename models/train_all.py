@@ -195,3 +195,77 @@ def train_m6(C, epochs=30, bs=32):
                     n = int(120 * cloud)
                     s2[:, :, :n, :] = 3.0
                 if s2_only:
+                    s1 = torch.zeros_like(s1)
+                if s1_only:
+                    s2 = torch.zeros_like(s2)
+                P.append(torch.sigmoid(model(s2, s1)).numpy())
+                T.append(np.stack([Y[p] for p in b]))
+        return np.concatenate(P), np.concatenate(T)
+
+    def mAP(P, T):
+        aps = []
+        for k in range(N_CLASSES):
+            if T[:, k].sum() == 0:
+                continue
+            o = np.argsort(-P[:, k])
+            t = T[o, k]
+            cum = np.cumsum(t)
+            prec = cum / (np.arange(len(t)) + 1)
+            aps.append((prec * t).sum() / t.sum())
+        return float(np.mean(aps)), len(aps)
+
+    best, hist = -1.0, []
+    for ep in range(epochs):
+        model.train()
+        tot = nb = 0
+        for b in batches(tr, bs):
+            s2 = torch.from_numpy(np.stack([C.s2_of(p) for p in b]))
+            s1 = torch.from_numpy(np.stack([C.s1_of(p) for p in b]))
+            y = torch.from_numpy(np.stack([Y[p] for p in b]))
+            loss = F.binary_cross_entropy_with_logits(model(s2, s1), y)
+            opt.zero_grad(); loss.backward(); opt.step()
+            tot += loss.item(); nb += 1
+        P, T = evaluate(va)
+        m, _ = mAP(P, T)
+        hist.append({"epoch": ep, "loss": tot / max(nb, 1), "val_mAP": m})
+        if m > best:
+            best = m
+            torch.save(model.state_dict(), os.path.join(WEIGHTS, "_m6_best.pt"))
+        if ep % 5 == 0 or ep == epochs - 1:
+            print(f"  ep {ep:2d}  loss {tot/max(nb,1):.4f}  val mAP {m:.4f}")
+
+    model.load_state_dict(torch.load(os.path.join(WEIGHTS, "_m6_best.pt")))
+    os.remove(os.path.join(WEIGHTS, "_m6_best.pt"))
+
+    P, T = evaluate(te)
+    test_map, n_cls = mAP(P, T)
+    prior_map, _ = mAP(np.tile(prior, (len(T), 1)), T)
+
+    # the ablation that justifies cross-modal analysis at all
+    abl = {}
+    for tag, kw in [("fused", {}), ("s2_only", {"s2_only": True}),
+                    ("s1_only", {"s1_only": True}),
+                    ("fused_cloud50", {"cloud": 0.5}),
+                    ("s2_only_cloud50", {"s2_only": True, "cloud": 0.5}),
+                    ("s1_only_cloud50", {"s1_only": True, "cloud": 0.5})]:
+        p, t = evaluate(te, **kw)
+        abl[tag] = round(mAP(p, t)[0], 4)
+
+    print(f"  TEST mAP {test_map:.4f}  (class-prior baseline {prior_map:.4f}, "
+          f"{n_cls} classes present)")
+    print("  ablation:", json.dumps(abl))
+    rep = {"model": "M6", "test_mAP": test_map, "prior_baseline_mAP": prior_map,
+           "n_classes_scored": n_cls, "n_train": len(tr), "n_test": len(te),
+           "ablation_mAP": abl, "history": hist}
+    save(model, "m6_fusion", rep)
+    return rep
+
+
+# --------------------------------------------------------------------------- #
+# M1 — contrastive image/text
+# --------------------------------------------------------------------------- #
+def train_m1(C, epochs=40, bs=32):
+    reseed("M1")
+    print("\n=== M1 rsclip — contrastive image/text ===")
+    caps = {r["patch_id"]: r["output"] for r in C.rows if r["type"] == "captioning"}
+    ids = [p for p in C.ids if p in caps]
