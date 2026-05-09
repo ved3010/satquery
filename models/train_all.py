@@ -269,3 +269,78 @@ def train_m1(C, epochs=40, bs=32):
     print("\n=== M1 rsclip — contrastive image/text ===")
     caps = {r["patch_id"]: r["output"] for r in C.rows if r["type"] == "captioning"}
     ids = [p for p in C.ids if p in caps]
+    tr = [p for p in ids if C.split[p] == "train"]
+    te = [p for p in ids if C.split[p] == "test"]
+    model = M1Clip(len(C.vocab))
+    opt = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4)
+    print(f"  {count_params(model):.2f}M params | vocab {len(C.vocab)} | "
+          f"train {len(tr)} test {len(te)}")
+
+    def emb(pids):
+        model.eval()
+        I, T = [], []
+        with torch.no_grad():
+            for b in batches(pids, 64, shuffle=False):
+                x = torch.from_numpy(np.stack([C.x14(p) for p in b]))
+                enc = [C.encode(caps[p]) for p in b]
+                i_ = torch.tensor([e[0] for e in enc])
+                m_ = torch.tensor([e[1] for e in enc])
+                a, t = model(x, i_, m_)
+                I.append(a); T.append(t)
+        return torch.cat(I), torch.cat(T)
+
+    def recall(pids):
+        if len(pids) < 2:
+            return {}
+        I, T = emb(pids)
+        S = I @ T.t(); n = len(I)
+        gt = torch.arange(n)
+        out = {}
+        for k in (1, 5, 10):
+            if k <= n:
+                out[f"i2t_R@{k}"] = (S.topk(k, 1).indices == gt[:, None]).any(1).float().mean().item()
+        return out
+
+    hist = []
+    for ep in range(epochs):
+        model.train()
+        tot = nb = 0
+        for b in batches(tr, bs):
+            if len(b) < 2:
+                continue
+            x = torch.from_numpy(np.stack([C.x14(p) for p in b]))
+            enc = [C.encode(caps[p]) for p in b]
+            i_ = torch.tensor([e[0] for e in enc])
+            m_ = torch.tensor([e[1] for e in enc])
+            im, tx = model(x, i_, m_)
+            logits = model.logit_scale.exp().clamp(max=100) * im @ tx.t()
+            lbl = torch.arange(len(b))
+            loss = (F.cross_entropy(logits, lbl) + F.cross_entropy(logits.t(), lbl)) / 2
+            opt.zero_grad(); loss.backward(); opt.step()
+            tot += loss.item(); nb += 1
+        if ep % 10 == 0 or ep == epochs - 1:
+            r = recall(te)
+            hist.append({"epoch": ep, "loss": tot / max(nb, 1), **r})
+            print(f"  ep {ep:2d}  loss {tot/max(nb,1):.4f}  test i2t_R@1 {r.get('i2t_R@1',0):.3f}")
+
+    r = recall(te)
+    chance = 1.0 / max(len(te), 1)
+    print(f"  TEST {json.dumps({k: round(v,4) for k,v in r.items()})}  "
+          f"(random chance R@1 = {chance:.4f}, gallery {len(te)})")
+    rep = {"model": "M1", "test": r, "chance_R@1": chance, "gallery": len(te),
+           "n_train": len(tr), "history": hist}
+    save(model, "m1_rsclip_small", rep)
+    return rep
+
+
+# --------------------------------------------------------------------------- #
+# M3 — captioning
+# --------------------------------------------------------------------------- #
+def train_m3(C, epochs=40, bs=32, maxlen=48):
+    reseed("M3")
+    print("\n=== M3 caption ===")
+    caps = {r["patch_id"]: r["output"] for r in C.rows if r["type"] == "captioning"}
+    ids = [p for p in C.ids if p in caps]
+    tr = [p for p in ids if C.split[p] == "train"]
+    te = [p for p in ids if C.split[p] == "test"]
+    model = M3Caption(len(C.vocab))
