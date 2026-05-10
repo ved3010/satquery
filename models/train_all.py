@@ -430,3 +430,77 @@ def train_m4(C, epochs=40, bs=32):
         b = parse_box(r["output"])
         if b and r["patch_id"] in C.patches:
             items.append((r["patch_id"], str(r["input"]), b, r["split"]))
+    tr = [i for i in items if i[3] == "train"]
+    te = [i for i in items if i[3] == "test"]
+    if len(tr) < 8 or len(te) < 2:
+        print(f"  ! too few box samples (train {len(tr)}, test {len(te)}) — skipped")
+        return None
+    model = M4Ground(len(C.vocab))
+    opt = torch.optim.AdamW(model.parameters(), lr=2e-3)
+    print(f"  {count_params(model):.2f}M params | train {len(tr)} test {len(te)}")
+
+    def pack(bat):
+        x = torch.from_numpy(np.stack([C.x14(p) for p, _, _, _ in bat]))
+        enc = [C.encode(q) for _, q, _, _ in bat]
+        return (x, torch.tensor([e[0] for e in enc]),
+                torch.tensor([e[1] for e in enc]),
+                torch.tensor([b for _, _, b, _ in bat], dtype=torch.float32))
+
+    hist = []
+    for ep in range(epochs):
+        model.train(); tot = nb = 0
+        for b in batches(tr, bs):
+            x, i_, m_, y = pack(b)
+            loss = F.l1_loss(model(x, i_, m_), y)
+            opt.zero_grad(); loss.backward(); opt.step()
+            tot += loss.item(); nb += 1
+        if ep % 10 == 0 or ep == epochs - 1:
+            hist.append({"epoch": ep, "l1": tot / max(nb, 1)})
+            print(f"  ep {ep:2d}  L1 {tot/max(nb,1):.4f}")
+
+    model.eval()
+    P, T = [], []
+    with torch.no_grad():
+        for b in batches(te, 64, shuffle=False):
+            x, i_, m_, y = pack(b)
+            P.append(model(x, i_, m_).numpy()); T.append(y.numpy())
+    P, T = np.concatenate(P), np.concatenate(T)
+    ious = iou(P, T)
+    mean_box = np.tile(np.array([b for _, _, b, _ in tr]).mean(0), (len(T), 1))
+    base = iou(mean_box, T)
+    print(f"  TEST mean IoU {ious.mean():.4f}  Acc@0.5 {(ious>0.5).mean():.4f}  "
+          f"(mean-train-box baseline IoU {base.mean():.4f})")
+    rep = {"model": "M4", "test_mean_iou": float(ious.mean()),
+           "test_acc@0.5": float((ious > 0.5).mean()),
+           "mean_box_baseline_iou": float(base.mean()),
+           "n_train": len(tr), "n_test": len(te), "history": hist}
+    save(model, "m4_ground", rep)
+    return rep
+
+
+# --------------------------------------------------------------------------- #
+# M5 — bi-temporal change (mandatory M-4)
+# --------------------------------------------------------------------------- #
+CHANGE_ANSWERS = ["increased", "decreased", "unchanged"]
+CHANGE_Q = ["Has the vegetation increased, decreased, or remained unchanged?",
+            "What changed between these two dates?",
+            "Describe the change in vegetation cover between the two acquisitions.",
+            "Has vegetation cover grown or shrunk since the earlier image?"]
+
+
+def ndvi_np(cube):
+    nir = cube[7].astype(np.float32); red = cube[3].astype(np.float32)
+    return (nir - red) / (nir + red + 1e-6)
+
+
+def train_m5(C, epochs=30, bs=16, thresh=0.10):
+    reseed("M5")
+    print("\n=== M5 change — bi-temporal (mandatory M-4) ===")
+    ids = [p for p in C.ids if "s2_t2" in C.patches[p]]
+    if len(ids) < 16:
+        print(f"  ! only {len(ids)} bi-temporal patches — skipped. "
+              f"Rebuild with --start2/--end2.")
+        return None
+    tr = [p for p in ids if C.split[p] == "train"]
+    te = [p for p in ids if C.split[p] == "test"]
+
