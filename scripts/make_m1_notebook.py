@@ -292,3 +292,245 @@ def build_region(region, start="2024-01-01", end="2024-04-30", max_cloud=15):
 
     n, rows = 0, []
     for gy in range(H//PATCH_PX):
+        for gx in range(W//PATCH_PX):
+            sy, sx = gy*PATCH_PX, gx*PATCH_PX
+            lab = lab_block[sy:sy+PATCH_PX, sx:sx+PATCH_PX]
+            img = cube[:, sy:sy+PATCH_PX, sx:sx+PATCH_PX]
+            if (img == 0).all() or (lab == 0).all(): continue
+            fr = {int(v): c/lab.size for v, c in zip(*np.unique(lab, return_counts=True))}
+            if sum(f for c, f in fr.items() if c in WORLDCOVER) < 0.90: continue
+
+            pid = f"IND_{region.key}_{gy:03d}{gx:03d}"
+            blob = {"s2": img, "label": lab}
+            if sar is not None:
+                blob["s1"] = sar[:, sy:sy+PATCH_PX, sx:sx+PATCH_PX]
+            np.savez_compressed(f"{OUT}/patches/{pid}.npz", **blob)
+
+            # Deterministic split by grid position: re-running is stable, and
+            # neighbouring patches (which overlap in content) cannot straddle
+            # train and test.
+            h = (gy*7919 + gx*104729) % 100
+            split = "train" if h < 70 else "validation" if h < 85 else "test"
+            rng = random.Random(gy*1000 + gx)
+            cap = caption(fr, region, rng)
+            if cap:
+                rows.append({"patch_id":pid, "s1_name":s1id,
+                             "input":rng.choice(CAPTION_PROMPTS), "output":cap,
+                             "type":"captioning", "category":None, "split":split,
+                             "latitude":region.lat, "longitude":region.lon,
+                             "country":"India", "season":region.season,
+                             "climate_zone":region.climate_zone, "region":region.key})
+            n += 1
+    print(f"  -> {n} patches")
+    return n, rows
+
+all_rows, total = [], 0
+for r in REGIONS:
+    print(f"\\n=== {r.name}, {r.state} ({r.climate_zone}) ===")
+    try:
+        n, rows = build_region(r); total += n; all_rows += rows
+    except Exception as e:
+        print(f"  ! {type(e).__name__}: {e}")
+print(f"\\nTOTAL {total} patches, {len(all_rows)} captions")
+'''))
+
+CELLS.append(code('''
+import collections
+import pyarrow as pa, pyarrow.parquet as pq
+pq.write_table(pa.Table.from_pylist(all_rows), f"{OUT}/IndiaSat.txt.parquet")
+print("per region:", dict(collections.Counter(r["region"] for r in all_rows)))
+print("per split :", dict(collections.Counter(r["split"] for r in all_rows)))
+print("\\nsample caption:\\n ", all_rows[0]["output"])
+'''))
+
+CELLS.append(md("""
+## 5 · RS-CLIP — the 14-channel surgery
+
+CLIP's patch-embed conv takes 3 channels. We inflate it to **14** (12 Sentinel-2
+bands + VV/VH) by tiling the RGB kernels across the new bands and rescaling by
+`3/14`, which preserves activation magnitude. Random-initialising this layer
+destroys the pretrained features; this does not.
+"""))
+CELLS.append(code('''
+import open_clip
+import torch.nn as nn
+
+model, _, _ = open_clip.create_model_and_transforms(
+    "ViT-B-32", pretrained="laion2b_s34b_b79k")
+tokenizer = open_clip.get_tokenizer("ViT-B-32")
+
+old = model.visual.conv1                       # Conv2d(3, 768, k=32, s=32)
+IN_CH = len(S2_BANDS) + len(S1_BANDS)          # 14
+new = nn.Conv2d(IN_CH, old.out_channels, old.kernel_size, old.stride, bias=False)
+with torch.no_grad():
+    w = old.weight.data                                   # (768, 3, 32, 32)
+    rep = w.repeat(1, (IN_CH + 2)//3, 1, 1)[:, :IN_CH]    # tile RGB across 14
+    new.weight.copy_(rep * (3.0 / IN_CH))                 # preserve magnitude
+model.visual.conv1 = new
+model = model.cuda()
+print(f"patch-embed 3 -> {IN_CH} channels | "
+      f"{sum(p.numel() for p in model.parameters())/1e6:.1f}M params")
+'''))
+
+CELLS.append(md("""
+## 6 · Dataset & normalisation
+
+Per-sensor statistics are computed **from the training split only** — never
+hardcoded Sentinel constants. ISRO evaluates on Cartosat-2S + RISAT, and
+hardcoded stats would silently mis-scale those inputs.
+"""))
+CELLS.append(code('''
+import glob
+from torch.utils.data import Dataset, DataLoader
+
+caps = {r["patch_id"]: r for r in all_rows}
+files = [f for f in sorted(glob.glob(f"{OUT}/patches/*.npz"))
+         if os.path.basename(f)[:-4] in caps]
+print(len(files), "patches with captions")
+
+tr = [f for f in files if caps[os.path.basename(f)[:-4]]["split"] == "train"]
+samp = [np.load(f) for f in tr[:min(200, len(tr))]]
+s2s = np.stack([s["s2"] for s in samp]).astype(np.float32)
+MEAN_S2, STD_S2 = s2s.mean((0,2,3)), s2s.std((0,2,3)) + 1e-6
+if "s1" in samp[0]:
+    s1s = np.stack([s["s1"] for s in samp]).astype(np.float32)
+    MEAN_S1, STD_S1 = s1s.mean((0,2,3)), s1s.std((0,2,3)) + 1e-6
+else:
+    MEAN_S1, STD_S1 = np.zeros(2, np.float32), np.ones(2, np.float32)
+print("S2 mean:", np.round(MEAN_S2, 1))
+print("S1 mean:", np.round(MEAN_S1, 3))
+
+class IndiaSat(Dataset):
+    def __init__(self, files, split=None):
+        self.files = [f for f in files
+                      if split is None or caps[os.path.basename(f)[:-4]]["split"] == split]
+    def __len__(self):
+        return len(self.files)
+    def __getitem__(self, i):
+        f = self.files[i]; pid = os.path.basename(f)[:-4]; d = np.load(f)
+        s2 = (d["s2"].astype(np.float32) - MEAN_S2[:,None,None]) / STD_S2[:,None,None]
+        s1 = ((d["s1"].astype(np.float32) - MEAN_S1[:,None,None]) / STD_S1[:,None,None]
+              if "s1" in d else np.zeros((2, PATCH_PX, PATCH_PX), np.float32))
+        x = torch.from_numpy(np.concatenate([s2, s1], 0))
+        x = torch.nn.functional.interpolate(x[None], size=224, mode="bilinear",
+                                            align_corners=False)[0]
+        return x, tokenizer([caps[pid]["output"]])[0]
+
+train_ds = IndiaSat(files, "train")
+val_ds   = IndiaSat(files, "validation")
+test_ds  = IndiaSat(files, "test")
+print(f"train {len(train_ds)} | val {len(val_ds)} | test {len(test_ds)}")
+'''))
+
+CELLS.append(md("""
+## 7 · Contrastive training (InfoNCE)
+
+**Honest expectation.** With a few thousand Indian pairs this is *fine-tuning* a
+pretrained CLIP, not training one from scratch. Low LR, short schedule, and val
+retrieval watched for overfitting — a small corpus overfits fast.
+"""))
+CELLS.append(code('''
+import torch.nn.functional as F
+
+BS, EPOCHS, LR_TOWER, LR_NEW = 32, 8, 1e-5, 1e-4
+train_dl = DataLoader(train_ds, batch_size=BS, shuffle=True, num_workers=2, drop_last=True)
+val_dl   = DataLoader(val_ds, batch_size=BS, num_workers=2)
+
+new_params = list(model.visual.conv1.parameters())
+new_ids = {id(p) for p in new_params}
+tower = [p for p in model.parameters() if id(p) not in new_ids]
+opt = torch.optim.AdamW([{"params": tower,      "lr": LR_TOWER},
+                         {"params": new_params, "lr": LR_NEW}], weight_decay=0.1)
+scaler = torch.amp.GradScaler("cuda", enabled=(AMP_DTYPE == torch.float16))
+sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=EPOCHS*max(1, len(train_dl)))
+
+@torch.no_grad()
+def retrieval(dl):
+    model.eval(); I, T = [], []
+    for x, t in dl:
+        with torch.autocast("cuda", dtype=AMP_DTYPE):
+            I.append(F.normalize(model.encode_image(x.cuda()), dim=-1).float())
+            T.append(F.normalize(model.encode_text(t.cuda()), dim=-1).float())
+    if not I: return {}
+    I, T = torch.cat(I), torch.cat(T)
+    S = I @ T.t(); n = len(I)
+    gt = torch.arange(n, device=S.device); out = {}
+    for k in (1, 5, 10):
+        if k <= n:
+            out[f"i2t_R@{k}"] = (S.topk(k,1).indices == gt[:,None]).any(1).float().mean().item()
+            out[f"t2i_R@{k}"] = (S.t().topk(k,1).indices == gt[:,None]).any(1).float().mean().item()
+    return out
+
+best, hist = -1.0, []
+for ep in range(EPOCHS):
+    model.train(); tot = nb = 0
+    for x, t in train_dl:
+        x, t = x.cuda(non_blocking=True), t.cuda(non_blocking=True)
+        with torch.autocast("cuda", dtype=AMP_DTYPE):
+            im = F.normalize(model.encode_image(x), dim=-1)
+            tx = F.normalize(model.encode_text(t), dim=-1)
+            logits = model.logit_scale.exp().clamp(max=100) * im @ tx.t()
+            lbl = torch.arange(len(x), device=x.device)
+            loss = (F.cross_entropy(logits, lbl) + F.cross_entropy(logits.t(), lbl)) / 2
+        opt.zero_grad(set_to_none=True)
+        scaler.scale(loss).backward(); scaler.step(opt); scaler.update(); sched.step()
+        tot += loss.item(); nb += 1
+    m = retrieval(val_dl); r1 = m.get("i2t_R@1", 0.0)
+    hist.append({"epoch": ep, "loss": tot/max(nb,1), **m})
+    print(f"ep {ep}  loss {tot/max(nb,1):.4f}  val i2t_R@1 {r1:.3f}  t2i_R@1 {m.get('t2i_R@1',0):.3f}")
+    if r1 > best:
+        best = r1; torch.save(model.state_dict(), "/kaggle/working/m1_rsclip_best.pt")
+print(f"\\nbest val i2t_R@1 {best:.3f}")
+'''))
+
+CELLS.append(md("## 8 · Test retrieval, with the chance baseline stated"))
+CELLS.append(code('''
+model.load_state_dict(torch.load("/kaggle/working/m1_rsclip_best.pt"))
+m = retrieval(DataLoader(test_ds, batch_size=BS, num_workers=2))
+n = len(test_ds)
+print(f"TEST retrieval — {n} held-out patches")
+for k, v in m.items():
+    print(f"  {k:<10} {v:.4f}")
+print(f"\\nrandom chance R@1 = 1/{n} = {1/max(n,1):.4f}")
+print("R@k depends on gallery size — always report n beside it, or the number "
+      "is not comparable to any published figure.")
+
+import json as _json
+_json.dump({"test": m, "history": hist, "n_test": n, "n_train": len(train_ds)},
+           open("/kaggle/working/m1_report.json", "w"), indent=2)
+'''))
+
+CELLS.append(md("## 9 · Export for CPU serving"))
+CELLS.append(code('''
+class ImageTower(torch.nn.Module):
+    def __init__(self, m):
+        super().__init__(); self.m = m
+    def forward(self, x):
+        return torch.nn.functional.normalize(self.m.encode_image(x), dim=-1)
+
+tower = ImageTower(model).cuda().eval()
+torch.onnx.export(tower, torch.randn(1, IN_CH, 224, 224).cuda(),
+                  "/kaggle/working/m1_rsclip.onnx",
+                  input_names=["image"], output_names=["embedding"],
+                  dynamic_axes={"image": {0: "batch"}, "embedding": {0: "batch"}},
+                  opset_version=17, dynamo=False)   # see note below
+np.savez("/kaggle/working/m1_norm.npz", mean_s2=MEAN_S2, std_s2=STD_S2,
+         mean_s1=MEAN_S1, std_s1=STD_S1)
+print("exported: m1_rsclip.onnx  m1_norm.npz  m1_rsclip_best.pt  m1_report.json")
+print("Download from the Kaggle Output pane -> satquery-core/models/weights/")
+'''))
+
+
+if __name__ == "__main__":
+    nb = {"cells": CELLS,
+          "metadata": {
+              "kernelspec": {"display_name": "Python 3", "language": "python",
+                             "name": "python3"},
+              "language_info": {"name": "python", "version": "3.11"},
+              "accelerator": "GPU"},
+          "nbformat": 4, "nbformat_minor": 5}
+    dest = os.path.join(ROOT, "notebooks", "M1_rsclip_indiasat.ipynb")
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    with open(dest, "w", encoding="utf-8") as fh:
+        json.dump(nb, fh, indent=1)
+    print(f"wrote {dest}  ({os.path.getsize(dest)//1024} KB, {len(CELLS)} cells)")

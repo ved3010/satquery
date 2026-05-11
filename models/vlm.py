@@ -120,3 +120,30 @@ class M7VLM(nn.Module):
         for _ in range(max_new):
             if ids.size(1) + N_VIS >= self.maxlen:
                 break
+            logits = self.forward(pooled, grid, ids)[:, -1]
+            if temperature > 0:
+                nxt = torch.multinomial(
+                    F.softmax(logits / temperature, -1), 1)
+            else:
+                nxt = logits.argmax(-1, keepdim=True)
+            ids = torch.cat([ids, nxt], 1)
+            if bool((nxt == eos).all()):
+                break
+        return ids[:, prompt_ids.size(1):]
+
+
+def count_params(m: nn.Module, trainable_only: bool = True) -> float:
+    ps = (p for p in m.parameters() if p.requires_grad or not trainable_only)
+    return sum(p.numel() for p in ps) / 1e6
+
+
+if __name__ == "__main__":
+    m = M7VLM(265)
+    print(f"total {count_params(m, False):.2f}M params")
+    for p in m.enc.parameters():
+        p.requires_grad = False
+    print(f"trainable {count_params(m):.2f}M params")
+    x = torch.randn(2, IN_CH, 120, 120)
+    pooled, grid = m.encode_image(x)
+    ids = torch.randint(1, 265, (2, 20))
+    print("logits", tuple(m(pooled, grid, ids).shape))
