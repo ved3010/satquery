@@ -1,0 +1,30 @@
+{
+  "model": "M3",
+  "test_token_acc": 0.9005385392123864,
+  "mode_token_baseline": 0.07434761201378631,
+  "n_train": 684,
+  "n_test": 151,
+  "sample": "this satellite image captured during the winter season in india ahmedabad gujarat showcases a predominantly built up landscape within the arid steppe hot climate zone built up covers approximately 97 of the scene",
+  "history": [
+    {
+      "epoch": 0,
+      "loss": 2.2218593521551653
+    },
+    {
+      "epoch": 10,
+      "loss": 0.33466756072911347
+    },
+    {
+      "epoch": 20,
+      "loss": 0.2647841775959188
+    },
+    {
+      "epoch": 30,
+      "loss": 0.20396126806735992
+    },
+    {
+      "epoch": 39,
+      "loss": 0.17751725018024445
+    }
+  ]
+}
