@@ -158,3 +158,137 @@ def verb(c):
 
 CAPTION_PROMPTS = [
     "Describe the land cover visible in this satellite image.",
+    "Give a comprehensive overview of the image, specifying the location, climate, and landscape features.",
+    "Explain the distribution of land cover in this image, including the geographic region and season.",
+    "Provide a detailed scene description for this remote sensing image.",
+]
+
+def caption(fr, region, rng):
+    ranked = sorted(((c, f) for c, f in fr.items() if c in WORLDCOVER), key=lambda x: -x[1])
+    if not ranked:
+        return ""
+    dom, dom_f = ranked[0]
+    rest = [(c, f) for c, f in ranked[1:] if f >= 0.05]
+    s = (f'This satellite image, captured during the {region.season} season in India '
+         f'({region.name}, {region.state}), showcases a predominantly {describe(dom)} '
+         f'landscape within the "{region.climate_zone}" climate zone. '
+         f'{describe(dom, True)} {verb(dom)} approximately {dom_f*100:.0f}% of the scene')
+    if rest:
+        p = [f"{describe(c)} ({f*100:.0f}%)" for c, f in rest[:3]]
+        s += ", alongside " + ", ".join(p[:-1]) + (f" and {p[-1]}" if len(p) > 1 else p[0])
+    return s + "."
+'''))
+
+CELLS.append(md("""
+## 4 · Build IndiaSat — co-registered S2 + S1 + labels
+
+One large window per band, cut into patches locally. A per-patch fetch would
+issue thousands of range requests; this issues one per band.
+"""))
+CELLS.append(code('''
+import json, urllib.request
+import rasterio
+from rasterio.warp import Resampling, reproject, transform as warp_transform
+from rasterio.windows import Window
+
+os.environ.setdefault("GDAL_DISABLE_READDIR_ON_OPEN", "EMPTY_DIR")
+os.environ.setdefault("AWS_NO_SIGN_REQUEST", "YES")
+STAC = "https://earth-search.aws.element84.com/v1/search"
+WINDOW = 2400          # 24 x 24 km -> up to 400 patches per region
+OUT = "/kaggle/working/indiasat"
+os.makedirs(f"{OUT}/patches", exist_ok=True)
+
+def stac(coll, geom, start, end, extra=None, limit=20):
+    """`geom` is a GeoJSON geometry, not a bbox.
+
+    A bbox search returns scenes whose footprint merely overlaps the box, but an
+    S2 tile is a 110 km square and the AOI can lie outside it entirely -- that
+    produced `WindowError: Intersection is empty` (col_off 13684 vs width 10980).
+    Intersecting a Point guarantees every hit contains the AOI.
+    """
+    b = {"collections":[coll], "intersects":geom,
+         "datetime":f"{start}T00:00:00Z/{end}T23:59:59Z", "limit":limit}
+    if extra: b["query"] = extra
+    rq = urllib.request.Request(STAC, data=json.dumps(b).encode(),
+                                headers={"Content-Type":"application/json"})
+    return json.load(urllib.request.urlopen(rq, timeout=120))["features"]
+
+def point(region):
+    return {"type":"Point", "coordinates":[region.lon, region.lat]}
+
+def pick_scene(feats, region, window_px, sort_key):
+    """First scene whose raster actually contains the AOI window.
+
+    Even an intersects-Point hit can fail: the orbit swath may cover only part
+    of the tile, leaving the AOI in nodata. Open each candidate and check.
+    """
+    for f in sorted(feats, key=sort_key):
+        href = f["assets"].get("red", {}).get("href")
+        if not href: continue
+        try:
+            with rasterio.open(href) as ref:
+                xs, ys = warp_transform("EPSG:4326", ref.crs, [region.lon], [region.lat])
+                row, col = ref.index(xs[0], ys[0]); half = window_px//2
+                if (0 <= col-half and col+half <= ref.width and
+                        0 <= row-half and row+half <= ref.height):
+                    return f, (row, col)
+        except Exception:
+            continue
+    return None, None
+
+def build_region(region, start="2024-01-01", end="2024-04-30", max_cloud=15):
+    feats = stac("sentinel-2-l2a", point(region), start, end,
+                 {"eo:cloud_cover": {"lt": max_cloud}})
+    if not feats:
+        print("  ! no S2 scene under", max_cloud, "% cloud"); return 0, []
+    s2, rc = pick_scene(feats, region, WINDOW,
+                        lambda f: f["properties"]["eo:cloud_cover"])
+    if s2 is None:
+        print(f"  ! {len(feats)} scenes matched, none contains a {WINDOW}px window")
+        return 0, []
+    print(f"  S2 {s2['id']} {s2['properties']['datetime'][:10]} "
+          f"cloud {s2['properties']['eo:cloud_cover']:.1f}%")
+
+    row, col = rc
+    with rasterio.open(s2["assets"]["red"]["href"]) as ref:
+        half = WINDOW//2
+        win = Window(col-half, row-half, WINDOW, WINDOW)
+        dst_t, dst_crs = ref.window_transform(win), ref.crs
+        H, W, refw = int(win.height), int(win.width), ref.width
+
+    cube = np.zeros((len(S2_BANDS), H, W), np.uint16)
+    for i, b in enumerate(S2_BANDS):
+        href = s2["assets"].get(b, {}).get("href")
+        if not href: continue
+        with rasterio.open(href) as ds:
+            sc = ds.width / refw
+            cube[i] = ds.read(1, window=Window(win.col_off*sc, win.row_off*sc,
+                                               win.width*sc, win.height*sc),
+                              out_shape=(H, W), resampling=Resampling.bilinear,
+                              boundless=True, fill_value=0)
+
+    sar, s1id = None, ""
+    sf = stac("sentinel-1-grd", point(region), start, end)
+    if sf:
+        s1 = sf[0]; s1id = s1["id"]
+        sar = np.zeros((len(S1_BANDS), H, W), np.float32); got = 0
+        for i, b in enumerate(S1_BANDS):
+            href = s1["assets"].get(b, {}).get("href")
+            if not href: continue
+            try:
+                with rasterio.open(href) as ds:
+                    reproject(rasterio.band(ds, 1), sar[i], dst_transform=dst_t,
+                              dst_crs=dst_crs, resampling=Resampling.bilinear)
+                got += 1
+            except Exception as e:
+                print(f"    S1 {b}: {type(e).__name__}")
+        if got: print(f"  S1 {s1id} {got}/2 pol")
+        else: sar = None
+
+    lab_block = np.zeros((H, W), np.uint8)
+    with rasterio.open(f"{WC}/{region.worldcover_tile}.tif") as wc:
+        reproject(rasterio.band(wc, 1), lab_block, dst_transform=dst_t,
+                  dst_crs=dst_crs, resampling=Resampling.nearest)
+
+    n, rows = 0, []
+    for gy in range(H//PATCH_PX):
