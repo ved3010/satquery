@@ -32,3 +32,38 @@ source training data**."
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
+
+# --------------------------------------------------------------------------- #
+# ESA WorldCover v200 class map (11 classes)
+# --------------------------------------------------------------------------- #
+WORLDCOVER: dict[int, str] = {
+    10: "tree cover",
+    20: "shrubland",
+    30: "grassland",
+    40: "cropland",
+    50: "built-up",
+    60: "bare or sparse vegetation",
+    70: "snow and ice",
+    80: "permanent water bodies",
+    90: "herbaceous wetland",
+    95: "mangroves",
+    100: "moss and lichen",
+}
+
+# Plural/verb agreement for caption templates. WorldCover names are a mix of
+# mass nouns ("tree cover") and plurals ("mangroves"), so a naive template
+# produces "mangroves covers 12%". This table keeps the grammar right.
+PLURAL: dict[int, bool] = {
+    10: False, 20: False, 30: False, 40: False, 50: False,
+    60: False, 70: False, 80: True, 90: False, 95: True, 100: False,
+}
+
+
+@dataclass(frozen=True)
+class Region:
+    """One Indian sampling region.
+
+    Regions are chosen to span the agro-climatic diversity that BigEarthNet
+    lacks entirely -- tropical wet, arid desert, monsoon floodplain, montane,
+    coastal mangrove. That spread is the whole point: a model adapted only on
