@@ -101,3 +101,38 @@ class Region:
 REGIONS: list[Region] = [
     Region("ahmedabad", "Ahmedabad", "Gujarat", 23.03, 72.58,
            "Arid, steppe, hot", "semi-arid urban and irrigated cropland", "winter"),
+    Region("ludhiana", "Ludhiana", "Punjab", 30.90, 75.85,
+           "Arid, steppe, hot", "intensively irrigated alluvial cropland", "winter"),
+    Region("kochi", "Kochi", "Kerala", 9.93, 76.27,
+           "Tropical, monsoon", "tropical coastal backwater and plantation", "winter"),
+    Region("sundarbans", "Sundarbans", "West Bengal", 21.95, 88.90,
+           "Tropical, savannah", "tidal mangrove delta", "winter"),
+    Region("jaisalmer", "Jaisalmer", "Rajasthan", 26.91, 70.92,
+           "Arid, desert, hot", "sandy desert with sparse vegetation", "winter"),
+    Region("guwahati", "Guwahati", "Assam", 26.14, 91.73,
+           "Humid subtropical", "Brahmaputra monsoon floodplain", "winter"),
+    Region("pune", "Pune", "Maharashtra", 18.52, 73.86,
+           "Tropical, savannah", "Deccan plateau mixed agriculture", "winter"),
+    Region("shimla", "Shimla", "Himachal Pradesh", 31.10, 77.17,
+           "Temperate, dry winter, warm summer", "montane forest and snow", "autumn"),
+]
+
+REGION_BY_KEY = {r.key: r for r in REGIONS}
+
+
+def worldcover_tiles() -> list[str]:
+    """Unique WorldCover tiles needed to cover every region (~134 MB each)."""
+    return sorted({r.worldcover_tile for r in REGIONS})
+
+
+# --------------------------------------------------------------------------- #
+# Sentinel-2 band set
+# --------------------------------------------------------------------------- #
+# The 12 bands BigEarthNet uses, in its channel order. B10 (cirrus) is absent
+# from L2A products, which is why BigEarthNet is 12-band and not 13.
+S2_BANDS = ["coastal", "blue", "green", "red", "rededge1", "rededge2",
+            "rededge3", "nir", "nir08", "nir09", "swir16", "swir22"]
+
+# Earth Search asset keys -> native ground sample distance (m). Patches are
+# extracted at 10 m, so 20 m and 60 m bands are upsampled -- same convention
+# BigEarthNet follows.
