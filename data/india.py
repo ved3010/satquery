@@ -67,3 +67,37 @@ class Region:
     Regions are chosen to span the agro-climatic diversity that BigEarthNet
     lacks entirely -- tropical wet, arid desert, monsoon floodplain, montane,
     coastal mangrove. That spread is the whole point: a model adapted only on
+    temperate/cold Europe has never seen any of it, and ISRO evaluates on
+    Indian scenes.
+    """
+    key: str
+    name: str
+    state: str
+    lat: float
+    lon: float
+    climate_zone: str          # Koppen description, BigEarthNet.txt phrasing
+    landscape: str             # short descriptor used in captions
+    season: str                # best cloud-free window
+
+    @property
+    def worldcover_tile(self) -> str:
+        """ESA WorldCover tiles are 3x3 degrees, named by their SW corner."""
+        la = int(self.lat // 3) * 3
+        lo = int(self.lon // 3) * 3
+        return f"{'N' if la >= 0 else 'S'}{abs(la):02d}{'E' if lo >= 0 else 'W'}{abs(lo):03d}"
+
+    @property
+    def worldcover_url(self) -> str:
+        return ("https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/"
+                f"ESA_WorldCover_10m_2021_v200_{self.worldcover_tile}_Map.tif")
+
+    def bbox(self, half_deg: float = 0.35) -> list[float]:
+        return [self.lon - half_deg, self.lat - half_deg,
+                self.lon + half_deg, self.lat + half_deg]
+
+
+# Eight regions spanning India's climatic range. Every Koppen zone here is
+# absent from BigEarthNet.txt, which contains only Cold and Temperate.
+REGIONS: list[Region] = [
+    Region("ahmedabad", "Ahmedabad", "Gujarat", 23.03, 72.58,
+           "Arid, steppe, hot", "semi-arid urban and irrigated cropland", "winter"),
