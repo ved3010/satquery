@@ -136,3 +136,38 @@ S2_BANDS = ["coastal", "blue", "green", "red", "rededge1", "rededge2",
 # Earth Search asset keys -> native ground sample distance (m). Patches are
 # extracted at 10 m, so 20 m and 60 m bands are upsampled -- same convention
 # BigEarthNet follows.
+S2_BAND_GSD = {"coastal": 60, "blue": 10, "green": 10, "red": 10,
+               "rededge1": 20, "rededge2": 20, "rededge3": 20, "nir": 10,
+               "nir08": 20, "nir09": 60, "swir16": 20, "swir22": 20}
+
+S1_BANDS = ["vv", "vh"]
+
+PATCH_PX = 120          # 120 x 120 at 10 m = 1.2 km, matching BigEarthNet
+
+
+def label_fractions(arr) -> dict[int, float]:
+    """Fraction of a label patch occupied by each WorldCover class."""
+    import numpy as np
+    vals, counts = np.unique(arr, return_counts=True)
+    return {int(v): float(c) / arr.size for v, c in zip(vals, counts)}
+
+
+def multilabel(fractions: dict[int, float], min_frac: float = 0.05) -> list[int]:
+    """Classes present above a coverage floor.
+
+    The 5% floor mirrors BigEarthNet's own practice: without it, single stray
+    pixels from resampling boundaries become 'present' labels and the
+    multilabel target turns to noise.
+    """
+    return sorted([c for c, f in fractions.items() if f >= min_frac and c in WORLDCOVER],
+                  key=lambda c: -fractions[c])
+
+
+def describe(class_id: int, capitalise: bool = False) -> str:
+    name = WORLDCOVER.get(class_id, f"class {class_id}")
+    return name[0].upper() + name[1:] if capitalise else name
+
+
+def verb(class_id: int) -> str:
+    """'cover' vs 'covers', matching the class's plurality."""
+    return "cover" if PLURAL.get(class_id, False) else "covers"
