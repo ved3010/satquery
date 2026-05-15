@@ -53,3 +53,58 @@ def largest_component_bbox(lab: np.ndarray, cls: int) -> tuple[float, float, flo
     Uses a simple iterative flood fill rather than scipy.ndimage so the builder
     has no SciPy dependency -- it runs on Kaggle and on a bare laptop alike.
     """
+    mask = lab == cls
+    if not mask.any():
+        return None
+    h, w = mask.shape
+    seen = np.zeros_like(mask, dtype=bool)
+    best: tuple[int, list[int]] = (0, [0, 0, 0, 0])
+
+    for sy in range(h):
+        for sx in range(w):
+            if not mask[sy, sx] or seen[sy, sx]:
+                continue
+            stack = [(sy, sx)]
+            seen[sy, sx] = True
+            y0 = y1 = sy
+            x0 = x1 = sx
+            size = 0
+            while stack:
+                cy, cx = stack.pop()
+                size += 1
+                y0, y1 = min(y0, cy), max(y1, cy)
+                x0, x1 = min(x0, cx), max(x1, cx)
+                for ny, nx in ((cy-1, cx), (cy+1, cx), (cy, cx-1), (cy, cx+1)):
+                    if 0 <= ny < h and 0 <= nx < w and mask[ny, nx] and not seen[ny, nx]:
+                        seen[ny, nx] = True
+                        stack.append((ny, nx))
+            if size > best[0]:
+                best = (size, [y0, y1, x0, x1])
+
+    if best[0] < 25:                      # ignore specks: <25 px of 14,400
+        return None
+    y0, y1, x0, x1 = best[1]
+    # Fragmented land cover makes the largest component's bbox sprawl across
+    # the whole frame -- a box covering 95% of the image teaches a grounding
+    # model nothing and inflates IoU scores for free. Drop those.
+    if ((y1 - y0 + 1) * (x1 - x0 + 1)) / (h * w) > 0.85:
+        return None
+    return (round(x0 / w, 2), round(y0 / h, 2),
+            round((x1 + 1) / w, 2), round((y1 + 1) / h, 2))
+
+
+# --------------------------------------------------------------------------- #
+# annotation generators
+# --------------------------------------------------------------------------- #
+def caption(fr: dict[int, float], region, rng: random.Random) -> str:
+    ranked = sorted(((c, f) for c, f in fr.items() if c in WORLDCOVER),
+                    key=lambda x: -x[1])
+    if not ranked:
+        return ""
+    dom, dom_f = ranked[0]
+    rest = [(c, f) for c, f in ranked[1:] if f >= 0.05]
+
+    s = (f'This satellite image, captured during the {region.season} season in '
+         f'India ({region.name}, {region.state}), showcases a predominantly '
+         f'{describe(dom)} landscape within the "{region.climate_zone}" climate '
+         f'zone. {describe(dom, True)} {verb(dom)} approximately '
