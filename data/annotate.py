@@ -108,3 +108,58 @@ def caption(fr: dict[int, float], region, rng: random.Random) -> str:
          f'India ({region.name}, {region.state}), showcases a predominantly '
          f'{describe(dom)} landscape within the "{region.climate_zone}" climate '
          f'zone. {describe(dom, True)} {verb(dom)} approximately '
+         f'{dom_f * 100:.0f}% of the scene')
+    if rest:
+        parts = [f"{describe(c)} ({f * 100:.0f}%)" for c, f in rest[:3]]
+        s += ", alongside " + ", ".join(parts[:-1]) + (
+            f" and {parts[-1]}" if len(parts) > 1 else parts[0])
+    return s + "."
+
+
+CAPTION_PROMPTS = [
+    "Describe the land cover visible in this satellite image.",
+    "Give a comprehensive overview of the image, specifying the location, climate, and landscape features.",
+    "Explain the distribution of land cover in this image, including the geographic region and season.",
+    "Provide a detailed scene description for this remote sensing image.",
+]
+
+
+def gen_binary(fr, pairs, region, rng) -> Iterator[tuple[str, str, str]]:
+    """(question, answer, category) triples of type `binary`."""
+    present = [c for c in fr if c in WORLDCOVER and fr[c] >= 0.05]
+    # "Absent" must mean ZERO pixels, not merely below the 5% multilabel floor.
+    # Using the floor here produced "Is grassland present? -> no" on a patch
+    # that was 2.5% grassland -- a factually wrong label, and the kind of noise
+    # that silently caps a VQA model's ceiling.
+    absent = [c for c in WORLDCOVER if fr.get(c, 0.0) == 0.0]
+
+    # presence -- balanced yes/no by construction
+    if present:
+        c = rng.choice(present)
+        yield (f"Is {describe(c)} present in the image?", "yes", "presence")
+    if absent:
+        c = rng.choice(absent)
+        yield (f"Is {describe(c)} present in the image?", "no", "presence")
+
+    # adjacency
+    if pairs:
+        a, b = rng.choice(sorted(pairs))
+        yield (f"Would you say that any {describe(a)} lies next to "
+               f"{describe(b)} in the image?", "yes", "adjacency")
+    if len(present) >= 2:
+        for _ in range(6):                     # bounded search for a non-pair
+            a, b = rng.sample(present, 2)
+            if (min(a, b), max(a, b)) not in pairs:
+                yield (f"Would you confirm that any {describe(a)} borders upon "
+                       f"{describe(b)}?", "no", "adjacency")
+                break
+
+    # area -- ask about a real range, half the time offset to give a "no"
+    if present:
+        c = rng.choice(present)
+        true_m2 = fr[c] * 14400 * PIXEL_AREA_M2
+        lo = int(true_m2 // 144000) * 144000
+        hi = lo + 144000
+        if rng.random() < 0.5:
+            yield (f"Do {describe(c)} cover between {lo} square meters and "
+                   f"{hi} square meters of the image?", "yes", "area")
