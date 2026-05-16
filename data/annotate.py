@@ -163,3 +163,58 @@ def gen_binary(fr, pairs, region, rng) -> Iterator[tuple[str, str, str]]:
         if rng.random() < 0.5:
             yield (f"Do {describe(c)} cover between {lo} square meters and "
                    f"{hi} square meters of the image?", "yes", "area")
+        else:
+            yield (f"Do {describe(c)} cover between {lo + 288000} square meters "
+                   f"and {hi + 288000} square meters of the image?", "no", "area")
+
+
+def gen_mcq(fr, pairs, region, rng) -> Iterator[tuple[str, str, str]]:
+    present = [c for c in fr if c in WORLDCOVER and fr[c] >= 0.05]
+
+    # dominant class
+    if present:
+        ranked = sorted(present, key=lambda c: -fr[c])
+        correct = describe(ranked[0], True)
+        distract = [describe(c, True) for c in WORLDCOVER if c != ranked[0]]
+        opts = rng.sample(distract, min(3, len(distract))) + [correct]
+        rng.shuffle(opts)
+        letters = "abcd"[:len(opts)]
+        body = ", ".join(f"{l}) {o}" for l, o in zip(letters, opts))
+        yield (f"Which land cover class dominates this satellite image? {body}",
+               letters[opts.index(correct)], "presence")
+
+    # climate zone -- directly transferable to the Indian evaluation set
+    zones = ["Tropical, monsoon", "Tropical, savannah", "Arid, desert, hot",
+             "Arid, steppe, hot", "Humid subtropical",
+             "Temperate, dry winter, warm summer"]
+    distract = [z for z in zones if z != region.climate_zone]
+    opts = rng.sample(distract, 3) + [region.climate_zone]
+    rng.shuffle(opts)
+    letters = "abcd"
+    body = ", ".join(f"{l}) {o}" for l, o in zip(letters, opts))
+    yield (f"From the options below, choose the climate zone shown in the "
+           f"satellite image: {body}",
+           letters[opts.index(region.climate_zone)], "climate zone")
+
+    # adjacency
+    if pairs and len(WORLDCOVER) > 4:
+        a, b = rng.choice(sorted(pairs))
+        correct = f"{describe(a, True)} and {describe(b)}"
+        opts = [correct]
+        for _ in range(12):
+            x, y = rng.sample(sorted(WORLDCOVER), 2)
+            if (min(x, y), max(x, y)) not in pairs:
+                cand = f"{describe(x, True)} and {describe(y)}"
+                if cand not in opts:
+                    opts.append(cand)
+            if len(opts) == 4:
+                break
+        if len(opts) == 4:
+            rng.shuffle(opts)
+            body = ", ".join(f"{l}) {o}" for l, o in zip(letters, opts))
+            yield (f"Which classes share a boundary? {body}",
+                   letters[opts.index(correct)], "adjacency")
+
+
+BBOX_PROMPTS = [
+    "Provide a bounding box for the land cover class instance at <point>({x}, {y})</point> in the satellite image.",
