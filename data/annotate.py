@@ -218,3 +218,59 @@ def gen_mcq(fr, pairs, region, rng) -> Iterator[tuple[str, str, str]]:
 
 BBOX_PROMPTS = [
     "Provide a bounding box for the land cover class instance at <point>({x}, {y})</point> in the satellite image.",
+    "Provide a bounding box surrounding the land cover class instance positioned at <point>({x}, {y})</point> in the image.",
+    "Output a bounding box surrounding the land cover class instance positioned at <point>({x}, {y})</point> in the image.",
+]
+
+
+def gen_bbox(lab, fr, region, rng) -> Iterator[tuple[str, str, str]]:
+    present = [c for c in fr if c in WORLDCOVER and fr[c] >= 0.08]
+    rng.shuffle(present)
+    for c in present[:3]:
+        box = largest_component_bbox(lab, c)
+        if box is None:
+            continue
+        x0, y0, x1, y1 = box
+        px = round(rng.uniform(x0, x1), 2)
+        py = round(rng.uniform(y0, y1), 2)
+        # only keep the sample if the probe point really falls in this class,
+        # otherwise the question and answer disagree
+        iy = min(int(py * lab.shape[0]), lab.shape[0] - 1)
+        ix = min(int(px * lab.shape[1]), lab.shape[1] - 1)
+        if int(lab[iy, ix]) != c:
+            continue
+        yield (rng.choice(BBOX_PROMPTS).format(x=px, y=py),
+               f"[{x0} {y0}, {x1} {y1}]", "point")
+
+        yield (f"Provide a bounding box for the {describe(c)} region in the image.",
+               f"[{x0} {y0}, {x1} {y1}]", "reference")
+
+
+# --------------------------------------------------------------------------- #
+def annotate_patch(lab: np.ndarray, region, patch_id: str, s1_name: str,
+                   lat: float, lon: float, split: str,
+                   seed: int = 0) -> list[dict[str, Any]]:
+    """All annotations for one patch, as parquet-schema rows."""
+    rng = random.Random(seed)
+    fr = {int(v): float(c) / lab.size
+          for v, c in zip(*np.unique(lab, return_counts=True))}
+    pairs = adjacency_pairs(lab)
+
+    base = {"s1_name": s1_name, "patch_id": patch_id, "split": split,
+            "latitude": lat, "longitude": lon, "country": "India",
+            "season": region.season, "climate_zone": region.climate_zone}
+    rows: list[dict[str, Any]] = []
+
+    cap = caption(fr, region, rng)
+    if cap:
+        rows.append({**base, "input": rng.choice(CAPTION_PROMPTS),
+                     "output": cap, "type": "captioning", "category": None})
+
+    for q, a, cat in gen_binary(fr, pairs, region, rng):
+        rows.append({**base, "input": q, "output": a, "type": "binary", "category": cat})
+    for q, a, cat in gen_mcq(fr, pairs, region, rng):
+        rows.append({**base, "input": q, "output": a, "type": "mcq", "category": cat})
+    for q, a, cat in gen_bbox(lab, fr, region, rng):
+        rows.append({**base, "input": q, "output": a,
+                     "type": "bounding box", "category": cat})
+    return rows
