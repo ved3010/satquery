@@ -19,3 +19,8 @@ class TestSpectralIndices(unittest.TestCase):
         b = np.array([0.0, 0.5])
         res = _ratio(a, b)
         self.assertTrue(np.all(np.isfinite(res)))
+        self.assertEqual(res[0], 0.0)
+        self.assertEqual(res[1], 0.0)
+
+    def test_classes_integrity(self):
+        self.assertIn("water", CLASSES)
