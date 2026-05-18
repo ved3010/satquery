@@ -24,3 +24,7 @@ class TestSpectralIndices(unittest.TestCase):
 
     def test_classes_integrity(self):
         self.assertIn("water", CLASSES)
+        self.assertIn("vegetation", CLASSES)
+        self.assertIn("sparse vegetation", CLASSES)
+        self.assertIn("built-up", CLASSES)
+        self.assertIn("bare/other", CLASSES)
