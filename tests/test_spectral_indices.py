@@ -13,3 +13,9 @@ class TestSpectralIndices(unittest.TestCase):
         res = _ratio(a, b)
         self.assertTrue(np.isclose(res[0], 0.6))
         self.assertTrue(np.isclose(res[1], 0.0))
+
+    def test_ratio_zero_denominator(self):
+        a = np.array([0.0, -0.5])
+        b = np.array([0.0, 0.5])
+        res = _ratio(a, b)
+        self.assertTrue(np.all(np.isfinite(res)))
