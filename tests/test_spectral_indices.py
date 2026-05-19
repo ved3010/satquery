@@ -28,3 +28,8 @@ class TestSpectralIndices(unittest.TestCase):
         self.assertIn("sparse vegetation", CLASSES)
         self.assertIn("built-up", CLASSES)
         self.assertIn("bare/other", CLASSES)
+        self.assertEqual(len(CLASSES), 5)
+
+
+if __name__ == "__main__":
+    unittest.main()
