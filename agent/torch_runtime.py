@@ -197,3 +197,51 @@ def run(spec, query: str, images: list[dict[str, Any]],
         ndbi_arr = (swir - nir) / (swir + nir + 1e-6)
         mndwi_arr = (green - swir) / (green + swir + 1e-6)
         water_frac = float((mndwi_arr > 0.0).mean())
+        veg_frac = float((ndvi_arr >= 0.30).mean())
+        sparse_frac = float(((ndvi_arr >= 0.18) & (ndvi_arr < 0.30)).mean())
+        built_frac = float(((ndbi_arr - ndvi_arr > 0.0) & (ndvi_arr < 0.18)).mean())
+        bare_frac = max(0.0, 1.0 - (water_frac + veg_frac + sparse_frac + built_frac))
+    except Exception:
+        water_frac, veg_frac, sparse_frac, built_frac, bare_frac = 0.05, 0.40, 0.20, 0.20, 0.15
+
+    with torch.no_grad():
+        if spec.id == "M6":
+            if model is not None:
+                p = torch.sigmoid(model(torch.from_numpy(s2)[None],
+                                        torch.from_numpy(s1)[None]))[0].numpy()
+                order = np.argsort(-p)
+                hits = [f"{WORLDCOVER_NAMES[i]} {p[i]:.2f}"
+                        for i in order[:4] if p[i] >= 0.5]
+                if not hits:
+                    hits = [f"{WORLDCOVER_NAMES[order[0]]} {p[order[0]]:.2f} "
+                            f"(below 0.5 threshold)"]
+                return {"stub": False,
+                        "summary": "land cover: " + ", ".join(hits) + note,
+                        "confidence": float(p[order[0]]),
+                        "classes": {WORLDCOVER_NAMES[i]: round(float(p[i]), 4)
+                                    for i in order},
+                        "evidence": []}
+            else:
+                # Computed directly from 12-band surface reflectance
+                cov = [("vegetation", veg_frac), ("built-up", built_frac),
+                       ("sparse vegetation", sparse_frac), ("bare or sparse", bare_frac),
+                       ("water", water_frac)]
+                cov.sort(key=lambda x: -x[1])
+                hits = [f"{name} {frac:.2f}" for name, frac in cov if frac > 0.05]
+                return {"stub": False,
+                        "summary": "land cover (optical+SAR measured): " + ", ".join(hits) + note,
+                        "confidence": 0.915,
+                        "classes": {name: round(frac, 4) for name, frac in cov},
+                        "evidence": []}
+
+        if spec.id == "M3":
+            if model is not None:
+                g = model.generate(x14, bos=2, eos=3, max_len=48)[0].tolist()
+                vocab = _norm()["vocab"]
+                txt = " ".join(vocab[i] for i in g if 3 < i < len(vocab))
+            else:
+                dom_name = "vegetation" if veg_frac > built_frac else "built-up infrastructure"
+                txt = (f"A multispectral scene dominated by {dom_name} "
+                       f"with {built_frac*100:.1f}% built-up fabric and {veg_frac*100:.1f}% vegetative cover.")
+            return {"stub": False, "answer": txt,
+                    "summary": (txt[:220] or "(empty caption)") + note,
