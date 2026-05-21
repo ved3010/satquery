@@ -149,3 +149,51 @@ def _m7_answer(query: str, path: str, max_tokens: int = 48) -> tuple[str, bool]:
     toks = re.findall(r"[a-z0-9]+", query.lower())[:meta["max_instr"]]
     ids = [meta["bos"]] + [h["w2i"].get(t, 1) for t in toks] + [meta["sep"]]
     with torch.no_grad():
+        pooled, grid = m.encode_image(x)
+        out = m.generate(pooled, grid, torch.tensor([ids]), eos=meta["eos"],
+                         max_new=max_tokens)
+    vocab = meta["vocab"]
+    txt = " ".join(vocab[i] for i in out[0].tolist()
+                   if 3 < i < meta["sep"])
+    return txt, degraded
+
+
+def _encode(text: str, maxlen: int = 32):
+    import torch
+    vocab = _norm()["vocab"]
+    w2i = {w: i for i, w in enumerate(vocab)}
+    toks = re.findall(r"[a-z0-9]+", text.lower())[:maxlen]
+    ids = [w2i.get(t, 1) for t in toks]
+    mask = [1.0] * len(ids) + [0.0] * (maxlen - len(ids))
+    ids += [0] * (maxlen - len(ids))
+    return torch.tensor([ids[:maxlen]]), torch.tensor([mask[:maxlen]])
+
+
+def run(spec, query: str, images: list[dict[str, Any]],
+        params: dict[str, Any], **kw: Any) -> dict[str, Any]:
+    import numpy as np
+    import torch
+
+    if spec.id == "M7":
+        return _run_m7(query, images, params, **kw)
+
+    if not images:
+        return {"stub": True, "summary": "[no image supplied]",
+                "confidence": None, "evidence": []}
+
+    try:
+        model = _model(spec)
+    except Exception:
+        model = None
+
+    s2, s1, degraded = stack_for(images[0]["path"])
+    note = "  [RGB-only input: 9 of 12 bands unavailable]" if degraded else ""
+    x14 = torch.from_numpy(np.concatenate([s2, s1], 0))[None]
+
+    # Compute spectral indices from raw bands for fallback reasoning
+    try:
+        nir, red, green, swir = s2[7], s2[3], s2[2], s2[10]
+        ndvi_arr = (nir - red) / (nir + red + 1e-6)
+        ndbi_arr = (swir - nir) / (swir + nir + 1e-6)
+        mndwi_arr = (green - swir) / (green + swir + 1e-6)
+        water_frac = float((mndwi_arr > 0.0).mean())
