@@ -97,3 +97,55 @@ def _model(spec):
     import torch
     if spec.id not in _MODELS:
         from models.backbone import (M1Clip, M3Caption, M4Ground, M5Change,
+                                     M6Fusion)
+        v = len(_norm()["vocab"])
+        ctor = {"M1": lambda: M1Clip(v), "M3": lambda: M3Caption(v),
+                "M4": lambda: M4Ground(v), "M5a": lambda: M5Change(v, 3),
+                "M5b": lambda: M5Change(v, 3), "M6": M6Fusion}[spec.id]
+        m = ctor()
+        m.load_state_dict(torch.load(spec.weights_path, map_location="cpu"))
+        m.eval()
+        _MODELS[spec.id] = m
+    return _MODELS[spec.id]
+
+
+_M7: dict[str, Any] = {}
+
+
+def _m7():
+    """Load M7 and its own vocabulary.
+
+    M7 carries a separate vocab file because it needs one token the shared
+    IndiaSat vocabulary does not have -- <sep>, the instruction/answer
+    boundary. Appending it to the shared file would change len(vocab) and
+    break the embedding shape of every other model's checkpoint, so M7 keeps
+    its own and the base 264 indices stay identical.
+    """
+    import json
+    import torch
+    if not _M7:
+        from agent.registry import WEIGHTS_DIR, get
+        from models.vlm import M7VLM
+        with open(os.path.join(WEIGHTS_DIR, "m7_vlm_vocab.json"),
+                  encoding="utf-8") as fh:
+            meta = json.load(fh)
+        m = M7VLM(vocab=len(meta["vocab"]))
+        m.load_state_dict(torch.load(get("M7").weights_path, map_location="cpu"))
+        m.eval()
+        _M7.update({"model": m, "meta": meta,
+                    "w2i": {w: i for i, w in enumerate(meta["vocab"])}})
+    return _M7
+
+
+def _m7_answer(query: str, path: str, max_tokens: int = 48) -> tuple[str, bool]:
+    """Greedy generation from M7. Returns (text, degraded_input)."""
+    import numpy as np
+    import torch
+
+    h = _m7()
+    m, meta = h["model"], h["meta"]
+    s2, s1, degraded = stack_for(path)
+    x = torch.from_numpy(np.concatenate([s2, s1], 0))[None]
+    toks = re.findall(r"[a-z0-9]+", query.lower())[:meta["max_instr"]]
+    ids = [meta["bos"]] + [h["w2i"].get(t, 1) for t in toks] + [meta["sep"]]
+    with torch.no_grad():
