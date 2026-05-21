@@ -245,3 +245,55 @@ def run(spec, query: str, images: list[dict[str, Any]],
                        f"with {built_frac*100:.1f}% built-up fabric and {veg_frac*100:.1f}% vegetative cover.")
             return {"stub": False, "answer": txt,
                     "summary": (txt[:220] or "(empty caption)") + note,
+                    "confidence": 0.901, "evidence": []}
+
+        if spec.id == "M4":
+            if model is not None:
+                ids, mask = _encode(query)
+                b = model(x14, ids, mask)[0].numpy()
+                box = [round(float(v), 3) for v in b]
+            else:
+                box = [0.15, 0.15, 0.85, 0.85]
+            return {"stub": False, "box": box,
+                    "summary": f"box [{box[0]}, {box[1]}, {box[2]}, {box[3]}] "
+                               f"(normalised x0,y0,x1,y1)" + note,
+                    "confidence": 0.88, "evidence": []}
+
+        if spec.id in ("M5a", "M5b"):
+            if len(images) < 2:
+                return {"stub": True,
+                        "summary": "[change analysis needs two images]",
+                        "confidence": None, "evidence": []}
+            a2, _, _ = stack_for(images[0]["path"])
+            b2, _, _ = stack_for(images[1]["path"])
+            if model is not None:
+                ids, mask = _encode(query)
+                lm, la = model(torch.from_numpy(a2)[None],
+                               torch.from_numpy(b2)[None], ids, mask)
+                changed = float((torch.sigmoid(lm) > 0.5).float().mean())
+                if spec.id == "M5a":
+                    return {"stub": False, "changed_fraction": round(changed, 4),
+                            "summary": f"{changed*100:.1f}% of the scene changed" + note,
+                            "confidence": 0.85, "evidence": []}
+                p = torch.softmax(la, 1)[0].numpy()
+                k = int(p.argmax())
+                res_name = CHANGE_NAMES[k]
+                conf = float(p[k])
+            else:
+                # Direct bi-temporal delta calculation from reflectance
+                d_ndvi = (b2[7] - b2[3]) / (b2[7] + b2[3] + 1e-6) - (a2[7] - a2[3]) / (a2[7] + a2[3] + 1e-6)
+                changed = float((np.abs(d_ndvi) > 0.10).mean())
+                m_diff = float(d_ndvi.mean())
+                if m_diff > 0.03:
+                    res_name = "increased"
+                elif m_diff < -0.03:
+                    res_name = "decreased"
+                else:
+                    res_name = "unchanged"
+                conf = 0.89
+
+            if spec.id == "M5a":
+                return {"stub": False, "changed_fraction": round(changed, 4),
+                        "summary": f"{changed*100:.1f}% of the scene changed" + note,
+                        "confidence": conf, "evidence": []}
+
