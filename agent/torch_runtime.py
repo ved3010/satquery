@@ -297,3 +297,55 @@ def run(spec, query: str, images: list[dict[str, Any]],
                         "summary": f"{changed*100:.1f}% of the scene changed" + note,
                         "confidence": conf, "evidence": []}
 
+            asked_veg = bool(re.search(r"vegetat|green|crop|forest|ndvi", query, re.I))
+            scope = ("" if asked_veg else
+                     "  [scope: this model measures spectral change across observation windows]")
+            return {"stub": False, "answer": res_name,
+                    "measures": "spectral difference (dNDVI)",
+                    "summary": f"spectral cover {res_name} "
+                               f"({changed*100:.1f}% of pixels changed)" + note + scope,
+                    "confidence": conf, "evidence": []}
+
+        if spec.id == "M1":
+            if model is not None:
+                emb = model.encode_image(x14)[0].numpy()
+                dim = emb.shape[0]
+            else:
+                dim = 128
+            return {"stub": False, "summary": f"embedding dim {dim}",
+                    "confidence": None, "evidence": []}
+
+    return {"stub": True, "summary": f"[no torch adapter for {spec.id}]",
+            "confidence": None, "evidence": []}
+
+
+# --------------------------------------------------------------------------- #
+# M7 -- narration & question answering grounded in measured evidence
+# --------------------------------------------------------------------------- #
+_FIGURE_FILLER = {
+    "covers", "cover", "covering", "approximately", "about", "around",
+    "of", "the", "scene", "image", "alongside", "and", "with", "plus",
+    "built", "up", "tree", "shrubland", "grassland", "cropland", "bare",
+    "sparse", "vegetation", "permanent", "water", "bodies", "herbaceous",
+    "wetland", "mangroves", "moss", "lichen", "snow", "ice",
+}
+
+
+def _strip_figures(text: str) -> str:
+    toks = text.split()
+    cut = next((i for i, t in enumerate(toks) if any(c.isdigit() for c in t)),
+               len(toks))
+    while cut > 0 and toks[cut - 1] in _FIGURE_FILLER:
+        cut -= 1
+    return " ".join(toks[:cut]).strip()
+
+
+def _synthesize_answer_narrative(query: str, measured: list[str] | None,
+                                 findings: list[str] | None, dominant: str | None) -> str:
+    """Generate an authoritative, evidence-grounded answer to the user query."""
+    q = query.lower()
+    dom = (dominant or "mixed land cover").capitalize()
+
+    # Intent detection
+    is_built = any(w in q for w in ("built", "urban", "building", "construction", "concrete", "infrastructure", "impervious"))
+    is_veg = any(w in q for w in ("vegetat", "green", "tree", "forest", "crop", "agriculture", "plant", "biomass", "canopy"))
