@@ -42,3 +42,51 @@ def _stub(spec: ModelSpec, note: str = "") -> dict[str, Any]:
         "answer": msg,
         "summary": msg,
         "confidence": None,
+        "evidence": [],
+    }
+
+
+# --------------------------------------------------------------------------- #
+def run_model(spec: ModelSpec, query: str, images: list[dict[str, Any]],
+              params: dict[str, Any], **kw: Any) -> dict[str, Any]:
+    """Dispatch to the right runtime. Returns a dict with at least
+    `summary`, `confidence`, `evidence`, `stub`."""
+    if spec.runtime == "llamacpp":
+        return _run_vlm(spec, query, images, params, **kw)
+    if spec.runtime == "torch":
+        try:
+            from agent.torch_runtime import run as run_torch
+            return run_torch(spec, query, images, params, **kw)
+        except Exception as exc:
+            err_msg = f"[ERROR {type(exc).__name__}: {exc}]"
+            return {"stub": True,
+                    "answer": err_msg,
+                    "summary": err_msg,
+                    "confidence": None, "evidence": []}
+    if not spec.is_trained:
+        if spec.id == "M2":
+            return _run_m2_multispectral_vqa(spec, query, images, params)
+        return _stub(spec)
+    try:
+        return _run_onnx(spec, query, images, params)
+    except Exception as exc:
+        if spec.id == "M2":
+            return _run_m2_multispectral_vqa(spec, query, images, params)
+        err_msg = f"[ERROR {type(exc).__name__}: {exc}]"
+        return {"stub": True, "answer": err_msg, "summary": err_msg,
+                "confidence": None, "evidence": []}
+
+
+def _run_onnx(spec: ModelSpec, query: str, images: list[dict[str, Any]],
+              params: dict[str, Any]) -> dict[str, Any]:
+    if spec.id == "M2":
+        return _run_m2_vqa(spec, query, images, params)
+    # M1, M3, M4, M5a, M5b, M6 land here as each is trained and exported.
+    return _stub(spec, f"{spec.id} weights present but no adapter implemented yet")
+
+
+def _run_m2_vqa(spec: ModelSpec, query: str, images: list[dict[str, Any]],
+                params: dict[str, Any]) -> dict[str, Any]:
+    """Single-image VQA — the one model that is actually trained today.
+
+    Preprocessing constants (mean, std, image_size, max_qlen) are read from the
