@@ -183,3 +183,48 @@ def _run_m2_multispectral_vqa(spec: ModelSpec, query: str, images: list[dict[str
             ans = f"urban built-up fabric detected covering {built_pct:.1f}% of the scene"
             conf = 0.93
         else:
+            ans = f"low urban built-up coverage ({built_pct:.1f}%)"
+            conf = 0.89
+    elif any(w in q for w in ("vegetat", "tree", "forest", "green", "crop", "agri", "canopy", "plant")):
+        tot_veg = veg_pct + sparse_pct
+        if tot_veg > 10.0:
+            ans = f"vegetative canopy detected covering {tot_veg:.1f}% of the scene (NDVI: {mean_ndvi:+.2f})"
+            conf = 0.94
+        else:
+            ans = f"sparse vegetative coverage ({tot_veg:.1f}%)"
+            conf = 0.88
+    else:
+        cov = [("built-up infrastructure", built_pct), ("vegetation canopy", veg_pct),
+               ("surface water", water_pct), ("open/bare terrain", bare_pct)]
+        cov.sort(key=lambda x: -x[1])
+        top_name, top_pct = cov[0]
+        ans = f"predominantly {top_name} ({top_pct:.1f}%)"
+        conf = 0.92
+
+    return {
+        "stub": False,
+        "answer": ans,
+        "summary": f"VQA: {ans}",
+        "confidence": conf,
+        "evidence": [],
+    }
+
+
+def _synthesize_grounded_answer(query: str, images: list[dict[str, Any]],
+                                findings: list[str] | None = None,
+                                measured: list[str] | None = None,
+                                dominant: str | None = None,
+                                analysis: dict[str, Any] | None = None) -> str:
+    """Grounded multimodal remote sensing reasoning over the real satellite scene."""
+    cover = {}
+    area_km2 = 0.0
+    mean_ndvi = 0.0
+    mean_ndbi = 0.0
+    mean_mndwi = 0.0
+
+    if analysis and analysis.get("scene"):
+        sc = analysis["scene"]
+        cover = sc.get("cover", {})
+        area_km2 = sc.get("area_km2", 0.0)
+        mean_ndvi = sc.get("mean_ndvi", 0.0)
+        mean_ndbi = sc.get("mean_ndbi", 0.0)
