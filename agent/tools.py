@@ -228,3 +228,51 @@ def _synthesize_grounded_answer(query: str, images: list[dict[str, Any]],
         area_km2 = sc.get("area_km2", 0.0)
         mean_ndvi = sc.get("mean_ndvi", 0.0)
         mean_ndbi = sc.get("mean_ndbi", 0.0)
+        mean_mndwi = sc.get("mean_mndwi", 0.0)
+    elif images and images[0].get("path"):
+        try:
+            from serve.analysis import load_stack, scene_stats
+            stk = load_stack(images[0]["path"])
+            if stk is not None:
+                st = scene_stats(stk)
+                cover = st.get("cover", {})
+                area_km2 = st.get("area_km2", 0.0)
+                mean_ndvi = st.get("mean_ndvi", 0.0)
+                mean_ndbi = st.get("mean_ndbi", 0.0)
+                mean_mndwi = st.get("mean_mndwi", 0.0)
+        except Exception:
+            pass
+
+    water = cover.get("water", {"pct": 0.0, "km2": 0.0})
+    veg = cover.get("vegetation", {"pct": 0.0, "km2": 0.0})
+    sparse_veg = cover.get("sparse vegetation", {"pct": 0.0, "km2": 0.0})
+    built = cover.get("built-up", {"pct": 0.0, "km2": 0.0})
+    bare = cover.get("bare/other", {"pct": 0.0, "km2": 0.0})
+
+    total_green = round(veg["pct"] + sparse_veg["pct"], 2)
+    total_green_km2 = round(veg["km2"] + sparse_veg["km2"], 3)
+
+    q = query.lower()
+
+    # Intent detection
+    is_water_query = any(k in q for k in ["water", "river", "lake", "canal", "wetland", "ocean", "sea", "pond", "reservoir", "hydrolog", "mndwi"])
+    is_built_query = any(k in q for k in ["built", "urban", "building", "infrastructure", "concrete", "road", "city", "house", "construction", "ndbi", "structure", "transit", "station"])
+    is_veg_query = any(k in q for k in ["vegetat", "green", "plant", "forest", "tree", "canopy", "crop", "agri", "farm", "ndvi", "park"])
+    is_breakdown = any(k in q for k in ["breakdown", "cover", "classif", "proportion", "percentage", "fraction", "ratio", "what is this", "describe", "detail", "tell me", "explain", "info"])
+
+    paragraphs = []
+
+    if is_water_query and not is_breakdown:
+        if water["pct"] > 3.0:
+            paragraphs.append(
+                f"**Hydrological Profile**: Surface water bodies constitute **{water['pct']}%** of this satellite scene ({water['km2']} km²). "
+                f"The Modified Normalized Difference Water Index (MNDWI: {mean_mndwi:+.2f}) confirms prominent water bodies with characteristic negative SWIR absorption and strong green reflectance."
+            )
+        else:
+            paragraphs.append(
+                f"**Hydrological Profile**: Minimal open water surfaces are detected across this area (**{water['pct']}%**, {water['km2']} km²). The surrounding terrain is predominantly non-aquatic."
+            )
+
+    elif is_built_query and not is_breakdown:
+        paragraphs.append(
+            f"**Urban Infrastructure & Built-Up Fabric**: Built-up infrastructure covers **{built['pct']}%** of this satellite scene ({built['km2']} km²). "
