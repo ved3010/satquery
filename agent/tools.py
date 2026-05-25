@@ -90,3 +90,51 @@ def _run_m2_vqa(spec: ModelSpec, query: str, images: list[dict[str, Any]],
     """Single-image VQA — the one model that is actually trained today.
 
     Preprocessing constants (mean, std, image_size, max_qlen) are read from the
+    exported vocab file rather than duplicated here. Duplicating them would let
+    the two copies drift apart, which degrades accuracy silently — the worst
+    kind of bug, because the model still answers.
+    """
+    import json
+    import numpy as np
+    from PIL import Image
+
+    vocab_path = spec.weights_path.replace(".onnx", "_vocab.json")
+    if not os.path.exists(vocab_path):
+        return _stub(spec, "vocab file missing next to the ONNX")
+    with open(vocab_path, encoding="utf-8") as fh:
+        vocab = json.load(fh)
+
+    word2id = vocab["word2id"]
+    answers = vocab["answers"]
+    max_qlen = vocab["max_qlen"]
+    size = vocab["image_size"]
+
+    # question -> ids (must match rsvqa.encode_question)
+    toks = [t for t in query.lower().replace("?", " ").replace(",", " ").split() if t]
+    ids = [word2id.get(t, word2id.get("<unk>", 1)) for t in toks][:max_qlen]
+    mask = [1.0] * len(ids) + [0.0] * (max_qlen - len(ids))
+    ids = ids + [word2id.get("<pad>", 0)] * (max_qlen - len(ids))
+
+    path = images[0]["path"]
+    if not os.path.exists(path):
+        return _stub(spec, f"image not found: {path}")
+
+    mean = np.array(vocab["mean"], dtype=np.float32)
+    std = np.array(vocab["std"], dtype=np.float32)
+    im = Image.open(path).convert("RGB").resize((size, size), Image.BILINEAR)
+    arr = (np.asarray(im, dtype=np.float32) / 255.0 - mean) / std
+    arr = arr.transpose(2, 0, 1)[None]                       # NCHW
+
+    sess = _session(spec)
+    feed = {"image": arr,
+            "question_ids": np.array([ids], dtype=np.int64),
+            "question_mask": np.array([mask], dtype=np.float32)}
+    logits = sess.run(None, feed)[0][0]
+
+    e = np.exp(logits - logits.max())
+    probs = e / e.sum()
+    top = int(probs.argmax())
+    return {
+        "stub": False,
+        "answer": answers[top],
+        "summary": f"answer={answers[top]!r}",
