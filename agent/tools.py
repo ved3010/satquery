@@ -276,3 +276,51 @@ def _synthesize_grounded_answer(query: str, images: list[dict[str, Any]],
     elif is_built_query and not is_breakdown:
         paragraphs.append(
             f"**Urban Infrastructure & Built-Up Fabric**: Built-up infrastructure covers **{built['pct']}%** of this satellite scene ({built['km2']} km²). "
+            f"The Normalized Difference Built-Up Index (NDBI: {mean_ndbi:+.2f}) exhibits high surface reflectance indicative of compacted impervious surfaces, road corridors, and structural groupings."
+        )
+
+    elif is_veg_query and not is_breakdown:
+        paragraphs.append(
+            f"**Vegetation Canopy & Green Space**: Green cover totals **{total_green}%** ({total_green_km2} km²), comprising dense canopy vegetation ({veg['pct']}%, {veg['km2']} km²) and sparse/grassland buffer ({sparse_veg['pct']}%, {sparse_veg['km2']} km²). "
+            f"The mean Normalized Difference Vegetation Index (NDVI: {mean_ndvi:+.2f}) demonstrates active near-infrared (NIR) chlorophyll backscatter."
+        )
+
+    else:
+        # Comprehensive Land Cover Breakdown & Overview
+        dominant_str = dominant or ("built-up" if built['pct'] > max(veg['pct'], water['pct']) else ("water" if water['pct'] > veg['pct'] else "vegetation"))
+        paragraphs.append(
+            f"**Satellite Scene Overview**: This Area of Interest encompasses **{area_km2:.2f} km²** at 10m Ground Sampling Distance (GSD), exhibiting a predominantly **{dominant_str}** surface composition."
+        )
+
+    # Measured Land-Cover Breakdown table
+    breakdown_text = (
+        f"**Measured Land-Cover Breakdown**:\n"
+        f"• **Built-Up Infrastructure**: {built['pct']}% ({built['km2']} km²)\n"
+        f"• **Vegetation & Canopy**: {veg['pct']}% ({veg['km2']} km²)"
+        + (f" + {sparse_veg['pct']}% sparse buffer" if sparse_veg['pct'] > 0 else "") + "\n"
+        f"• **Surface Water Bodies**: {water['pct']}% ({water['km2']} km²)\n"
+        f"• **Bare Soil & Open Terrain**: {bare['pct']}% ({bare['km2']} km²)"
+    )
+    paragraphs.append(breakdown_text)
+
+    # Spectral indices summary
+    indices_summary = (
+        f"**Calculated Spectral Indices**: NDVI: `{mean_ndvi:+.2f}` (Vegetation Vitality) · NDBI: `{mean_ndbi:+.2f}` (Urban Density) · MNDWI: `{mean_mndwi:+.2f}` (Surface Moisture). "
+        f"Grounded directly in multispectral Sentinel-2 reflectance."
+    )
+    paragraphs.append(indices_summary)
+
+    return "\n\n".join(paragraphs)
+
+
+def _run_vlm(spec: ModelSpec, query: str, images: list[dict[str, Any]],
+             params: dict[str, Any], findings: list[str] | None = None,
+             measured: list[str] | None = None,
+             dominant: str | None = None,
+             analysis: dict[str, Any] | None = None,
+             **kw: Any) -> dict[str, Any]:
+    """M7 synthesis via llama-server if active, with guaranteed expert reasoning fallback."""
+    findings = findings or []
+
+    # If local llama-server is online and model is trained, use LLM
+    if spec.is_trained and _llama_up():
