@@ -97,3 +97,70 @@ def validate(state: State) -> dict[str, Any]:
     if plan.rejected:
         trace.rejected = plan.rejected
         return {"plan": plan, "rejected": plan.rejected}
+    return {"plan": plan, "rejected": None}
+
+
+def route_node(state: State) -> dict[str, Any]:
+    """Record the routing decision as its own observable step.
+
+    The PS evaluates the trace, and 'which models were selected and why' is the
+    single most informative line in it.
+    """
+    trace: Trace = state["trace"]
+    plan: R.Plan = state["plan"]
+    with trace.timed("route", params={
+        "task": plan.task.value if plan.task else "none",
+        "models": ",".join(plan.model_ids),
+        "decided_by": "llm" if plan.used_llm else "rule-table",
+    }) as step:
+        step.outcome = plan.reason
+    return {}
+
+
+def execute(state: State) -> dict[str, Any]:
+    """Run the selected specialists.
+
+    Sequential today. The specialists are independent, so this becomes a
+    fan-out once the real models are in -- `results` already merges with
+    operator.or_ to make that a one-line change.
+    """
+    trace: Trace = state["trace"]
+    plan: R.Plan = state["plan"]
+    out: dict[str, Any] = {}
+
+    for mid in plan.model_ids:
+        spec = get(mid)
+        params = dict(spec.params_schema)
+        with trace.timed(mid, model_id=mid, model_name=spec.name,
+                         model_version=spec.version, params=params) as step:
+            res = run_model(spec, state["query"], state.get("images", []), params)
+            step.outcome = res.get("summary", "")
+            step.confidence = res.get("confidence")
+            if res.get("stub"):
+                # Surfaced in the trace so a stubbed run is never mistaken for
+                # a real inference in a screenshot or a report.
+                step.params["STUB"] = "no trained weights"
+        out[mid] = res
+
+    return {"results": out}
+
+
+def measure(state: State) -> dict[str, Any]:
+    """Compute land-surface statistics from the pixels themselves.
+
+    Deliberately a separate node from EXECUTE, and deliberately not a model.
+    The percentages a user acts on -- vegetation, urbanisation, water -- come
+    from published spectral indices over the real reflectance values, so they
+    are reproducible from the same imagery by anyone with the same thresholds.
+    Routing this through a network would make every figure a prediction, and a
+    prediction is not something a district officer can audit.
+    """
+    from serve.analysis import analyse, headline
+
+    trace: Trace = state["trace"]
+    images = state.get("images", [])
+    with trace.timed("measure", params={"method": "NDVI/MNDWI/NDBI"}) as step:
+        a = analyse(images)
+        trace.analysis = a
+        step.params["available"] = a.get("available", False)
+        step.outcome = ("; ".join(f"{h['label']} {h['value']}"
