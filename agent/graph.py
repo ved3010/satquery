@@ -230,3 +230,53 @@ def reject(state: State) -> dict[str, Any]:
     request demonstrates that, where silently returning garbage does not.
     """
     trace: Trace = state["trace"]
+    msg = state.get("rejected") or "incompatible input"
+    with trace.timed("reject", params={"reason": msg[:60]}) as step:
+        step.outcome = "refused"
+    trace.answer = ""
+    trace.write()
+    trace.write_json()
+    return {"answer": "", "confidence": None}
+
+
+def _branch(state: State) -> str:
+    return "reject" if state.get("rejected") else "route"
+
+
+# --------------------------------------------------------------------------- #
+# graph
+# --------------------------------------------------------------------------- #
+def build_graph(checkpointer=None):
+    g = StateGraph(State)
+    g.add_node("ingest", ingest)
+    g.add_node("validate", validate)
+    g.add_node("route", route_node)
+    g.add_node("execute", execute)
+    g.add_node("measure", measure)
+    g.add_node("synthesise", synthesise)
+    g.add_node("evidence", evidence)
+    g.add_node("reject", reject)
+
+    g.add_edge(START, "ingest")
+    g.add_edge("ingest", "validate")
+    g.add_conditional_edges("validate", _branch,
+                            {"route": "route", "reject": "reject"})
+    g.add_edge("route", "execute")
+    g.add_edge("execute", "measure")
+    g.add_edge("measure", "synthesise")
+    g.add_edge("synthesise", "evidence")
+    g.add_edge("evidence", END)
+    g.add_edge("reject", END)
+
+    return g.compile(checkpointer=checkpointer or MemorySaver())
+
+
+_GRAPH = None
+
+
+def get_graph():
+    global _GRAPH
+    if _GRAPH is None:
+        _GRAPH = build_graph()
+    return _GRAPH
+
