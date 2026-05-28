@@ -164,3 +164,69 @@ def measure(state: State) -> dict[str, Any]:
         trace.analysis = a
         step.params["available"] = a.get("available", False)
         step.outcome = ("; ".join(f"{h['label']} {h['value']}"
+                                  for h in headline(a))
+                        or a.get("reason", "not computable")[:90])
+    return {}
+
+
+def synthesise(state: State) -> dict[str, Any]:
+    """M7 narrates the specialist outputs.
+
+    M7 is given the specialist findings as text, not the raw image alone. That
+    is what makes the answer evidence-grounded rather than hallucinated, and it
+    is the core of the PS's novelty claim.
+    """
+    trace: Trace = state["trace"]
+    results = state.get("results", {})
+    spec = get("M7")
+
+    with trace.timed("M7", model_id="M7", model_name=spec.name,
+                     model_version=spec.version,
+                     params=dict(spec.params_schema)) as step:
+        from serve.analysis import dominant_class, headline
+        findings = [f"{mid} ({get(mid).name}): {r.get('summary', '')}"
+                    for mid, r in results.items()]
+        measured = [f"{h['label'].lower()} {h['value']} ({h['note']})."
+                    for h in headline(trace.analysis)]
+        res = run_model(spec, state["query"], state.get("images", []),
+                        dict(spec.params_schema), findings=findings,
+                        measured=measured,
+                        dominant=dominant_class(trace.analysis),
+                        analysis=trace.analysis)
+        step.outcome = "synthesised"
+        if res.get("stub"):
+            step.params["STUB"] = "no trained weights"
+
+    confs = [r["confidence"] for r in results.values()
+             if r.get("confidence") is not None]
+    conf = min(confs) if confs else None      # weakest link, not average:
+                                              # a chain is only as good as its
+                                              # least confident step
+    ans = res.get("answer") or res.get("summary") or ""
+    trace.answer = ans
+    trace.confidence = conf
+    return {"answer": ans, "confidence": conf}
+
+
+def evidence(state: State) -> dict[str, Any]:
+    """Collect visual evidence and persist the trace to the Obsidian vault."""
+    trace: Trace = state["trace"]
+    ev: list[str] = []
+    for r in state.get("results", {}).values():
+        ev.extend(r.get("evidence", []))
+    trace.evidence = ev
+    with trace.timed("evidence", params={"artifacts": len(ev)}) as step:
+        step.outcome = f"{len(ev)} overlay(s)"
+    trace.write()
+    trace.write_json()
+    return {"evidence": ev}
+
+
+def reject(state: State) -> dict[str, Any]:
+    """Refuse with a stated reason and still write a trace.
+
+    A refused run is an auditable outcome, not an error. PS 26167 asks for
+    "input upload and compatibility checking"; correctly refusing an impossible
+    request demonstrates that, where silently returning garbage does not.
+    """
+    trace: Trace = state["trace"]
