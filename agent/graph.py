@@ -280,3 +280,53 @@ def get_graph():
         _GRAPH = build_graph()
     return _GRAPH
 
+
+def answer(query: str, images: list[dict[str, Any]],
+           thread_id: str | None = None) -> Trace:
+    """Run one query end-to-end and return its trace.
+
+    The Trace carries the answer, confidence, evidence paths and the full
+    step-by-step execution summary -- everything the API and the vault need.
+    """
+    trace = Trace(query=query)
+    cfg = {"configurable": {"thread_id": thread_id or trace.run_id}}
+    get_graph().invoke(
+        {"query": query, "images": images, "trace": trace, "results": {}},
+        config=cfg)
+    return trace
+
+
+if __name__ == "__main__":
+    import glob
+
+    # Run the demos on real fetched imagery when the AOI cache has any, and
+    # fall back to placeholder paths otherwise. Four FileNotFoundError traces
+    # demonstrate routing but not inference, and inference is the part that is
+    # hard to be sure about by reading the code.
+    aoi = os.path.join(ROOT_DIR, "data", "aoi_fetch")
+    t2 = sorted(glob.glob(os.path.join(aoi, "*_s2t2.tif")))
+    sar = sorted(glob.glob(os.path.join(aoi, "*_s1.tif")))
+    a = (t2[-1] if t2 else "a.tif")
+    b = (a.replace("_s2t2.tif", "_s2.tif") if t2 else "b.tif")
+    s1 = sar[-1] if sar else b
+
+    demos = [
+        ("Describe the land-cover and major objects visible in this image.",
+         [{"path": b, "modality": "optical", "date": "2024-03-15"}]),
+        ("What changed between these two dates, and where did the change occur?",
+         [{"path": a, "modality": "optical", "date": "2023-02-10"},
+          {"path": b, "modality": "optical", "date": "2024-03-15"}]),
+        ("Use the optical and SAR images together to identify built-up and "
+         "water-covered regions.",
+         [{"path": b, "modality": "optical"},
+          {"path": s1, "modality": "sar"}]),
+        ("What changed between these two dates?",
+         [{"path": b, "modality": "optical"}]),      # must be refused
+    ]
+    for q, imgs in demos:
+        t = answer(q, imgs)
+        status = f"REJECTED: {t.rejected}" if t.rejected else t.answer
+        print(f"\n{'='*74}\nQ: {q}\n   config={t.input_config} "
+              f"task={t.task} models={t.models_invoked} {t.total_ms}ms\n"
+              f"   {status}")
+    print(f"\n{'='*74}\nvault notes written to satquery-core/vault/runs/")
