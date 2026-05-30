@@ -40,3 +40,45 @@ def classify_input(modalities: list[Modality], dates: list[str] | None = None) -
     """
     n = len(modalities)
     if n == 0:
+        return UNKNOWN
+    if n == 1:
+        return SINGLE_SAR if modalities[0] is Modality.SAR else SINGLE_OPTICAL
+    if n == 2:
+        a, b = modalities
+        if a is not b:
+            return CROSS_MODAL_PAIR          # one optical, one SAR
+        if dates and len(dates) == 2 and dates[0] != dates[1]:
+            return BI_TEMPORAL_PAIR
+        # Same sensor, same date (or no dates): treat as bi-temporal, which is
+        # the only thing two same-modality images can usefully mean here.
+        return BI_TEMPORAL_PAIR
+    return UNKNOWN
+
+
+# --------------------------------------------------------------------------- #
+# lexical intent rules
+# --------------------------------------------------------------------------- #
+# Ordered: the FIRST pattern that matches wins, so more specific intents are
+# listed before more general ones. `change` must precede `vqa`, because
+# "has the built-up area increased?" is a question AND a change query.
+_RULES: list[tuple[Task, re.Pattern[str]]] = [
+    # Stems take \w* rather than a trailing \b: "increased" must match `increas`,
+    # and a trailing \b cannot, because 'e' follows. "unchanged" needs the
+    # optional (un) prefix for the same reason -- there is no word boundary
+    # before "chang" inside it. Both appear in the PS representative query
+    # "Has the built-up area increased, decreased, or remained unchanged?"
+    (Task.CHANGE_VQA, re.compile(
+        r"\b(un)?chang\w*"
+        r"|\b(differ|increas|decreas|expand|declin|grow|grew|shrink|shrank|shrunk)\w*"
+        r"|\bbefore and after\b|\bbetween these (two )?dates\b"
+        r"|\bover time\b|\bsince\b", re.I)),
+    (Task.GROUNDING, re.compile(
+        r"\b(highlight|locate|where is|point out|show me the|mark the|"
+        r"outline|bounding box|find the)\b", re.I)),
+    (Task.FUSION, re.compile(
+        r"\b(optical and sar|sar and optical|both (images|modalities|sensors)|"
+        r"combin\w+|fuse|together|cross[- ]modal|radar and)\b", re.I)),
+    (Task.CAPTION, re.compile(
+        r"\b(describe|caption|summar\w+|what (do you |can you )?see|"
+        r"overview|tell me about)\b", re.I)),
+    (Task.VQA, re.compile(
