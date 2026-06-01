@@ -166,3 +166,45 @@ def route(query: str,
         why = _WHY_ILLEGAL.get((cfg, task))
         if why is None:
             why = (f"{task.value} is not supported for input configuration "
+                   f"{cfg}. Supported: {', '.join(sorted(t.value for t in legal))}.")
+        return Plan(task, cfg, [], reason, used_llm, rejected=why)
+
+    n_images = len(modalities)
+    picked = [s.id for s in candidates(task, n_images, modalities)
+              if s.id != "M7"]                      # M7 synthesises, never routes as specialist
+
+    # Change queries always run the map alongside the VQA head: the PS asks for
+    # visual evidence, and M5a/M5b share a trunk so the map is nearly free.
+    if task is Task.CHANGE_VQA:
+        for extra in candidates(Task.CHANGE_MAP, n_images, modalities):
+            if extra.id not in picked:
+                picked.append(extra.id)
+
+    if not picked:
+        return Plan(task, cfg, [], reason, used_llm,
+                    rejected=f"No registered model serves {task.value} with "
+                             f"{n_images} image(s) of {[m.value for m in modalities]}.")
+
+    picked.sort()
+    return Plan(task, cfg, picked, reason, used_llm)
+
+
+if __name__ == "__main__":
+    cases = [
+        ("Describe the land-cover and major objects visible in this image.", [Modality.OPTICAL], None),
+        ("Highlight the water body referred to in the query.",               [Modality.OPTICAL], None),
+        ("What changed between these two dates, and where?",                 [Modality.OPTICAL, Modality.OPTICAL], ["2020-01", "2024-01"]),
+        ("Use the optical and SAR images together to identify built-up and water regions.", [Modality.OPTICAL, Modality.SAR], None),
+        ("Has the built-up area increased, decreased, or remained unchanged?", [Modality.OPTICAL, Modality.OPTICAL], ["2019", "2025"]),
+        ("Is a building present?",                                            [Modality.OPTICAL], None),
+        # must be refused:
+        ("What changed between these two dates?",                             [Modality.OPTICAL], None),
+        ("Use optical and SAR together.",                                     [Modality.OPTICAL], None),
+    ]
+    for q, mods, dates in cases:
+        p = route(q, mods, dates)
+        head = f"{p.input_config:<18} {(p.task.value if p.task else '-'):<12}"
+        if p.rejected:
+            print(f"REJECT {head} {q[:44]!r}\n         -> {p.rejected}")
+        else:
+            print(f"OK     {head} {q[:44]!r}\n         -> {', '.join(p.model_ids)}  ({p.reason})")
