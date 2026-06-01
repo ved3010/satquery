@@ -82,3 +82,45 @@ _RULES: list[tuple[Task, re.Pattern[str]]] = [
         r"\b(describe|caption|summar\w+|what (do you |can you )?see|"
         r"overview|tell me about)\b", re.I)),
     (Task.VQA, re.compile(
+        r"^(is|are|does|do|how many|what|which|can|has|have|was|were)\b|\?", re.I)),
+]
+
+
+@dataclass
+class Plan:
+    """The routing decision. `rejected` set means VALIDATE must refuse."""
+    task: Task | None
+    input_config: str
+    model_ids: list[str]
+    reason: str
+    used_llm: bool = False
+    rejected: str | None = None
+
+
+def _lexical_intent(query: str) -> tuple[Task | None, str]:
+    for task, pat in _RULES:
+        m = pat.search(query)
+        if m:
+            return task, f"matched /{pat.pattern[:34]}.../ on {m.group(0)!r}"
+    return None, "no lexical rule matched"
+
+
+# Which tasks are legal for a given input configuration. This is the hard
+# constraint table -- it is what lets the system refuse correctly instead of
+# returning garbage, which PS 26167 asks for under "compatibility checking".
+_LEGAL: dict[str, set[Task]] = {
+    SINGLE_OPTICAL:   {Task.VQA, Task.CAPTION, Task.GROUNDING},
+    SINGLE_SAR:       {Task.VQA, Task.CAPTION, Task.GROUNDING},
+    CROSS_MODAL_PAIR: {Task.FUSION, Task.VQA, Task.CAPTION, Task.GROUNDING},
+    BI_TEMPORAL_PAIR: {Task.CHANGE_VQA, Task.CHANGE_MAP},
+}
+
+_WHY_ILLEGAL = {
+    (SINGLE_OPTICAL, Task.CHANGE_VQA):
+        "Change analysis needs two images acquired at different times; one was supplied.",
+    (SINGLE_SAR, Task.CHANGE_VQA):
+        "Change analysis needs two images acquired at different times; one was supplied.",
+    (SINGLE_OPTICAL, Task.FUSION):
+        "Optical-SAR analysis needs a co-registered optical AND SAR pair; one optical image was supplied.",
+    (SINGLE_SAR, Task.FUSION):
+        "Optical-SAR analysis needs a co-registered optical AND SAR pair; one SAR image was supplied.",
