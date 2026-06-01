@@ -124,3 +124,45 @@ _WHY_ILLEGAL = {
         "Optical-SAR analysis needs a co-registered optical AND SAR pair; one optical image was supplied.",
     (SINGLE_SAR, Task.FUSION):
         "Optical-SAR analysis needs a co-registered optical AND SAR pair; one SAR image was supplied.",
+    (BI_TEMPORAL_PAIR, Task.FUSION):
+        "Both images are the same modality, so there is no optical-SAR pair to fuse.",
+    (CROSS_MODAL_PAIR, Task.CHANGE_VQA):
+        "The two images are different sensors, not two dates, so change over time cannot be measured.",
+}
+
+
+def route(query: str,
+          modalities: list[Modality],
+          dates: list[str] | None = None,
+          llm_intent=None) -> Plan:
+    """Classify the query and select models from the registry.
+
+    `llm_intent` is an optional callable(query) -> Task|None used only when the
+    lexical rules are silent. Passing None keeps routing fully deterministic,
+    which is the right setting for reproducing benchmark numbers.
+    """
+    cfg = classify_input(modalities, dates)
+    if cfg == UNKNOWN:
+        return Plan(None, cfg, [], "no usable images",
+                    rejected="Supply one or two images; got "
+                             f"{len(modalities)}.")
+
+    task, reason = _lexical_intent(query)
+    used_llm = False
+    if task is None and llm_intent is not None:
+        task = llm_intent(query)
+        used_llm = True
+        reason = f"lexical rules silent; VLM classified as {task}"
+
+    if task is None:
+        # Sensible default per configuration rather than a hard failure: a bare
+        # "tell me about this" on a pair should still do something useful.
+        task = (Task.CHANGE_VQA if cfg == BI_TEMPORAL_PAIR else
+                Task.FUSION if cfg == CROSS_MODAL_PAIR else Task.CAPTION)
+        reason = f"no intent detected; defaulted to {task.value} for {cfg}"
+
+    legal = _LEGAL.get(cfg, set())
+    if task not in legal:
+        why = _WHY_ILLEGAL.get((cfg, task))
+        if why is None:
+            why = (f"{task.value} is not supported for input configuration "
