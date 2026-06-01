@@ -70,3 +70,76 @@ class ModelSpec:
     params_m: float | None              # trainable params, millions
     metrics: dict[str, Any] = field(default_factory=dict)
     params_schema: dict[str, Any] = field(default_factory=dict)
+    notes: str = ""
+
+    @property
+    def weights_path(self) -> str | None:
+        return os.path.join(WEIGHTS_DIR, self.weights) if self.weights else None
+
+    @property
+    def is_trained(self) -> bool:
+        """True only when the artefact actually exists on disk."""
+        p = self.weights_path
+        return bool(p) and os.path.exists(p)
+
+    def accepts(self, task: Task, n_images: int, modalities: list[Modality]) -> bool:
+        if task not in self.tasks:
+            return False
+        if n_images != self.n_images:
+            return False
+        if Modality.ANY in self.modalities:
+            return True
+        return all(m in self.modalities or m is Modality.ANY for m in modalities)
+
+
+# --------------------------------------------------------------------------- #
+# The seven models
+# --------------------------------------------------------------------------- #
+# M2 is the only entry with real measured metrics today: they come from the
+# held-out RSVQA-LR test split reported in vqa/RESULTS.md. Everything else is
+# awaiting training on Kaggle -- metrics stay empty until measured.
+
+REGISTRY: dict[str, ModelSpec] = {}
+
+
+def register(spec: ModelSpec) -> ModelSpec:
+    if spec.id in REGISTRY:
+        raise ValueError(f"duplicate model id: {spec.id}")
+    REGISTRY[spec.id] = spec
+    return spec
+
+
+register(ModelSpec(
+    id="M1", name="rsclip", version="1.0.0",
+    tasks=(Task.RETRIEVAL,),
+    modalities=(Modality.OPTICAL, Modality.SAR),
+    n_images=1,
+    weights="m1_rsclip_small.pt", runtime="torch",
+    trainable_on="kaggle-p100 ~4h",
+    train_data="BigEarthNet.txt captions x reBEN patches (80k subset)",
+    params_m=1.57,
+    params_schema={"normalize": True},
+    notes="Domain-adaptation core. ViT-B/32 with patch-embed inflated 3->14 "
+          "channels (12 S2 bands + VV/VH). Its frozen image tower is the "
+          "backbone of M2, M3, M4 and M6 -- train first.",
+))
+
+register(ModelSpec(
+    id="M2", name="vqa", version="1.0.0",
+    tasks=(Task.VQA,),
+    modalities=(Modality.OPTICAL,),
+    n_images=1,
+    weights="m2_vqa.onnx", runtime="onnx",
+    trainable_on="cpu 6.5min (v1) / kaggle-p100 ~40min (v2)",
+    train_data="RSVQA-LR (57,223 active train QA pairs, disjoint image splits)",
+    params_m=2.5,
+    # Measured on the held-out RSVQA-LR test split, 10,004 QA pairs.
+    # Source: vqa/RESULTS.md. Baselines included deliberately -- a bare
+    # accuracy with no baseline cannot answer "is the image used at all?".
+    metrics={
+        "split": "RSVQA-LR test (10,004 QA pairs, 100 unseen tiles)",
+        "overall_accuracy": 0.7587,
+        "average_accuracy": 0.7718,
+        "majority_baseline": 0.5749,
+        "blind_baseline": 0.7283,
+        "per_type": {
