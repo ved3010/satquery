@@ -215,3 +215,76 @@ register(ModelSpec(
 
 register(ModelSpec(
     id="M6", name="fusion", version="1.0.0",
+    tasks=(Task.FUSION,),
+    modalities=(Modality.OPTICAL, Modality.SAR),
+    n_images=2,
+    weights="m6_fusion.pt", runtime="torch",
+    trainable_on="kaggle-p100 ~3h",
+    train_data="BigEarthNet v2 co-registered S1+S2, BEN-19 multilabel",
+    params_m=2.48,
+    params_schema={"threshold": 0.5, "return_per_sensor": True},
+    notes="S2 (12-band) + S1 (VV/VH) branches -> cross-attention -> BEN-19 "
+          "multilabel. Init from BIFOLD resnet50-s2 / resnet101-s1. "
+          "MUST normalise per-sensor from metadata -- ISRO evaluates on "
+          "Cartosat-2S + RISAT, not Sentinel. Never hardcode Sentinel stats.",
+))
+
+register(ModelSpec(
+    id="M7", name="vlm", version="1.0.0",
+    tasks=(Task.SYNTHESIS, Task.VQA, Task.CAPTION),
+    modalities=(Modality.ANY,),
+    n_images=1,
+    weights="m7_vlm.pt", runtime="torch",
+    trainable_on="cpu ~50min (frozen tower) / kaggle-p100 ~8-16h (2B version)",
+    train_data="IndiaSat instruction mix -- 8,962 pairs over 985 patches "
+               "(captioning, binary, MCQ, referring boxes)",
+    params_m=2.34,
+    params_schema={"temperature": 0.0, "max_tokens": 48},
+    notes="Frozen M1 vision tower -> 17 visual prefix tokens -> 4-layer causal "
+          "decoder (d=256, 2.34M trainable of 3.52M). CPU-trainable, which the "
+          "2B Qwen3.5-VL+QLoRA plan is not on this hardware (bitsandbytes is "
+          "CUDA-only) -- same architecture idea at a size that fits, so the "
+          "tower swaps for the Kaggle ViT-B/32 without a redesign. "
+          "Greedy decoding: an auditable trace needs the same imagery and "
+          "question to give the same answer. It narrates; it never supplies a "
+          "number. Every percentage in a report comes from serve/analysis.py, "
+          "measured off the pixels."
+))
+
+
+# --------------------------------------------------------------------------- #
+# measured metrics, read from the training reports
+# --------------------------------------------------------------------------- #
+# M2's numbers are literals above because they were measured by a different
+# project (vqa/) against RSVQA-LR. Everything else is trained by
+# models/train_all.py and models/train_vlm.py, which write their own reports --
+# so the reports are read here rather than transcribed. A transcribed number
+# drifts the moment a model is retrained, and a stale metric next to a fresh
+# checkpoint is worse than no metric at all.
+_REPORT_FILES = {
+    "M1": "m1_rsclip_small.json", "M3": "m3_caption.json",
+    "M4": "m4_ground.json", "M5a": "m5_change.json",
+    "M5b": "m5_change.json", "M6": "m6_fusion.json",
+    "M7": "m7_vlm.json",
+}
+
+
+def _attach_measured() -> None:
+    import json
+    d = os.path.join(ROOT, "models", "reports")
+    for mid, fname in _REPORT_FILES.items():
+        spec = REGISTRY.get(mid)
+        if spec is None or spec.metrics:
+            continue
+        path = os.path.join(d, fname)
+        if not os.path.exists(path):
+            continue                     # not trained yet -- stays empty
+        try:
+            with open(path, encoding="utf-8") as fh:
+                rep = json.load(fh)
+        except (OSError, json.JSONDecodeError):
+            continue
+        # `metrics` is a mutable field on a frozen dataclass, so mutating the
+        # dict is allowed where rebinding the attribute would not be.
+        spec.metrics.update({"source": f"models/reports/{fname}", **rep})
+        spec.metrics.pop("history", None)      # the loss curve is not a metric
