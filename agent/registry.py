@@ -288,3 +288,76 @@ def _attach_measured() -> None:
         # dict is allowed where rebinding the attribute would not be.
         spec.metrics.update({"source": f"models/reports/{fname}", **rep})
         spec.metrics.pop("history", None)      # the loss curve is not a metric
+
+
+_attach_measured()
+
+
+# --------------------------------------------------------------------------- #
+# queries over the registry
+# --------------------------------------------------------------------------- #
+def get(model_id: str) -> ModelSpec:
+    if model_id not in REGISTRY:
+        raise KeyError(f"unknown model id {model_id!r}; known: {sorted(REGISTRY)}")
+    return REGISTRY[model_id]
+
+
+def candidates(task: Task, n_images: int, modalities: list[Modality]) -> list[ModelSpec]:
+    """Every registered model that can legally serve this request."""
+    return [s for s in REGISTRY.values() if s.accepts(task, n_images, modalities)]
+
+
+# Mandatory functional scope of PS 26167. M-3 is satisfied by either
+# captioning or grounding; we implement both, so it is listed as a pair.
+MANDATORY: dict[str, tuple[Task, ...]] = {
+    "M-2 single-image VQA":      (Task.VQA,),
+    "M-3 caption or grounding":  (Task.CAPTION, Task.GROUNDING),
+    "M-4 change analysis":       (Task.CHANGE_VQA,),
+    "M-5 optical-SAR fusion":    (Task.FUSION,),
+}
+
+
+def assert_mandatory_coverage() -> dict[str, list[str]]:
+    """Which registered models cover each mandatory requirement.
+
+    Raises if any requirement has no model at all. This is a structural check
+    on the registry, not a claim that the models are trained -- use
+    `ModelSpec.is_trained` for that.
+    """
+    coverage: dict[str, list[str]] = {}
+    for req, tasks in MANDATORY.items():
+        hit = [s.id for s in REGISTRY.values() if any(t in s.tasks for t in tasks)]
+        if not hit:
+            raise AssertionError(f"MANDATORY requirement uncovered: {req}")
+        coverage[req] = hit
+    return coverage
+
+
+def status_table() -> str:
+    rows = [("id", "name", "tasks", "imgs", "runtime", "params", "trained")]
+    for s in REGISTRY.values():
+        rows.append((
+            s.id, s.name,
+            ",".join(t.value for t in s.tasks)[:28],
+            str(s.n_images), s.runtime,
+            f"{s.params_m:.1f}M" if s.params_m else "-",
+            "yes" if s.is_trained else "NO",
+        ))
+    w = [max(len(r[i]) for r in rows) for i in range(len(rows[0]))]
+    out = []
+    for i, r in enumerate(rows):
+        out.append("  ".join(c.ljust(w[j]) for j, c in enumerate(r)))
+        if i == 0:
+            out.append("  ".join("-" * x for x in w))
+    return "\n".join(out)
+
+
+if __name__ == "__main__":
+    print(status_table())
+    print()
+    print("Mandatory coverage (PS 26167):")
+    for req, ids in assert_mandatory_coverage().items():
+        print(f"  {req:<28} -> {', '.join(ids)}")
+    trained = [s.id for s in REGISTRY.values() if s.is_trained]
+    print(f"\n{len(trained)}/{len(REGISTRY)} artefacts present on disk: "
+          f"{', '.join(trained) if trained else 'none yet'}")
