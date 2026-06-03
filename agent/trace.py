@@ -205,3 +205,79 @@ class Trace:
                        f"{s.latency_ms} | {conf} |")
         out += ["", f"**Total {self.total_ms} ms** across {len(self.steps)} steps.", ""]
 
+        links = [f"[[{m}-{_model_name(m)}]]" for m in self.models_invoked]
+        if self.aoi:
+            links.append(f"[[{self.aoi}]]")
+        if links:
+            out += ["---", "", "Related: " + " · ".join(links), ""]
+        return "\n".join(out)
+
+    # -- persistence ------------------------------------------------------ #
+    def write(self, vault: str = VAULT) -> str:
+        """Write the run note into the vault. Returns the path.
+
+        Never raises into the request path: a vault write failure must not
+        fail a query that already produced a valid answer.
+        """
+        try:
+            runs = os.path.join(vault, "runs")
+            os.makedirs(runs, exist_ok=True)
+            path = os.path.join(runs, f"{self.run_id}.md")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(self.to_markdown())
+            return path
+        except OSError as exc:                        # disk full, permissions...
+            print(f"[trace] vault write failed ({exc}); trace still returned via API")
+            return ""
+
+    def write_json(self, vault: str = VAULT) -> str:
+        try:
+            d = os.path.join(vault, "runs")
+            os.makedirs(d, exist_ok=True)
+            path = os.path.join(d, f"{self.run_id}.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump(self.to_dict(), fh, indent=2)
+            return path
+        except OSError:
+            return ""
+
+
+class _Timer:
+    def __init__(self, trace: Trace, node: str, kw: dict[str, Any]):
+        self.trace, self.node, self.kw = trace, node, kw
+
+    def __enter__(self) -> Step:
+        self._t = time.perf_counter()
+        self.step = self.trace.step(self.node, **self.kw)
+        return self.step
+
+    def __exit__(self, exc_type, exc, tb) -> bool:
+        self.step.latency_ms = int((time.perf_counter() - self._t) * 1000)
+        if exc is not None:
+            self.step.error = f"{exc_type.__name__}: {exc}"
+        return False          # never swallow
+
+
+def _new_run_id() -> str:
+    return (datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            + "-" + uuid.uuid4().hex[:4])
+
+
+def _model_name(model_id: str) -> str:
+    """Registry lookup for wikilink text, tolerant of an unknown id so a trace
+    can still be rendered if the registry changed under it."""
+    try:
+        from agent.registry import REGISTRY
+        spec = REGISTRY.get(model_id)
+        return spec.name if spec else "unknown"
+    except Exception:
+        return "unknown"
+
+
+# --------------------------------------------------------------------------- #
+# vault scaffolding -- model + dataset notes, so the graph view has nodes to
+# link to from day one
+# --------------------------------------------------------------------------- #
+def sync_model_notes(vault: str = VAULT) -> int:
+    """Write one note per registered model. Idempotent -- safe to re-run, and
+    should be re-run whenever the registry changes so metrics stay in sync."""
