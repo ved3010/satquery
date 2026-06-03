@@ -281,3 +281,60 @@ def _model_name(model_id: str) -> str:
 def sync_model_notes(vault: str = VAULT) -> int:
     """Write one note per registered model. Idempotent -- safe to re-run, and
     should be re-run whenever the registry changes so metrics stay in sync."""
+    from agent.registry import REGISTRY
+
+    d = os.path.join(vault, "models")
+    os.makedirs(d, exist_ok=True)
+    for spec in REGISTRY.values():
+        fm = {
+            "model_id": spec.id,
+            "name": spec.name,
+            "version": spec.version,
+            "runtime": spec.runtime,
+            "n_images": spec.n_images,
+            "trainable_on": spec.trainable_on,
+            "trained": spec.is_trained,
+            "tags": ["satquery/model"],
+        }
+        body = ["---"]
+        body += [f"{k}: {_yaml_scalar(v)}" for k, v in fm.items()]
+        body += ["---", "",
+                 f"# {spec.id} — `{spec.name}`", "",
+                 f"**Tasks.** {', '.join(t.value for t in spec.tasks)}",
+                 f"**Modalities.** {', '.join(m.value for m in spec.modalities)}",
+                 f"**Images required.** {spec.n_images}",
+                 f"**Trainable params.** {spec.params_m}M" if spec.params_m else "",
+                 f"**Training data.** [[{_slug(spec.train_data.split('(')[0].strip())}]]",
+                 f"**Compute.** {spec.trainable_on}", ""]
+        if spec.metrics:
+            body += ["## Measured metrics", "",
+                     "```json", json.dumps(spec.metrics, indent=2), "```", ""]
+        else:
+            body += ["## Measured metrics", "",
+                     "_Not trained yet — no metrics. Never put a guessed number here._", ""]
+        if spec.notes:
+            body += ["## Notes", "", spec.notes, ""]
+        path = os.path.join(d, f"{spec.id}-{spec.name}.md")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write("\n".join(x for x in body if x is not None))
+    return len(REGISTRY)
+
+
+def sync_aoi_notes(vault: str = VAULT) -> int:
+    """One note per IndiaSat region, so run notes link to a real AOI node.
+
+    Without these the `[[AOI-...]]` links are unresolved: Obsidian still draws
+    them in the graph, but they carry no content to hover or click through to.
+    """
+    try:
+        from data.india import REGIONS
+    except Exception:
+        return 0
+
+    d = os.path.join(vault, "aoi")
+    os.makedirs(d, exist_ok=True)
+    for r in REGIONS:
+        fm = {"aoi": r.key, "name": r.name, "state": r.state,
+              "latitude": r.lat, "longitude": r.lon,
+              "climate_zone": r.climate_zone, "country": "India",
+              "worldcover_tile": r.worldcover_tile,
