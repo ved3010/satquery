@@ -130,3 +130,78 @@ class Trace:
         seen: list[str] = []
         for s in self.steps:
             if s.model_id and s.model_id not in seen:
+                seen.append(s.model_id)
+        return seen
+
+    # -- rendering -------------------------------------------------------- #
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "run_id": self.run_id,
+            "started": self.started,
+            "query": self.query,
+            "input_config": self.input_config,
+            "n_images": self.n_images,
+            "task": self.task,
+            "models_invoked": self.models_invoked,
+            "answer": self.answer,
+            "confidence": self.confidence,
+            "rejected": self.rejected,
+            "evidence": self.evidence,
+            "aoi": self.aoi,
+            "analysis": self.analysis,
+            "total_ms": self.total_ms,
+            "steps": [asdict(s) for s in self.steps],
+        }
+
+    def to_markdown(self) -> str:
+        fm = {
+            "run_id": self.run_id,
+            "started": self.started,
+            "query": self.query,
+            "input_config": self.input_config,
+            "task": self.task or "n/a",
+            "models_invoked": self.models_invoked,
+            "confidence": round(self.confidence, 4) if self.confidence is not None else None,
+            "latency_ms": self.total_ms,
+            "rejected": self.rejected,
+            "aoi": f"[[{self.aoi}]]" if self.aoi else None,
+            "tags": ["satquery/run"],
+        }
+        out = ["---"]
+        out += [f"{k}: {_yaml_scalar(v)}" for k, v in fm.items()]
+        out += ["---", ""]
+
+        title = self.task or ("rejected" if self.rejected else "run")
+        out += [f"# Run `{self.run_id}` — {title}", ""]
+        out += [f"> {self.query}", ""]
+
+        if self.rejected:
+            out += ["## Rejected", "",
+                    f"**{self.rejected}**", "",
+                    "The input configuration cannot answer this query. "
+                    "Refusing is correct behaviour here — see "
+                    "`Input upload and compatibility checking` in PS 26167.", ""]
+        else:
+            out += ["## Answer", "", self.answer or "_(no answer produced)_", ""]
+
+        if self.analysis:
+            from serve.analysis import to_markdown as _analysis_md
+            out += _analysis_md(self.analysis)
+
+        if self.evidence:
+            out += ["## Visual evidence", ""]
+            out += [f"![[{os.path.basename(p)}]]" for p in self.evidence]
+            out += [""]
+
+        out += ["## Execution trace", "",
+                "| # | step | model | key parameters | ms | conf |",
+                "|---|---|---|---|---:|---:|"]
+        for i, s in enumerate(self.steps, 1):
+            model = f"[[{s.model_id}-{s.model_name}]]" if s.model_id else "—"
+            params = ", ".join(f"{k}={v}" for k, v in s.params.items()) or "—"
+            conf = f"{s.confidence:.2f}" if s.confidence is not None else "—"
+            note = f" ⚠️ {s.error}" if s.error else ""
+            out.append(f"| {i} | {s.node}{note} | {model} | `{params}` | "
+                       f"{s.latency_ms} | {conf} |")
+        out += ["", f"**Total {self.total_ms} ms** across {len(self.steps)} steps.", ""]
+
