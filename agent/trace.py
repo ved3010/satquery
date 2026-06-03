@@ -338,3 +338,41 @@ def sync_aoi_notes(vault: str = VAULT) -> int:
               "latitude": r.lat, "longitude": r.lon,
               "climate_zone": r.climate_zone, "country": "India",
               "worldcover_tile": r.worldcover_tile,
+              "tags": ["satquery/aoi"]}
+        body = ["---"]
+        body += [f"{k}: {_yaml_scalar(v)}" for k, v in fm.items()]
+        body += ["---", "",
+                 f"# {r.name}, {r.state}", "",
+                 f"**Location.** {r.lat:.2f}N, {r.lon:.2f}E",
+                 f"**Climate zone.** {r.climate_zone}",
+                 f"**Landscape.** {r.landscape}",
+                 f"**Best acquisition window.** {r.season}", "",
+                 "This Köppen zone is **absent from BigEarthNet.txt**, which "
+                 "covers only Cold and Temperate European regions. That gap is "
+                 "why [[IndiaSat]] exists.", ""]
+        with open(os.path.join(d, f"AOI-{r.name}.md"), "w", encoding="utf-8") as fh:
+            fh.write("\n".join(body))
+    return len(REGIONS)
+
+
+if __name__ == "__main__":
+    n = sync_model_notes()
+    print(f"wrote {n} model notes to {os.path.join(VAULT, 'models')}")
+    a = sync_aoi_notes()
+    print(f"wrote {a} AOI notes to {os.path.join(VAULT, 'aoi')}")
+
+    # demo trace so the vault has a run note to look at
+    t = Trace(query="What changed between these two dates, and where?",
+              input_config="bi-temporal-pair", n_images=2, task="change_vqa",
+              aoi="AOI-Ahmedabad-23.02N-72.57E")
+    t.step("ingest", params={"crs": "EPSG:32643", "coregistered": True}, outcome="ok")
+    t.step("route", params={"intent": "change", "n_images": 2}, outcome="change_vqa")
+    t.step("M5a", model_id="M5a", model_name="change_map", model_version="0.1.0",
+           params={"threshold": 0.5, "tile": 256}, confidence=0.91, latency_ms=1180,
+           outcome="1204 px changed")
+    t.step("M5b", model_id="M5b", model_name="change_vqa", model_version="0.1.0",
+           params={"top_k": 1}, confidence=0.83, latency_ms=240, outcome="increased")
+    t.answer = ("Built-up area increased. 1,204 px (3.2% of the scene) changed, "
+                "concentrated in the north-east quadrant.")
+    t.confidence = 0.87
+    print("wrote", t.write())
