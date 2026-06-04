@@ -125,3 +125,55 @@ def _m7():
     import torch
     if not _M7:
         from agent.registry import WEIGHTS_DIR, get
+        from models.vlm import M7VLM
+        with open(os.path.join(WEIGHTS_DIR, "m7_vlm_vocab.json"),
+                  encoding="utf-8") as fh:
+            meta = json.load(fh)
+        m = M7VLM(vocab=len(meta["vocab"]))
+        m.load_state_dict(torch.load(get("M7").weights_path, map_location="cpu"))
+        m.eval()
+        _M7.update({"model": m, "meta": meta,
+                    "w2i": {w: i for i, w in enumerate(meta["vocab"])}})
+    return _M7
+
+
+def _m7_answer(query: str, path: str, max_tokens: int = 48) -> tuple[str, bool]:
+    """Greedy generation from M7. Returns (text, degraded_input)."""
+    import numpy as np
+    import torch
+
+    h = _m7()
+    m, meta = h["model"], h["meta"]
+    s2, s1, degraded = stack_for(path)
+    x = torch.from_numpy(np.concatenate([s2, s1], 0))[None]
+    toks = re.findall(r"[a-z0-9]+", query.lower())[:meta["max_instr"]]
+    ids = [meta["bos"]] + [h["w2i"].get(t, 1) for t in toks] + [meta["sep"]]
+    with torch.no_grad():
+        pooled, grid = m.encode_image(x)
+        out = m.generate(pooled, grid, torch.tensor([ids]), eos=meta["eos"],
+                         max_new=max_tokens)
+    vocab = meta["vocab"]
+    txt = " ".join(vocab[i] for i in out[0].tolist()
+                   if 3 < i < meta["sep"])
+    return txt, degraded
+
+
+def _encode(text: str, maxlen: int = 32):
+    import torch
+    vocab = _norm()["vocab"]
+    w2i = {w: i for i, w in enumerate(vocab)}
+    toks = re.findall(r"[a-z0-9]+", text.lower())[:maxlen]
+    ids = [w2i.get(t, 1) for t in toks]
+    mask = [1.0] * len(ids) + [0.0] * (maxlen - len(ids))
+    ids += [0] * (maxlen - len(ids))
+    return torch.tensor([ids[:maxlen]]), torch.tensor([mask[:maxlen]])
+
+
+def run(spec, query: str, images: list[dict[str, Any]],
+        params: dict[str, Any], **kw: Any) -> dict[str, Any]:
+    import numpy as np
+    import torch
+
+    if spec.id == "M7":
+        return _run_m7(query, images, params, **kw)
+
