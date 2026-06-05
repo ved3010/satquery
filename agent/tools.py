@@ -72,3 +72,47 @@ def run_model(spec: ModelSpec, query: str, images: list[dict[str, Any]],
     except Exception as exc:
         if spec.id == "M2":
             return _run_m2_multispectral_vqa(spec, query, images, params)
+        err_msg = f"[ERROR {type(exc).__name__}: {exc}]"
+        return {"stub": True, "answer": err_msg, "summary": err_msg,
+                "confidence": None, "evidence": []}
+
+
+def _run_onnx(spec: ModelSpec, query: str, images: list[dict[str, Any]],
+              params: dict[str, Any]) -> dict[str, Any]:
+    if spec.id == "M2":
+        return _run_m2_vqa(spec, query, images, params)
+    # M1, M3, M4, M5a, M5b, M6 land here as each is trained and exported.
+    return _stub(spec, f"{spec.id} weights present but no adapter implemented yet")
+
+
+def _run_m2_vqa(spec: ModelSpec, query: str, images: list[dict[str, Any]],
+                params: dict[str, Any]) -> dict[str, Any]:
+    """Single-image VQA — the one model that is actually trained today.
+
+    Preprocessing constants (mean, std, image_size, max_qlen) are read from the
+    exported vocab file rather than duplicated here. Duplicating them would let
+    the two copies drift apart, which degrades accuracy silently — the worst
+    kind of bug, because the model still answers.
+    """
+    import json
+    import numpy as np
+    from PIL import Image
+
+    vocab_path = spec.weights_path.replace(".onnx", "_vocab.json")
+    if not os.path.exists(vocab_path):
+        return _stub(spec, "vocab file missing next to the ONNX")
+    with open(vocab_path, encoding="utf-8") as fh:
+        vocab = json.load(fh)
+
+    word2id = vocab["word2id"]
+    answers = vocab["answers"]
+    max_qlen = vocab["max_qlen"]
+    size = vocab["image_size"]
+
+    # question -> ids (must match rsvqa.encode_question)
+    toks = [t for t in query.lower().replace("?", " ").replace(",", " ").split() if t]
+    ids = [word2id.get(t, word2id.get("<unk>", 1)) for t in toks][:max_qlen]
+    mask = [1.0] * len(ids) + [0.0] * (max_qlen - len(ids))
+    ids = ids + [word2id.get("<pad>", 0)] * (max_qlen - len(ids))
+
+    path = images[0]["path"]
