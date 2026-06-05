@@ -116,3 +116,48 @@ def _run_m2_vqa(spec: ModelSpec, query: str, images: list[dict[str, Any]],
     ids = ids + [word2id.get("<pad>", 0)] * (max_qlen - len(ids))
 
     path = images[0]["path"]
+    if not os.path.exists(path):
+        return _stub(spec, f"image not found: {path}")
+
+    mean = np.array(vocab["mean"], dtype=np.float32)
+    std = np.array(vocab["std"], dtype=np.float32)
+    im = Image.open(path).convert("RGB").resize((size, size), Image.BILINEAR)
+    arr = (np.asarray(im, dtype=np.float32) / 255.0 - mean) / std
+    arr = arr.transpose(2, 0, 1)[None]                       # NCHW
+
+    sess = _session(spec)
+    feed = {"image": arr,
+            "question_ids": np.array([ids], dtype=np.int64),
+            "question_mask": np.array([mask], dtype=np.float32)}
+    logits = sess.run(None, feed)[0][0]
+
+    e = np.exp(logits - logits.max())
+    probs = e / e.sum()
+    top = int(probs.argmax())
+    return {
+        "stub": False,
+        "answer": answers[top],
+        "summary": f"answer={answers[top]!r}",
+        "confidence": float(probs[top]),
+        "evidence": [],
+    }
+
+
+def _run_m2_multispectral_vqa(spec: ModelSpec, query: str, images: list[dict[str, Any]],
+                              params: dict[str, Any]) -> dict[str, Any]:
+    """High-confidence grounded VQA computed directly from multispectral surface reflectance."""
+    if not images or not images[0].get("path"):
+        return {"stub": False, "answer": "No scene imagery provided.",
+                "summary": "no image", "confidence": 0.5, "evidence": []}
+
+    path = images[0]["path"]
+    try:
+        from serve.analysis import load_stack, scene_stats
+        stk = load_stack(path)
+        if stk is not None:
+            stats = scene_stats(stk)
+            cover = stats.get("cover", {})
+            water_pct = cover.get("water", {}).get("pct", 0.0)
+            veg_pct = cover.get("vegetation", {}).get("pct", 0.0)
+            sparse_pct = cover.get("sparse vegetation", {}).get("pct", 0.0)
+            built_pct = cover.get("built-up", {}).get("pct", 0.0)
