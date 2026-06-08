@@ -61,3 +61,45 @@ def classify_input(modalities: list[Modality], dates: list[str] | None = None) -
 # Ordered: the FIRST pattern that matches wins, so more specific intents are
 # listed before more general ones. `change` must precede `vqa`, because
 # "has the built-up area increased?" is a question AND a change query.
+_RULES: list[tuple[Task, re.Pattern[str]]] = [
+    # Stems take \w* rather than a trailing \b: "increased" must match `increas`,
+    # and a trailing \b cannot, because 'e' follows. "unchanged" needs the
+    # optional (un) prefix for the same reason -- there is no word boundary
+    # before "chang" inside it. Both appear in the PS representative query
+    # "Has the built-up area increased, decreased, or remained unchanged?"
+    (Task.CHANGE_VQA, re.compile(
+        r"\b(un)?chang\w*"
+        r"|\b(differ|increas|decreas|expand|declin|grow|grew|shrink|shrank|shrunk)\w*"
+        r"|\bbefore and after\b|\bbetween these (two )?dates\b"
+        r"|\bover time\b|\bsince\b", re.I)),
+    (Task.GROUNDING, re.compile(
+        r"\b(highlight|locate|where is|point out|show me the|mark the|"
+        r"outline|bounding box|find the)\b", re.I)),
+    (Task.FUSION, re.compile(
+        r"\b(optical and sar|sar and optical|both (images|modalities|sensors)|"
+        r"combin\w+|fuse|together|cross[- ]modal|radar and)\b", re.I)),
+    (Task.CAPTION, re.compile(
+        r"\b(describe|caption|summar\w+|what (do you |can you )?see|"
+        r"overview|tell me about)\b", re.I)),
+    (Task.VQA, re.compile(
+        r"^(is|are|does|do|how many|what|which|can|has|have|was|were)\b|\?", re.I)),
+]
+
+
+@dataclass
+class Plan:
+    """The routing decision. `rejected` set means VALIDATE must refuse."""
+    task: Task | None
+    input_config: str
+    model_ids: list[str]
+    reason: str
+    used_llm: bool = False
+    rejected: str | None = None
+
+
+def _lexical_intent(query: str) -> tuple[Task | None, str]:
+    for task, pat in _RULES:
+        m = pat.search(query)
+        if m:
+            return task, f"matched /{pat.pattern[:34]}.../ on {m.group(0)!r}"
+    return None, "no lexical rule matched"
