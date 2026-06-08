@@ -130,3 +130,76 @@ def execute(state: State) -> dict[str, Any]:
 
     for mid in plan.model_ids:
         spec = get(mid)
+        params = dict(spec.params_schema)
+        with trace.timed(mid, model_id=mid, model_name=spec.name,
+                         model_version=spec.version, params=params) as step:
+            res = run_model(spec, state["query"], state.get("images", []), params)
+            step.outcome = res.get("summary", "")
+            step.confidence = res.get("confidence")
+            if res.get("stub"):
+                # Surfaced in the trace so a stubbed run is never mistaken for
+                # a real inference in a screenshot or a report.
+                step.params["STUB"] = "no trained weights"
+        out[mid] = res
+
+    return {"results": out}
+
+
+def measure(state: State) -> dict[str, Any]:
+    """Compute land-surface statistics from the pixels themselves.
+
+    Deliberately a separate node from EXECUTE, and deliberately not a model.
+    The percentages a user acts on -- vegetation, urbanisation, water -- come
+    from published spectral indices over the real reflectance values, so they
+    are reproducible from the same imagery by anyone with the same thresholds.
+    Routing this through a network would make every figure a prediction, and a
+    prediction is not something a district officer can audit.
+    """
+    from serve.analysis import analyse, headline
+
+    trace: Trace = state["trace"]
+    images = state.get("images", [])
+    with trace.timed("measure", params={"method": "NDVI/MNDWI/NDBI"}) as step:
+        a = analyse(images)
+        trace.analysis = a
+        step.params["available"] = a.get("available", False)
+        step.outcome = ("; ".join(f"{h['label']} {h['value']}"
+                                  for h in headline(a))
+                        or a.get("reason", "not computable")[:90])
+    return {}
+
+
+def synthesise(state: State) -> dict[str, Any]:
+    """M7 narrates the specialist outputs.
+
+    M7 is given the specialist findings as text, not the raw image alone. That
+    is what makes the answer evidence-grounded rather than hallucinated, and it
+    is the core of the PS's novelty claim.
+    """
+    trace: Trace = state["trace"]
+    results = state.get("results", {})
+    spec = get("M7")
+
+    with trace.timed("M7", model_id="M7", model_name=spec.name,
+                     model_version=spec.version,
+                     params=dict(spec.params_schema)) as step:
+        from serve.analysis import dominant_class, headline
+        findings = [f"{mid} ({get(mid).name}): {r.get('summary', '')}"
+                    for mid, r in results.items()]
+        measured = [f"{h['label'].lower()} {h['value']} ({h['note']})."
+                    for h in headline(trace.analysis)]
+        res = run_model(spec, state["query"], state.get("images", []),
+                        dict(spec.params_schema), findings=findings,
+                        measured=measured,
+                        dominant=dominant_class(trace.analysis),
+                        analysis=trace.analysis)
+        step.outcome = "synthesised"
+        if res.get("stub"):
+            step.params["STUB"] = "no trained weights"
+
+    confs = [r["confidence"] for r in results.values()
+             if r.get("confidence") is not None]
+    conf = min(confs) if confs else None      # weakest link, not average:
+                                              # a chain is only as good as its
+                                              # least confident step
+    ans = res.get("answer") or res.get("summary") or ""
