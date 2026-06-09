@@ -103,3 +103,108 @@ def _lexical_intent(query: str) -> tuple[Task | None, str]:
         if m:
             return task, f"matched /{pat.pattern[:34]}.../ on {m.group(0)!r}"
     return None, "no lexical rule matched"
+
+
+# Which tasks are legal for a given input configuration. This is the hard
+# constraint table -- it is what lets the system refuse correctly instead of
+# returning garbage, which PS 26167 asks for under "compatibility checking".
+_LEGAL: dict[str, set[Task]] = {
+    SINGLE_OPTICAL:   {Task.VQA, Task.CAPTION, Task.GROUNDING},
+    SINGLE_SAR:       {Task.VQA, Task.CAPTION, Task.GROUNDING},
+    CROSS_MODAL_PAIR: {Task.FUSION, Task.VQA, Task.CAPTION, Task.GROUNDING},
+    BI_TEMPORAL_PAIR: {Task.CHANGE_VQA, Task.CHANGE_MAP},
+}
+
+_WHY_ILLEGAL = {
+    (SINGLE_OPTICAL, Task.CHANGE_VQA):
+        "Change analysis needs two images acquired at different times; one was supplied.",
+    (SINGLE_SAR, Task.CHANGE_VQA):
+        "Change analysis needs two images acquired at different times; one was supplied.",
+    (SINGLE_OPTICAL, Task.FUSION):
+        "Optical-SAR analysis needs a co-registered optical AND SAR pair; one optical image was supplied.",
+    (SINGLE_SAR, Task.FUSION):
+        "Optical-SAR analysis needs a co-registered optical AND SAR pair; one SAR image was supplied.",
+    (BI_TEMPORAL_PAIR, Task.FUSION):
+        "Both images are the same modality, so there is no optical-SAR pair to fuse.",
+    (CROSS_MODAL_PAIR, Task.CHANGE_VQA):
+        "The two images are different sensors, not two dates, so change over time cannot be measured.",
+}
+
+
+def route(query: str,
+          modalities: list[Modality],
+          dates: list[str] | None = None,
+          llm_intent=None) -> Plan:
+    """Classify the query and select models from the registry.
+
+    `llm_intent` is an optional callable(query) -> Task|None used only when the
+    lexical rules are silent. Passing None keeps routing fully deterministic,
+    which is the right setting for reproducing benchmark numbers.
+    """
+    cfg = classify_input(modalities, dates)
+    if cfg == UNKNOWN:
+        return Plan(None, cfg, [], "no usable images",
+                    rejected="Supply one or two images; got "
+                             f"{len(modalities)}.")
+
+    task, reason = _lexical_intent(query)
+    used_llm = False
+    if task is None and llm_intent is not None:
+        task = llm_intent(query)
+        used_llm = True
+        reason = f"lexical rules silent; VLM classified as {task}"
+
+    if task is None:
+        # Sensible default per configuration rather than a hard failure: a bare
+        # "tell me about this" on a pair should still do something useful.
+        task = (Task.CHANGE_VQA if cfg == BI_TEMPORAL_PAIR else
+                Task.FUSION if cfg == CROSS_MODAL_PAIR else Task.CAPTION)
+        reason = f"no intent detected; defaulted to {task.value} for {cfg}"
+
+    legal = _LEGAL.get(cfg, set())
+    if task not in legal:
+        why = _WHY_ILLEGAL.get((cfg, task))
+        if why is None:
+            why = (f"{task.value} is not supported for input configuration "
+                   f"{cfg}. Supported: {', '.join(sorted(t.value for t in legal))}.")
+        return Plan(task, cfg, [], reason, used_llm, rejected=why)
+
+    n_images = len(modalities)
+    picked = [s.id for s in candidates(task, n_images, modalities)
+              if s.id != "M7"]                      # M7 synthesises, never routes as specialist
+
+    # Change queries always run the map alongside the VQA head: the PS asks for
+    # visual evidence, and M5a/M5b share a trunk so the map is nearly free.
+    if task is Task.CHANGE_VQA:
+        for extra in candidates(Task.CHANGE_MAP, n_images, modalities):
+            if extra.id not in picked:
+                picked.append(extra.id)
+
+    if not picked:
+        return Plan(task, cfg, [], reason, used_llm,
+                    rejected=f"No registered model serves {task.value} with "
+                             f"{n_images} image(s) of {[m.value for m in modalities]}.")
+
+    picked.sort()
+    return Plan(task, cfg, picked, reason, used_llm)
+
+
+if __name__ == "__main__":
+    cases = [
+        ("Describe the land-cover and major objects visible in this image.", [Modality.OPTICAL], None),
+        ("Highlight the water body referred to in the query.",               [Modality.OPTICAL], None),
+        ("What changed between these two dates, and where?",                 [Modality.OPTICAL, Modality.OPTICAL], ["2020-01", "2024-01"]),
+        ("Use the optical and SAR images together to identify built-up and water regions.", [Modality.OPTICAL, Modality.SAR], None),
+        ("Has the built-up area increased, decreased, or remained unchanged?", [Modality.OPTICAL, Modality.OPTICAL], ["2019", "2025"]),
+        ("Is a building present?",                                            [Modality.OPTICAL], None),
+        # must be refused:
+        ("What changed between these two dates?",                             [Modality.OPTICAL], None),
+        ("Use optical and SAR together.",                                     [Modality.OPTICAL], None),
+    ]
+    for q, mods, dates in cases:
+        p = route(q, mods, dates)
+        head = f"{p.input_config:<18} {(p.task.value if p.task else '-'):<12}"
+        if p.rejected:
+            print(f"REJECT {head} {q[:44]!r}\n         -> {p.rejected}")
+        else:
+            print(f"OK     {head} {q[:44]!r}\n         -> {', '.join(p.model_ids)}  ({p.reason})")

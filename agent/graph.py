@@ -203,3 +203,130 @@ def synthesise(state: State) -> dict[str, Any]:
                                               # a chain is only as good as its
                                               # least confident step
     ans = res.get("answer") or res.get("summary") or ""
+    trace.answer = ans
+    trace.confidence = conf
+    return {"answer": ans, "confidence": conf}
+
+
+def evidence(state: State) -> dict[str, Any]:
+    """Collect visual evidence and persist the trace to the Obsidian vault."""
+    trace: Trace = state["trace"]
+    ev: list[str] = []
+    for r in state.get("results", {}).values():
+        ev.extend(r.get("evidence", []))
+    trace.evidence = ev
+    with trace.timed("evidence", params={"artifacts": len(ev)}) as step:
+        step.outcome = f"{len(ev)} overlay(s)"
+    trace.write()
+    trace.write_json()
+    return {"evidence": ev}
+
+
+def reject(state: State) -> dict[str, Any]:
+    """Refuse with a stated reason and still write a trace.
+
+    A refused run is an auditable outcome, not an error. PS 26167 asks for
+    "input upload and compatibility checking"; correctly refusing an impossible
+    request demonstrates that, where silently returning garbage does not.
+    """
+    trace: Trace = state["trace"]
+    msg = state.get("rejected") or "incompatible input"
+    with trace.timed("reject", params={"reason": msg[:60]}) as step:
+        step.outcome = "refused"
+    trace.answer = ""
+    trace.write()
+    trace.write_json()
+    return {"answer": "", "confidence": None}
+
+
+def _branch(state: State) -> str:
+    return "reject" if state.get("rejected") else "route"
+
+
+# --------------------------------------------------------------------------- #
+# graph
+# --------------------------------------------------------------------------- #
+def build_graph(checkpointer=None):
+    g = StateGraph(State)
+    g.add_node("ingest", ingest)
+    g.add_node("validate", validate)
+    g.add_node("route", route_node)
+    g.add_node("execute", execute)
+    g.add_node("measure", measure)
+    g.add_node("synthesise", synthesise)
+    g.add_node("evidence", evidence)
+    g.add_node("reject", reject)
+
+    g.add_edge(START, "ingest")
+    g.add_edge("ingest", "validate")
+    g.add_conditional_edges("validate", _branch,
+                            {"route": "route", "reject": "reject"})
+    g.add_edge("route", "execute")
+    g.add_edge("execute", "measure")
+    g.add_edge("measure", "synthesise")
+    g.add_edge("synthesise", "evidence")
+    g.add_edge("evidence", END)
+    g.add_edge("reject", END)
+
+    return g.compile(checkpointer=checkpointer or MemorySaver())
+
+
+_GRAPH = None
+
+
+def get_graph():
+    global _GRAPH
+    if _GRAPH is None:
+        _GRAPH = build_graph()
+    return _GRAPH
+
+
+def answer(query: str, images: list[dict[str, Any]],
+           thread_id: str | None = None) -> Trace:
+    """Run one query end-to-end and return its trace.
+
+    The Trace carries the answer, confidence, evidence paths and the full
+    step-by-step execution summary -- everything the API and the vault need.
+    """
+    trace = Trace(query=query)
+    cfg = {"configurable": {"thread_id": thread_id or trace.run_id}}
+    get_graph().invoke(
+        {"query": query, "images": images, "trace": trace, "results": {}},
+        config=cfg)
+    return trace
+
+
+if __name__ == "__main__":
+    import glob
+
+    # Run the demos on real fetched imagery when the AOI cache has any, and
+    # fall back to placeholder paths otherwise. Four FileNotFoundError traces
+    # demonstrate routing but not inference, and inference is the part that is
+    # hard to be sure about by reading the code.
+    aoi = os.path.join(ROOT_DIR, "data", "aoi_fetch")
+    t2 = sorted(glob.glob(os.path.join(aoi, "*_s2t2.tif")))
+    sar = sorted(glob.glob(os.path.join(aoi, "*_s1.tif")))
+    a = (t2[-1] if t2 else "a.tif")
+    b = (a.replace("_s2t2.tif", "_s2.tif") if t2 else "b.tif")
+    s1 = sar[-1] if sar else b
+
+    demos = [
+        ("Describe the land-cover and major objects visible in this image.",
+         [{"path": b, "modality": "optical", "date": "2024-03-15"}]),
+        ("What changed between these two dates, and where did the change occur?",
+         [{"path": a, "modality": "optical", "date": "2023-02-10"},
+          {"path": b, "modality": "optical", "date": "2024-03-15"}]),
+        ("Use the optical and SAR images together to identify built-up and "
+         "water-covered regions.",
+         [{"path": b, "modality": "optical"},
+          {"path": s1, "modality": "sar"}]),
+        ("What changed between these two dates?",
+         [{"path": b, "modality": "optical"}]),      # must be refused
+    ]
+    for q, imgs in demos:
+        t = answer(q, imgs)
+        status = f"REJECTED: {t.rejected}" if t.rejected else t.answer
+        print(f"\n{'='*74}\nQ: {q}\n   config={t.input_config} "
+              f"task={t.task} models={t.models_invoked} {t.total_ms}ms\n"
+              f"   {status}")
+    print(f"\n{'='*74}\nvault notes written to satquery-core/vault/runs/")
