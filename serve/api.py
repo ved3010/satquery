@@ -64,3 +64,36 @@ app.add_middleware(
 class ImageRef(BaseModel):
     path: str
     modality: str | None = None       # "optical" | "sar"; inferred if omitted
+    date: str | None = None
+
+
+class QueryRequest(BaseModel):
+    query: str
+    images: list[ImageRef] = []
+    thread_id: str | None = None
+
+
+class AOIRequest(BaseModel):
+    """A rectangle drawn on the map, plus what to fetch for it."""
+    bbox: list[float]                      # [west, south, east, north] EPSG:4326
+    start: str = "2024-01-01"
+    end: str = "2024-12-31"
+    max_cloud: int = 20
+    want_sar: bool = True
+    start2: str | None = None              # earlier window -> bi-temporal pair
+    end2: str | None = None
+
+
+STATIC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+
+
+@app.get("/")
+def index():
+    """Serve the test console at the API origin, so the page's fetch() calls
+    are same-origin and never hit CORS."""
+    return FileResponse(os.path.join(STATIC, "index.html"))
+
+
+@app.get("/health")
+def health() -> dict[str, Any]:
+    trained = [m for m, s in REGISTRY.items() if s.is_trained]
