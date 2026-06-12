@@ -197,3 +197,53 @@ def geocode(q: str = "", limit: int = 8) -> list[dict[str, Any]]:
     from serve.geocode import search_locations
     return search_locations(q, limit=limit)
 
+
+@app.get("/preview")
+def preview(path: str, mode: str = "rgb"):
+    """Serve a fetched AOI image as PNG for display in the map console with optional spectral modes."""
+    real = os.path.realpath(path)
+    allowed = (os.path.realpath(os.path.join(ROOT, "data", "aoi_fetch")),
+               os.path.realpath(UPLOADS))
+    if not any(real.startswith(a + os.sep) for a in allowed):
+        raise HTTPException(403, "path outside the served directories")
+    if not os.path.exists(real):
+        raise HTTPException(404, "not found")
+
+    mode_suffix = "" if mode == "rgb" else f"_{mode}"
+    png = real.rsplit(".", 1)[0] + f"_preview{mode_suffix}.png"
+    if not os.path.exists(png):
+        try:
+            import numpy as np
+            from PIL import Image
+
+            stem = real.rsplit(".", 1)[0]
+            npz_path = stem + ".npz"
+
+            if mode != "rgb" and os.path.exists(npz_path):
+                z = np.load(npz_path)
+                if "s2" in z:
+                    s2 = z["s2"]
+                    def stretch(b):
+                        p2, p98 = np.percentile(b[b > 0] if np.any(b > 0) else b, (2, 98))
+                        if p98 <= p2: p98 = p2 + 1
+                        return np.clip((b.astype(float) - p2) / (p98 - p2) * 255, 0, 255).astype(np.uint8)
+
+                    if mode == "cir":
+                        # False Color Infrared: NIR(7), Red(3), Green(2)
+                        arr = np.stack([stretch(s2[7]), stretch(s2[3]), stretch(s2[2])], axis=-1)
+                        Image.fromarray(arr).save(png)
+                        return FileResponse(png, media_type="image/png")
+                    elif mode == "swir":
+                        # SWIR: SWIR2(11), NIR(7), Red(3)
+                        arr = np.stack([stretch(s2[11]), stretch(s2[7]), stretch(s2[3])], axis=-1)
+                        Image.fromarray(arr).save(png)
+                        return FileResponse(png, media_type="image/png")
+                    elif mode == "ndvi":
+                        # NDVI Heatmap: (NIR - Red) / (NIR + Red)
+                        nir = s2[7].astype(float)
+                        red = s2[3].astype(float)
+                        denom = nir + red
+                        denom[denom == 0] = 1e-6
+                        ndvi = (nir - red) / denom
+                        h, w = ndvi.shape
+                        rgb_ndvi = np.zeros((h, w, 3), dtype=np.uint8)
