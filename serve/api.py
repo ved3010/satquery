@@ -147,3 +147,53 @@ async def upload(file: UploadFile = File(...)) -> dict[str, Any]:
 
     return {"path": dest, "filename": file.filename, "bytes": size,
             "modality": _guess_modality(file.filename or "")}
+
+
+def _guess_modality(name: str) -> str | None:
+    """Filename hint only — never authoritative.
+
+    Real modality comes from GeoTIFF metadata during INGEST. This exists so the
+    upload UI can pre-select a sensible dropdown value for the user to confirm.
+    """
+    low = name.lower()
+    if any(k in low for k in ("s1", "sar", "risat", "grd", "vv", "vh")):
+        return "sar"
+    if any(k in low for k in ("s2", "optical", "cartosat", "msi", "rgb")):
+        return "optical"
+    return None
+
+
+@app.post("/aoi/fetch")
+def aoi_fetch(req: AOIRequest) -> dict[str, Any]:
+    """Fetch live Sentinel imagery for a map-drawn area of interest.
+
+    Returns image refs usable directly in /query, plus the scene provenance
+    (product id, date, cloud cover) so the answer can cite what it looked at.
+    """
+    if len(req.bbox) != 4:
+        raise HTTPException(400, "bbox must be [west, south, east, north]")
+    w, s_, e, n = req.bbox
+    if not (-180 <= w < e <= 180 and -90 <= s_ < n <= 90):
+        raise HTTPException(400, "bbox is not a valid west/south/east/north box")
+
+    from serve.aoi import fetch_aoi
+    try:
+        out = fetch_aoi(req.bbox, req.start, req.end, req.max_cloud,
+                        req.want_sar, req.start2, req.end2)
+    except Exception as exc:
+        raise HTTPException(502, f"imagery fetch failed: {type(exc).__name__}: {exc}")
+    if "error" in out:
+        raise HTTPException(404, out["error"])
+
+    # hand back preview URLs the browser can load
+    for img in out["images"]:
+        img["preview"] = "/preview?path=" + quote(img["path"])
+    return out
+
+
+@app.get("/geocode")
+def geocode(q: str = "", limit: int = 8) -> list[dict[str, Any]]:
+    """Fast pan-India location search and autosuggestions."""
+    from serve.geocode import search_locations
+    return search_locations(q, limit=limit)
+
