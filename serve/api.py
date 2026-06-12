@@ -247,3 +247,46 @@ def preview(path: str, mode: str = "rgb"):
                         ndvi = (nir - red) / denom
                         h, w = ndvi.shape
                         rgb_ndvi = np.zeros((h, w, 3), dtype=np.uint8)
+                        rgb_ndvi[ndvi < 0.05] = [35, 95, 210]          # Water
+                        rgb_ndvi[(ndvi >= 0.05) & (ndvi < 0.2)] = [185, 150, 105]  # Built/Bare
+                        rgb_ndvi[(ndvi >= 0.2) & (ndvi < 0.45)] = [140, 195, 75]   # Sparse Veg
+                        rgb_ndvi[ndvi >= 0.45] = [25, 170, 55]         # Dense Veg
+                        Image.fromarray(rgb_ndvi).save(png)
+                        return FileResponse(png, media_type="image/png")
+
+            # Default RGB
+            import rasterio
+            with rasterio.open(real) as ds:
+                arr = ds.read([1, 2, 3]) if ds.count >= 3 else ds.read([1, 1, 1])
+            Image.fromarray(arr.transpose(1, 2, 0).astype("uint8")).save(png)
+        except Exception as exc:
+            raise HTTPException(500, f"preview failed: {exc}")
+    return FileResponse(png, media_type="image/png")
+
+
+@app.post("/query")
+def query(req: QueryRequest) -> dict[str, Any]:
+    """Run one query through the agent and return answer + full trace."""
+    if not req.query.strip():
+        raise HTTPException(400, "query must not be empty")
+    if len(req.images) > 2:
+        raise HTTPException(400, "at most 2 images (single, cross-modal pair, "
+                                 "or bi-temporal pair)")
+    for img in req.images:
+        if not os.path.exists(img.path):
+            raise HTTPException(400, f"image not found: {img.path}. "
+                                     "Upload via POST /upload first.")
+
+    trace = run_agent(req.query,
+                      [i.model_dump() for i in req.images],
+                      thread_id=req.thread_id)
+    d = trace.to_dict()
+    d["markdown"] = trace.to_markdown()      # the downloadable report
+    return d
+
+
+@app.get("/runs/{run_id}/report.md")
+def run_report(run_id: str):
+    """Download one run's Markdown report.
+
+    The report is the deliverable, not a convenience: it carries the measured
