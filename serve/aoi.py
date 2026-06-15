@@ -72,3 +72,78 @@ INDEX_FILE = os.path.join(AOI_DIR, "index.json")
 
 def _load_index() -> list[dict]:
     if os.path.exists(INDEX_FILE):
+        try:
+            with open(INDEX_FILE) as f:
+                return json.load(f)
+        except Exception:
+            return []
+    return []
+
+
+def _save_index(entries: list[dict]):
+    try:
+        with open(INDEX_FILE, "w") as f:
+            json.dump(entries, f, indent=2)
+    except Exception:
+        pass
+
+
+def _window_for(href: str, bbox: list[float], strict: bool = True):
+    """Pixel window covering `bbox` inside the raster at `href`."""
+    import rasterio
+    from rasterio.warp import transform as warp_transform
+    from rasterio.windows import Window
+
+    w, s, e, n = bbox
+    with rasterio.open(href) as ds:
+        xs, ys = warp_transform("EPSG:4326", ds.crs, [w, e], [s, n])
+        r1, c1 = ds.index(xs[0], ys[1])       # top-left  (west, north)
+        r2, c2 = ds.index(xs[1], ys[0])       # bottom-right
+        row, col = min(r1, r2), min(c1, c2)
+        h, wd = abs(r2 - r1), abs(c2 - c1)
+        if h < 24 or wd < 24:
+            return None, "AOI is too small — draw a larger box (min ~250 m)"
+        if h > MAX_PX or wd > MAX_PX:
+            return None, (f"AOI is too large ({wd}x{h} px at 10 m). "
+                          f"Draw a box under ~{MAX_PX//100} km a side.")
+        if row < 0 or col < 0 or row + h > ds.height or col + wd > ds.width:
+            if strict:
+                return None, None
+            # Clamp gracefully to raster boundaries
+            c_row = max(0, min(row, ds.height - 32))
+            c_col = max(0, min(col, ds.width - 32))
+            c_h = max(32, min(h, ds.height - c_row))
+            c_wd = max(32, min(wd, ds.width - c_col))
+            win = Window(c_col, c_row, c_wd, c_h)
+            return (win, ds.crs, ds.window_transform(win), ds.width), None
+        return (Window(col, row, wd, h), ds.crs, ds.window_transform(
+            Window(col, row, wd, h)), ds.width), None
+
+
+def _pick(feats: list[dict], bbox: list[float], sort_key):
+    """First scene that fully contains the AOI, or best overlap."""
+    err = None
+    for strict in (True, False):
+        for f in sorted(feats, key=sort_key):
+            href = f["assets"].get("red", {}).get("href") or \
+                   f["assets"].get("vv", {}).get("href")
+            if not href:
+                continue
+            try:
+                got, e = _window_for(href, bbox, strict=strict)
+            except Exception:
+                continue
+            if e:
+                err = e                            # size complaint: report it
+                break
+            if got:
+                return f, got, None
+    return None, None, err
+
+
+def _read_bands(scene: dict, bands: list[str], win, refw: int,
+                out_hw: tuple[int, int], dtype, workers: int = 12) -> np.ndarray:
+    """Read every band into one cube, fetching bands concurrently.
+
+    Each band is a separate COG on S3, so the reads are independent and almost
+    entirely network-bound. Serially this took ~240 s for a 4 km AOI over a
