@@ -290,3 +290,43 @@ def run_report(run_id: str):
     """Download one run's Markdown report.
 
     The report is the deliverable, not a convenience: it carries the measured
+    land-cover table, the answer, and the full execution trace in a format that
+    survives being pasted into a file note or a departmental email. It is
+    served straight off the vault note the run already wrote, so what is
+    downloaded and what the vault holds can never disagree.
+    """
+    # run ids are generated as <timestamp>-<hex4>; anything else is a path
+    # traversal attempt, not a typo.
+    if not re.fullmatch(r"\d{8}T\d{6}Z-[0-9a-f]{4}", run_id):
+        raise HTTPException(400, "malformed run id")
+    path = os.path.join(ROOT, "vault", "runs", f"{run_id}.md")
+    if not os.path.exists(path):
+        raise HTTPException(404, f"no report for run {run_id}")
+    return FileResponse(path, media_type="text/markdown",
+                        filename=f"satquery-{run_id}.md")
+
+
+@app.get("/runs")
+def runs(limit: int = 50) -> list[dict[str, Any]]:
+    """Recent runs from the vault — powers the dashboard history panel."""
+    import json
+    d = os.path.join(ROOT, "vault", "runs")
+    if not os.path.isdir(d):
+        return []
+    files = sorted((f for f in os.listdir(d) if f.endswith(".json")), reverse=True)
+    out = []
+    for f in files[:limit]:
+        try:
+            with open(os.path.join(d, f), encoding="utf-8") as fh:
+                r = json.load(fh)
+            out.append({k: r.get(k) for k in
+                        ("run_id", "query", "task", "input_config",
+                         "models_invoked", "confidence", "total_ms", "rejected")})
+        except (OSError, json.JSONDecodeError):
+            continue                          # a truncated note must not 500 the list
+    return out
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1", port=8000)
