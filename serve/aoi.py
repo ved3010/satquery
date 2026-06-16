@@ -221,3 +221,78 @@ def fetch_satellite_scene_for_bbox(bbox: list[float], stamp: str | None = None) 
     from concurrent.futures import ThreadPoolExecutor
     from PIL import Image
     import rasterio
+    from rasterio.transform import from_bounds
+
+    w, s, e, n = bbox
+    span = max(abs(e - w), abs(n - s))
+    if span <= 0.04:
+        zoom = 15
+    elif span <= 0.10:
+        zoom = 14
+    else:
+        zoom = 13
+
+    def deg2num(lat_deg, lon_deg, z):
+        lat_rad = math.radians(lat_deg)
+        num = 2.0 ** z
+        xtile = int((lon_deg + 180.0) / 360.0 * num)
+        ytile = int((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * num)
+        return xtile, ytile
+
+    def num2deg(xtile, ytile, z):
+        num = 2.0 ** z
+        lon_deg = xtile / num * 360.0 - 180.0
+        lat_rad = math.atan(math.sinh(math.pi * (1 - 2 * ytile / num)))
+        lat_deg = math.degrees(lat_rad)
+        return lat_deg, lon_deg
+
+    x0, y0 = deg2num(n, w, zoom)
+    x1, y1 = deg2num(s, e, zoom)
+    min_x, max_x = min(x0, x1), max(x0, x1)
+    min_y, max_y = min(y0, y1), max(y0, y1)
+
+    # Cap tile grid dimensions to avoid excessive fetches
+    if (max_x - min_x + 1) * (max_y - min_y + 1) > 25:
+        zoom = 13
+        x0, y0 = deg2num(n, w, zoom)
+        x1, y1 = deg2num(s, e, zoom)
+        min_x, max_x = min(x0, x1), max(x0, x1)
+        min_y, max_y = min(y0, y1), max(y0, y1)
+
+    def fetch_tile(xy):
+        tx, ty = xy
+        url = f"https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{zoom}/{ty}/{tx}"
+        req = urllib.request.Request(url, headers={"User-Agent": "SatQuery-Orbital/1.0"})
+        try:
+            with urllib.request.urlopen(req, timeout=8) as r:
+                return (tx, ty, Image.open(io.BytesIO(r.read())).convert("RGB"))
+        except Exception:
+            # Fallback blank tile if timeout
+            return (tx, ty, Image.new("RGB", (256, 256), (30, 40, 50)))
+
+    coords = [(x, y) for y in range(min_y, max_y + 1) for x in range(min_x, max_x + 1)]
+    with ThreadPoolExecutor(max_workers=min(12, len(coords))) as ex:
+        results = dict(ex.map(lambda c: ((c[0], c[1]), fetch_tile(c)[2]), coords))
+
+    tile_w, tile_h = 256, 256
+    grid_w = (max_x - min_x + 1) * tile_w
+    grid_h = (max_y - min_y + 1) * tile_h
+    composite = Image.new("RGB", (grid_w, grid_h))
+
+    for y in range(min_y, max_y + 1):
+        for x in range(min_x, max_x + 1):
+            t = results.get((x, y))
+            if t:
+                composite.paste(t, ((x - min_x) * tile_w, (y - min_y) * tile_h))
+
+    # Crop to exact bounding box coordinates
+    top_lat, left_lon = num2deg(min_x, min_y, zoom)
+    bot_lat, right_lon = num2deg(max_x + 1, max_y + 1, zoom)
+
+    crop_l = int((w - left_lon) / (right_lon - left_lon) * grid_w)
+    crop_r = int((e - left_lon) / (right_lon - left_lon) * grid_w)
+    crop_t = int((top_lat - n) / (top_lat - bot_lat) * grid_h)
+    crop_b = int((top_lat - s) / (top_lat - bot_lat) * grid_h)
+
+    crop_box = (max(0, min(crop_l, crop_r)), max(0, min(crop_t, crop_b)),
+                min(grid_w, max(crop_l, crop_r)), min(grid_h, max(crop_t, crop_b)))
