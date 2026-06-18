@@ -445,3 +445,53 @@ def fetch_aoi(bbox: list[float], start: str, end: str, max_cloud: int = 20,
             except Exception as exc:
                 s1 = got1 = None
                 out["warnings"] = out.get("warnings", []) + [
+                    f"Sentinel-1 lookup failed: {type(exc).__name__}"]
+        if s1 and got1:
+            w1, crs1, tr1, refw1 = got1
+            sar = _read_bands(s1, S1_BANDS, w1, refw1,
+                              (int(w1.height), int(w1.width)), np.float32)
+            # dB scaling: SAR backscatter is heavy-tailed, so a linear stretch
+            # is nearly black. dB is also what analysts read.
+            db = 10 * np.log10(np.clip(sar, 1e-3, None))
+            vis = np.stack([_stretch(db[0]), _stretch(db[1]),
+                            _stretch(db[0])])
+            stem1 = os.path.join(AOI_DIR, f"{stamp}_s1")
+            p1 = _write_pair(stem1, vis, crs1, tr1, {"s1": sar})
+            d1 = s1["properties"]["datetime"][:10]
+            out["images"].append({"path": p1, "modality": "sar", "date": d1,
+                                  "role": "SAR"})
+            out["scenes"].append({"id": s1["id"], "collection": "sentinel-1-grd",
+                                  "date": d1, "cloud": None})
+        else:
+            out["warnings"] = out.get("warnings", []) + \
+                ["No Sentinel-1 scene fully covers this AOI in the date range."]
+
+    # --- earlier Sentinel-2 date for change analysis ---------------------- #
+    if start2 and end2:
+        f2 = _stac("sentinel-2-l2a", geom, start2, end2,
+                   {"eo:cloud_cover": {"lt": max_cloud}})
+        s2b, got2, _ = _pick(f2, bbox,
+                             lambda f: f["properties"]["eo:cloud_cover"])
+        if s2b and got2 and s2b["id"] != s2["id"]:
+            w2, crs2, tr2, refw2 = got2
+            c2 = _read_bands(s2b, S2_BANDS, w2, refw2,
+                             (int(w2.height), int(w2.width)), np.uint16)
+            rgb2 = np.stack([_stretch(c2[3]), _stretch(c2[2]), _stretch(c2[1])])
+            stem2 = os.path.join(AOI_DIR, f"{stamp}_s2t2")
+            p2 = _write_pair(stem2, rgb2, crs2, tr2, {"s2": c2})
+            d2 = s2b["properties"]["datetime"][:10]
+            # earlier date first, so the pair reads t1 -> t2 chronologically
+            out["images"].insert(0, {"path": p2, "modality": "optical",
+                                     "date": d2, "role": "optical (earlier)"})
+            out["scenes"].append({"id": s2b["id"],
+                                  "collection": "sentinel-2-l2a", "date": d2,
+                                  "cloud": round(s2b["properties"]["eo:cloud_cover"], 2)})
+        else:
+            out["warnings"] = out.get("warnings", []) + \
+                ["No distinct earlier Sentinel-2 scene found for this AOI."]
+
+    out["size_px"] = [W, H]
+    out["ground_km"] = [round(W * 10 / 1000, 2), round(H * 10 / 1000, 2)]
+    index.append({"bbox": bbox, "result": out, "timestamp": time.time()})
+    _save_index(index)
+    return out
