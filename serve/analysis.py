@@ -50,3 +50,55 @@ def _ratio(a: np.ndarray, b: np.ndarray) -> np.ndarray:
 def load_stack(path: str) -> np.ndarray | None:
     """The 12-band float cube written beside an AOI fetch, or None.
 
+    `serve.aoi` writes <stem>.tif for display and <stem>.npz for the bands. A
+    plain user upload has no sidecar, and RGB alone cannot produce NDVI, NDBI
+    or MNDWI -- all three need NIR or SWIR. Returning None here is what makes
+    the report say "not computable" instead of inventing a figure.
+    """
+    npz = os.path.splitext(path)[0] + ".npz"
+    if not os.path.exists(npz):
+        return None
+    z = np.load(npz)
+    if "s2" not in z:
+        return None
+    s2 = z["s2"].astype(np.float32)
+    return s2 if s2.shape[0] >= 11 else None
+
+
+def indices(s2: np.ndarray) -> dict[str, np.ndarray]:
+    ndvi = _ratio(s2[B_NIR], s2[B_RED])
+    mndwi = _ratio(s2[B_GREEN], s2[B_SWIR16])
+    ndbi = _ratio(s2[B_SWIR16], s2[B_NIR])
+    return {"ndvi": ndvi, "mndwi": mndwi, "ndbi": ndbi, "bui": ndbi - ndvi}
+
+
+def classify(s2: np.ndarray) -> tuple[np.ndarray, np.ndarray, dict[str, np.ndarray]]:
+    """Returns (class index per pixel, valid mask, the index rasters).
+
+    A pixel with zero reflectance in every visible band is a fill pixel at the
+    edge of a granule, not a dark surface. Counting those as "bare" would
+    inflate the bare fraction of any AOI that touches a scene boundary.
+    """
+    ix = indices(s2)
+    valid = (s2[[B_BLUE, B_GREEN, B_RED, B_NIR]].sum(0) > 0)
+
+    cls = np.full(s2.shape[1:], CLASSES.index("bare/other"), np.int8)
+    cls[ix["bui"] > 0.0] = CLASSES.index("built-up")
+    cls[(ix["ndvi"] >= 0.18) & (ix["ndvi"] < 0.30)] = CLASSES.index("sparse vegetation")
+    cls[ix["ndvi"] >= 0.30] = CLASSES.index("vegetation")
+    cls[ix["mndwi"] > 0.0] = CLASSES.index("water")       # water wins outright
+    return cls, valid, ix
+
+
+def scene_stats(s2: np.ndarray) -> dict[str, Any]:
+    """Per-class cover for one acquisition: percent of valid pixels and km²."""
+    cls, valid, ix = classify(s2)
+    n = int(valid.sum())
+    if n == 0:
+        return {"error": "every pixel is fill -- the AOI does not intersect "
+                         "valid data in this scene"}
+    px_km2 = (GSD_M ** 2) / 1e6
+
+    cover = {}
+    for i, name in enumerate(CLASSES):
+        k = int(((cls == i) & valid).sum())
