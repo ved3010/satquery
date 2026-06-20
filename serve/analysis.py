@@ -102,3 +102,55 @@ def scene_stats(s2: np.ndarray) -> dict[str, Any]:
     cover = {}
     for i, name in enumerate(CLASSES):
         k = int(((cls == i) & valid).sum())
+        cover[name] = {"pct": round(100.0 * k / n, 2),
+                       "km2": round(k * px_km2, 3), "pixels": k}
+    return {
+        "valid_pixels": n,
+        "area_km2": round(n * px_km2, 3),
+        "cover": cover,
+        "mean_ndvi": round(float(ix["ndvi"][valid].mean()), 4),
+        "mean_mndwi": round(float(ix["mndwi"][valid].mean()), 4),
+        "mean_ndbi": round(float(ix["ndbi"][valid].mean()), 4),
+    }
+
+
+def _delta(a: float, b: float) -> dict[str, float]:
+    """Absolute change in percentage points and change relative to t1.
+
+    Both, because they answer different questions. Built-up going 2% -> 3% of a
+    scene is +1.0 pp, which sounds negligible, and +50% relative, which sounds
+    dramatic. Reporting only one of them is how a true number misleads.
+    """
+    return {"delta_pp": round(b - a, 2),
+            "relative_pct": round(100.0 * (b - a) / a, 1) if a > 1e-9 else None}
+
+
+def change_stats(s2_a: np.ndarray, s2_b: np.ndarray) -> dict[str, Any]:
+    """Bi-temporal comparison. `s2_a` is the earlier acquisition."""
+    if s2_a.shape[1:] != s2_b.shape[1:]:
+        h = min(s2_a.shape[1], s2_b.shape[1])
+        w = min(s2_a.shape[2], s2_b.shape[2])
+        s2_a, s2_b = s2_a[:, :h, :w], s2_b[:, :h, :w]
+
+    ca, va, ia = classify(s2_a)
+    cb, vb, ib = classify(s2_b)
+    valid = va & vb
+    n = int(valid.sum())
+    if n == 0:
+        return {"error": "the two acquisitions share no valid pixels"}
+    px_km2 = (GSD_M ** 2) / 1e6
+
+    out: dict[str, Any] = {"valid_pixels": n,
+                           "area_km2": round(n * px_km2, 3),
+                           "classes": {}}
+    for i, name in enumerate(CLASSES):
+        pa = 100.0 * int(((ca == i) & valid).sum()) / n
+        pb = 100.0 * int(((cb == i) & valid).sum()) / n
+        out["classes"][name] = {
+            "t1_pct": round(pa, 2), "t2_pct": round(pb, 2),
+            "t1_km2": round(pa / 100 * n * px_km2, 3),
+            "t2_km2": round(pb / 100 * n * px_km2, 3),
+            **_delta(pa, pb),
+        }
+
+    # dNDVI is the standard vegetation-change signal; |dNDVI| > 0.10 is the
