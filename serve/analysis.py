@@ -206,3 +206,55 @@ def analyse(images: list[dict[str, Any]]) -> dict[str, Any]:
                           "upload does not carry -- fetch an AOI from the map "
                           "to get the full Sentinel-2 stack.",
                 "gsd_m": GSD_M}
+
+    out: dict[str, Any] = {"available": True, "gsd_m": GSD_M,
+                           "method": "Sentinel-2 L2A surface reflectance; "
+                                     "NDVI / MNDWI (Xu 2006) / NDBI (Zha 2003)",
+                           "thresholds": {"water_mndwi": 0.0,
+                                          "vegetation_ndvi": 0.30,
+                                          "sparse_vegetation_ndvi": 0.18,
+                                          "built_up_bui": 0.0,
+                                          "change_dindex": 0.10}}
+    if len(usable) == 1:
+        img, s2 = usable[0]
+        out["mode"] = "single"
+        out["dates"] = [img.get("date")]
+        out["scene"] = scene_stats(s2)
+        return out
+
+    # earlier date first; serve.aoi already inserts it that way, but a caller
+    # can hand us anything, and comparing t2 against t1 backwards would flip
+    # every sign in the report.
+    pair = sorted(usable[:2], key=lambda x: x[0].get("date") or "")
+    (ia_, sa), (ib_, sb) = pair
+    out["mode"] = "bi-temporal"
+    out["dates"] = [ia_.get("date"), ib_.get("date")]
+    out["t1"] = scene_stats(sa)
+    out["t2"] = scene_stats(sb)
+    out["change"] = change_stats(sa, sb)
+    return out
+
+
+# --------------------------------------------------------------------------- #
+# markdown
+# --------------------------------------------------------------------------- #
+def _row(cells) -> str:
+    return "| " + " | ".join(str(c) for c in cells) + " |"
+
+
+def to_markdown(a: dict[str, Any]) -> list[str]:
+    """The measured-statistics section of the run report."""
+    if not a.get("available"):
+        return ["## Measured land cover", "",
+                f"_Not computable: {a['reason']}_", ""]
+
+    out = ["## Measured land cover", "",
+           f"Computed from the pixels, not from a model. {a['method']}. "
+           f"Ground sample distance {a['gsd_m']:.0f} m.", ""]
+
+    if a["mode"] == "single":
+        s = a["scene"]
+        if "error" in s:
+            return out + [f"_{s['error']}_", ""]
+        out += [f"Acquisition **{a['dates'][0] or 'unknown date'}** · "
+                f"{s['area_km2']} km² of valid pixels.", "",
