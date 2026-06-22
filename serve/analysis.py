@@ -154,3 +154,55 @@ def change_stats(s2_a: np.ndarray, s2_b: np.ndarray) -> dict[str, Any]:
         }
 
     # dNDVI is the standard vegetation-change signal; |dNDVI| > 0.10 is the
+    # threshold M5 was supervised on, so the two agree by construction.
+    dndvi = (ib["ndvi"] - ia["ndvi"])[valid]
+    out["vegetation_index_change"] = {
+        "mean_dndvi": round(float(dndvi.mean()), 4),
+        "gain_pct": round(100.0 * float((dndvi > 0.10).mean()), 2),
+        "loss_pct": round(100.0 * float((dndvi < -0.10).mean()), 2),
+        "changed_pct": round(100.0 * float((np.abs(dndvi) > 0.10).mean()), 2),
+    }
+    dmndwi = (ib["mndwi"] - ia["mndwi"])[valid]
+    out["water_index_change"] = {
+        "mean_dmndwi": round(float(dmndwi.mean()), 4),
+        "gain_pct": round(100.0 * float((dmndwi > 0.10).mean()), 2),
+        "loss_pct": round(100.0 * float((dmndwi < -0.10).mean()), 2),
+    }
+    transitioned = (ca != cb) & valid
+    out["transitioned_pct"] = round(100.0 * int(transitioned.sum()) / n, 2)
+
+    # what the newly built-up pixels used to be -- the question a planner asks
+    new_built = (cb == CLASSES.index("built-up")) & \
+                (ca != CLASSES.index("built-up")) & valid
+    src = {}
+    if int(new_built.sum()):
+        for i, name in enumerate(CLASSES):
+            k = int((new_built & (ca == i)).sum())
+            if k:
+                src[name] = round(100.0 * k / int(new_built.sum()), 1)
+    out["new_built_up"] = {
+        "km2": round(int(new_built.sum()) * px_km2, 3),
+        "pct_of_scene": round(100.0 * int(new_built.sum()) / n, 2),
+        "converted_from_pct": src,
+    }
+    return out
+
+
+def analyse(images: list[dict[str, Any]]) -> dict[str, Any]:
+    """Measured statistics for whatever imagery the run was given.
+
+    Single image  -> per-class cover.
+    Two optical   -> cover at both dates plus the change table.
+    No band cube  -> `available: False` with the reason. Never a guess.
+    """
+    optical = [i for i in images if i.get("modality", "optical") != "sar"]
+    stacks = [(i, load_stack(i["path"])) for i in optical]
+    usable = [(i, s) for i, s in stacks if s is not None]
+
+    if not usable:
+        return {"available": False,
+                "reason": "no 12-band cube beside the supplied image(s). NDVI, "
+                          "NDBI and MNDWI need NIR and SWIR, which an RGB "
+                          "upload does not carry -- fetch an AOI from the map "
+                          "to get the full Sentinel-2 stack.",
+                "gsd_m": GSD_M}
