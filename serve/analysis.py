@@ -258,3 +258,55 @@ def to_markdown(a: dict[str, Any]) -> list[str]:
             return out + [f"_{s['error']}_", ""]
         out += [f"Acquisition **{a['dates'][0] or 'unknown date'}** · "
                 f"{s['area_km2']} km² of valid pixels.", "",
+                _row(["class", "cover %", "area km²"]),
+                _row(["---", "---:", "---:"])]
+        for name, v in s["cover"].items():
+            out.append(_row([name, f"{v['pct']:.2f}%", f"{v['km2']:.3f}"]))
+        out += ["", f"Mean NDVI **{s['mean_ndvi']:+.4f}** · "
+                    f"mean MNDWI **{s['mean_mndwi']:+.4f}** · "
+                    f"mean NDBI **{s['mean_ndbi']:+.4f}**.", ""]
+        return out
+
+    c = a["change"]
+    if "error" in c:
+        return out + [f"_{c['error']}_", ""]
+    d1, d2 = a["dates"][0] or "t1", a["dates"][1] or "t2"
+    out += [f"**{d1} → {d2}** · {c['area_km2']} km² compared.", "",
+            _row(["class", f"{d1} %", f"{d2} %", "Δ pp", "Δ relative",
+                  f"{d2} km²"]),
+            _row(["---", "---:", "---:", "---:", "---:", "---:"])]
+    for name, v in c["classes"].items():
+        rel = "—" if v["relative_pct"] is None else f"{v['relative_pct']:+.1f}%"
+        out.append(_row([name, f"{v['t1_pct']:.2f}%", f"{v['t2_pct']:.2f}%",
+                         f"{v['delta_pp']:+.2f}", rel, f"{v['t2_km2']:.3f}"]))
+
+    vg, wt, nb = (c["vegetation_index_change"], c["water_index_change"],
+                  c["new_built_up"])
+    out += ["",
+            f"**Vegetation.** Mean ΔNDVI {vg['mean_dndvi']:+.4f}. "
+            f"{vg['gain_pct']:.2f}% of the area gained vegetation "
+            f"(ΔNDVI > +0.10) and {vg['loss_pct']:.2f}% lost it; "
+            f"{vg['changed_pct']:.2f}% changed either way.",
+            "",
+            f"**Urbanisation.** Built-up cover moved from "
+            f"{c['classes']['built-up']['t1_pct']:.2f}% to "
+            f"{c['classes']['built-up']['t2_pct']:.2f}% of the area "
+            f"({c['classes']['built-up']['delta_pp']:+.2f} pp). "
+            f"{nb['km2']:.3f} km² became built-up that was not before "
+            f"({nb['pct_of_scene']:.2f}% of the scene)"
+            + (", converted from "
+               + ", ".join(f"{k} {v:.1f}%"
+                           for k, v in nb["converted_from_pct"].items())
+               if nb["converted_from_pct"] else "") + ".",
+            "",
+            f"**Water.** Open water moved from "
+            f"{c['classes']['water']['t1_pct']:.2f}% to "
+            f"{c['classes']['water']['t2_pct']:.2f}% "
+            f"({c['classes']['water']['delta_pp']:+.2f} pp). "
+            f"Mean ΔMNDWI {wt['mean_dmndwi']:+.4f}; {wt['gain_pct']:.2f}% of "
+            f"the area wetted and {wt['loss_pct']:.2f}% dried.",
+            "",
+            f"**{c['transitioned_pct']:.2f}%** of pixels changed class "
+            f"between the two dates.", ""]
+    return out
+
