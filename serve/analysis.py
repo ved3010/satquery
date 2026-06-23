@@ -310,3 +310,38 @@ def to_markdown(a: dict[str, Any]) -> list[str]:
             f"between the two dates.", ""]
     return out
 
+
+def dominant_class(a: dict[str, Any]) -> str | None:
+    """The largest measured class, for cross-checking a generated description.
+
+    Taken from the later acquisition in a bi-temporal run, because that is the
+    image a scene description is generated from.
+    """
+    if not a.get("available"):
+        return None
+    scene = a.get("scene") or a.get("t2")
+    cover = (scene or {}).get("cover")
+    if not cover:
+        return None
+    return max(cover.items(), key=lambda kv: kv[1]["pct"])[0]
+
+
+def headline(a: dict[str, Any]) -> list[dict[str, Any]]:
+    """The three numbers the console shows as tiles. Empty when not measurable."""
+    if not a.get("available"):
+        return []
+    if a["mode"] == "single":
+        cv = a["scene"].get("cover", {})
+        return [{"label": "VEGETATION", "value": f"{cv.get('vegetation', {}).get('pct', 0):.2f}%",
+                 "note": f"{cv.get('vegetation', {}).get('km2', 0):.2f} km²"},
+                {"label": "BUILT-UP", "value": f"{cv.get('built-up', {}).get('pct', 0):.2f}%",
+                 "note": f"{cv.get('built-up', {}).get('km2', 0):.2f} km²"},
+                {"label": "WATER", "value": f"{cv.get('water', {}).get('pct', 0):.2f}%",
+                 "note": f"{cv.get('water', {}).get('km2', 0):.2f} km²"}]
+    c = a["change"]["classes"]
+    return [{"label": "VEGETATION", "value": f"{c['vegetation']['delta_pp']:+.2f} pp",
+             "note": f"{c['vegetation']['t1_pct']:.2f}% → {c['vegetation']['t2_pct']:.2f}%"},
+            {"label": "URBANISATION", "value": f"{c['built-up']['delta_pp']:+.2f} pp",
+             "note": f"{a['change']['new_built_up']['km2']:.3f} km² newly built-up"},
+            {"label": "WATER", "value": f"{c['water']['delta_pp']:+.2f} pp",
+             "note": f"{c['water']['t1_pct']:.2f}% → {c['water']['t2_pct']:.2f}%"}]
