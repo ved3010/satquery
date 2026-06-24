@@ -78,3 +78,43 @@ INDIAN_CITIES_INDEX: list[dict[str, Any]] = [
     {"name": "Durgapur", "state": "West Bengal", "type": "Steel & Heavy Industrial Hub", "coords": [87.3119, 23.5204], "bbox": [87.27, 23.48, 87.35, 23.56]},
     {"name": "Siliguri", "state": "West Bengal", "type": "Corridor to North-East", "coords": [88.4352, 26.7271], "bbox": [88.39, 26.68, 88.47, 26.77]},
 
+    # Rajasthan
+    {"name": "Jaipur Walled City & Amer", "state": "Rajasthan", "type": "Pink City Heritage Center", "coords": [75.8267, 26.9124], "bbox": [75.78, 26.87, 75.86, 26.95]},
+    {"name": "Jodhpur Mehrangarh", "state": "Rajasthan", "type": "Blue City & Desert Core", "coords": [73.0243, 26.2389], "bbox": [72.98, 26.19, 73.06, 26.28]},
+    {"name": "Udaipur Lake Pichola", "state": "Rajasthan", "type": "Lake City & Aravalli Basin", "coords": [73.6835, 24.5764], "bbox": [73.64, 24.53, 73.72, 24.62]},
+    {"name": "Kota Chambal River", "state": "Rajasthan", "type": "Education & Hydro Hub", "coords": [75.8362, 25.1800], "bbox": [75.79, 25.14, 75.88, 25.22]},
+    {"name": "Jaisalmer Fort", "state": "Rajasthan", "type": "Thar Desert Golden Fortress", "coords": [70.9160, 26.9157], "bbox": [70.87, 26.87, 70.96, 26.96]},
+
+    # Uttar Pradesh, Bihar, MP, Odisha, etc.
+    {"name": "Varanasi Kashi Vishwanath Ghats", "state": "Uttar Pradesh", "type": "Sacred Ganga Riverfront", "coords": [83.0064, 25.3109], "bbox": [82.96, 25.27, 83.05, 25.35]},
+    {"name": "Lucknow Hazratganj", "state": "Uttar Pradesh", "type": "Gomti River State Capital", "coords": [80.9462, 26.8467], "bbox": [80.90, 26.80, 80.99, 26.89]},
+    {"name": "Kanpur", "state": "Uttar Pradesh", "type": "Ganga Basin Industrial City", "coords": [80.3319, 26.4499], "bbox": [80.28, 26.40, 80.38, 26.49]},
+    {"name": "Agra Taj Mahal", "state": "Uttar Pradesh", "type": "Yamuna Heritage Monument", "coords": [78.0421, 27.1751], "bbox": [78.00, 27.13, 78.08, 27.21]},
+    {"name": "Prayagraj (Allahabad) Sangam", "state": "Uttar Pradesh", "type": "Ganga-Yamuna Confluence", "coords": [81.8463, 25.4358], "bbox": [81.80, 25.39, 81.89, 25.47]},
+    {"name": "Patna Ganga Riverfront", "state": "Bihar", "type": "Ancient Pataliputra Capital", "coords": [85.1376, 25.5941], "bbox": [85.09, 25.55, 85.18, 25.64]},
+    {"name": "Bhopal Upper Lake", "state": "Madhya Pradesh", "type": "City of Lakes Capital", "coords": [77.4126, 23.2599], "bbox": [77.37, 23.21, 77.46, 23.30]},
+    {"name": "Indore Rajwada", "state": "Madhya Pradesh", "type": "Commercial & Cleanest City", "coords": [75.8577, 22.7196], "bbox": [75.81, 22.67, 75.90, 22.76]},
+    {"name": "Gwalior Fort", "state": "Madhya Pradesh", "type": "Historic Fort City", "coords": [78.1828, 26.2183], "bbox": [78.14, 26.17, 78.22, 26.26]},
+    {"name": "Bhubaneswar", "state": "Odisha", "type": "Temple & IT City", "coords": [85.8245, 20.2961], "bbox": [85.78, 20.25, 85.87, 20.34]},
+    {"name": "Cuttack Mahanadi", "state": "Odisha", "type": "Silver City & Mahanadi Delta", "coords": [85.8830, 20.4625], "bbox": [85.84, 20.42, 85.92, 20.50]},
+    {"name": "Ranchi", "state": "Jharkhand", "type": "Chota Nagpur Plateau Capital", "coords": [85.3096, 23.3441], "bbox": [85.26, 23.30, 85.35, 23.39]},
+    {"name": "Jamshedpur Tata Steel City", "state": "Jharkhand", "type": "Planned Industrial Center", "coords": [86.2029, 22.8046], "bbox": [86.16, 22.76, 86.25, 22.85]},
+    {"name": "Raipur", "state": "Chhattisgarh", "type": "Mineral & Industrial Capital", "coords": [81.6296, 21.2514], "bbox": [81.58, 21.21, 81.67, 21.29]},
+
+    # North-East, Mountains, and Islands
+    {"name": "Guwahati Brahmaputra", "state": "Assam", "type": "Gateway to North-East India", "coords": [91.7362, 26.1445], "bbox": [91.69, 26.10, 91.78, 26.19]},
+    {"name": "Shillong", "state": "Meghalaya", "type": "Scotland of the East Plateau", "coords": [91.8933, 25.5788], "bbox": [91.85, 25.53, 91.93, 25.62]},
+    {"name": "Dehradun", "state": "Uttarakhand", "type": "Doon Valley Himalayan Foothills", "coords": [78.0322, 30.3165], "bbox": [77.99, 30.27, 78.07, 30.36]},
+    {"name": "Shimla Mall Road", "state": "Himachal Pradesh", "type": "Himalayan Ridge Capital", "coords": [77.1734, 31.1048], "bbox": [77.13, 31.06, 77.21, 31.14]},
+    {"name": "Srinagar Dal Lake", "state": "Jammu & Kashmir", "type": "Kashmir Valley Lake Basin", "coords": [74.7973, 34.0837], "bbox": [74.75, 34.04, 74.84, 34.12]},
+    {"name": "Jammu Tawi", "state": "Jammu & Kashmir", "type": "Winter Capital & Tawi River", "coords": [74.8570, 32.7266], "bbox": [74.81, 32.68, 74.90, 32.77]},
+    {"name": "Leh Ladakh", "state": "Ladakh", "type": "High Altitude Trans-Himalayas", "coords": [77.5771, 34.1526], "bbox": [77.53, 34.11, 77.62, 34.19]},
+    {"name": "Port Blair", "state": "Andaman & Nicobar", "type": "Island Territory Capital", "coords": [92.7265, 11.6234], "bbox": [92.68, 11.58, 92.77, 11.66]},
+]
+
+
+def search_locations(query: str, limit: int = 8) -> list[dict[str, Any]]:
+    """Search for locations across India using local indexing + OpenStreetMap Nominatim.
+    Always returns valid coordinates and bounding boxes.
+    """
+    q = query.strip()
