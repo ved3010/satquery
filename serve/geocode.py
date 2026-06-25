@@ -118,3 +118,43 @@ def search_locations(query: str, limit: int = 8) -> list[dict[str, Any]]:
     Always returns valid coordinates and bounding boxes.
     """
     q = query.strip()
+    if not q:
+        return INDIAN_CITIES_INDEX[:limit]
+
+    # Check direct GPS coordinates (e.g. '18.52, 73.85' or '73.85, 18.52')
+    coord_match = re.match(r"^([-+]?\d{1,2}(?:\.\d+)?)[,\s]+([-+]?\d{1,3}(?:\.\d+)?)$", q)
+    if coord_match:
+        p1 = float(coord_match.group(1))
+        p2 = float(coord_match.group(2))
+        lat, lon = p1, p2
+        if abs(p1) > 90 and abs(p2) <= 90:
+            lon, lat = p1, p2
+        return [{
+            "name": f"Coordinates ({lat:.4f}°N, {lon:.4f}°E)",
+            "state": "India",
+            "country": "India",
+            "type": "Custom Target Coordinates",
+            "coords": [round(lon, 4), round(lat, 4)],
+            "bbox": [round(lon - 0.02, 4), round(lat - 0.02, 4), round(lon + 0.02, 4), round(lat + 0.02, 4)],
+        }]
+
+    q_lower = q.lower()
+    if q_lower in _GEO_CACHE:
+        return _GEO_CACHE[q_lower]
+
+    # 1. High-precision local database matches (instant < 1ms)
+    matches = []
+    for item in INDIAN_CITIES_INDEX:
+        name_l = item["name"].lower()
+        state_l = item["state"].lower()
+        type_l = item["type"].lower()
+        if q_lower in name_l or q_lower in state_l or q_lower in type_l:
+            score = 100 if name_l.startswith(q_lower) else (80 if q_lower in name_l else 50)
+            matches.append((score, item))
+
+    matches.sort(key=lambda x: x[0], reverse=True)
+    results = [m[1] for m in matches]
+
+    # If we have at least 4 strong matches, return immediately
+    if len(results) >= 4:
+        _GEO_CACHE[q_lower] = results[:limit]
