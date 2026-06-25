@@ -158,3 +158,43 @@ def search_locations(query: str, limit: int = 8) -> list[dict[str, Any]]:
     # If we have at least 4 strong matches, return immediately
     if len(results) >= 4:
         _GEO_CACHE[q_lower] = results[:limit]
+        return results[:limit]
+
+    # 2. Server-side OpenStreetMap Nominatim with India bias
+    try:
+        encoded = urllib.parse.quote(q)
+        url = f"https://nominatim.openstreetmap.org/search?format=json&q={encoded}&countrycodes=in&addressdetails=1&limit={limit}"
+        req = urllib.request.Request(url, headers={
+            "User-Agent": "SatQuery-PanIndia-AI/1.0",
+            "Accept-Language": "en"
+        })
+        with urllib.request.urlopen(req, timeout=4) as resp:
+            data = json.loads(resp.read().decode())
+            for item in data:
+                lat = float(item["lat"])
+                lon = float(item["lon"])
+                bb = [float(x) for x in item.get("boundingbox", [lat - 0.02, lat + 0.02, lon - 0.02, lon + 0.02])]
+                south, north, west, east = bb[0], bb[1], bb[2], bb[3]
+                display_name = item.get("display_name", "")
+                parts = [p.strip() for p in display_name.split(",") if p.strip()]
+                name = parts[0] if parts else q.title()
+                state = item.get("address", {}).get("state", parts[-2] if len(parts) >= 2 else "India")
+                place_type = item.get("type", "Urban Location").replace("_", " ").title()
+
+                candidate = {
+                    "name": name,
+                    "state": state,
+                    "country": "India",
+                    "type": f"{place_type} · {state}",
+                    "coords": [round(lon, 5), round(lat, 5)],
+                    "bbox": [round(west, 5), round(south, 5), round(east, 5), round(north, 5)],
+                }
+                # Avoid duplicates
+                if not any(abs(r["coords"][0] - lon) < 0.03 and abs(r["coords"][1] - lat) < 0.03 for r in results):
+                    results.append(candidate)
+    except Exception:
+        pass
+
+    final_results = results[:limit] if results else INDIAN_CITIES_INDEX[:limit]
+    _GEO_CACHE[q_lower] = final_results
+    return final_results
