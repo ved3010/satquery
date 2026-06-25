@@ -92,3 +92,98 @@
   /* ─── PRELOADER ─────────────────────────────────────────── */
   .sq-preloader {
     position:fixed;inset:0;z-index:9999;
+    background:#0f0e0c;
+    display:flex;flex-direction:column;
+    justify-content:space-between;
+    padding:40px 50px;overflow:hidden;
+    font-family:'Space Grotesk',sans-serif;color:#E8DCC8;
+  }
+  .sq-preloader::before {
+    content:'';position:absolute;inset:0;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 80%,rgba(107,123,76,.08) 0%,transparent 70%),
+      radial-gradient(ellipse 60% 50% at 80% 20%,rgba(139,111,71,.06) 0%,transparent 70%),
+      radial-gradient(ellipse 40% 40% at 50% 50%,rgba(184,112,77,.04) 0%,transparent 70%);
+    pointer-events:none;
+  }
+  .sq-grid{
+    position:absolute;inset:0;
+    background-image:
+      linear-gradient(rgba(196,162,101,.025) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(196,162,101,.025) 1px,transparent 1px);
+    background-size:60px 60px;pointer-events:none;
+    opacity:0;animation:sqFadeIn 1.5s ease forwards .3s;
+  }
+  .sq-scan{
+    position:absolute;left:0;right:0;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(196,162,101,.12),transparent);
+    z-index:3;opacity:0;animation:sqScanDown 4s ease-in-out infinite 1s;
+  }
+  .sq-top{display:flex;justify-content:space-between;align-items:flex-start;position:relative;z-index:2}
+  .sq-brand{display:flex;align-items:center;gap:14px;opacity:0;transform:translateY(-20px);animation:sqSlideDown .8s ease forwards .2s}
+  .sq-icon{width:42px;height:42px;position:relative}
+  .sq-orbit{position:absolute;border-radius:50%;opacity:.4}
+  .sq-o1{width:42px;height:42px;top:0;left:0;border:1.5px solid #C4A265;animation:sqSpin 8s linear infinite}
+  .sq-o2{width:30px;height:30px;top:6px;left:6px;border:1.5px solid #B8704D;animation:sqSpin 5s linear infinite reverse}
+  .sq-o3{width:18px;height:18px;top:12px;left:12px;border:1px solid #6B7B4C;animation:sqSpin 3s linear infinite}
+  .sq-sat{position:absolute;width:5px;height:5px;background:#C4A265;border-radius:50%;top:0;left:19px;box-shadow:0 0 10px rgba(196,162,101,.7);animation:sqSpin 8s linear infinite;transform-origin:2px 21px}
+  .sq-bname{font-weight:700;font-size:18px;letter-spacing:4px;text-transform:uppercase;color:#E8DCC8}
+  .sq-topR{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#5a5347;text-align:right;line-height:1.8;opacity:0;animation:sqFadeIn .8s ease forwards .6s}
+  .sq-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:2}
+  .sq-counter{font-weight:300;font-size:clamp(90px,16vw,200px);line-height:1;opacity:0;animation:sqFadeIn .6s ease forwards .4s;
+    background:linear-gradient(180deg,#E8DCC8 0%,rgba(196,162,101,.6) 100%);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .sq-pct{font-size:.3em;vertical-align:super;background:none;-webkit-text-fill-color:#C4A265;margin-left:2px}
+  .sq-tagline{margin-top:28px;font-family:'Instrument Sans',sans-serif;font-size:13px;letter-spacing:5px;text-transform:uppercase;color:#5a5347;opacity:0;transform:translateY(20px);animation:sqSlideUp .8s ease forwards .8s}
+  .sq-tline{display:block;width:40px;height:1px;background:#C4A265;margin:14px auto 0;opacity:0;animation:sqFadeIn 1s ease forwards 1.2s}
+  .sq-bottom{position:relative;z-index:2}
+  .sq-track{width:100%;height:1px;background:#3a352e;margin-bottom:28px;position:relative;opacity:0;animation:sqFadeIn .5s ease forwards .5s}
+  .sq-fill{height:100%;width:0%;background:linear-gradient(90deg,#6B7B4C,#C4A265,#B8704D);transition:width .08s linear;position:relative}
+  .sq-glow{position:absolute;right:-4px;top:-4px;width:9px;height:9px;background:#C4A265;border-radius:50%;box-shadow:0 0 16px rgba(196,162,101,.5),0 0 4px rgba(196,162,101,.8)}
+  .sq-binfo{display:flex;justify-content:space-between;align-items:flex-end}
+  .sq-words{display:flex;flex-direction:column;gap:5px}
+  .sq-word{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#3a352e;transition:all .5s cubic-bezier(.4,0,.2,1);transform:translateX(-8px);opacity:0}
+  .sq-word.active{color:#C4A265;transform:translateX(0);opacity:1}
+  .sq-word.done{color:#6B7B4C;transform:translateX(0);opacity:.4}
+  .sq-bR{text-align:right;opacity:0;animation:sqFadeIn .8s ease forwards 1s}
+  .sq-coord{font-family:'Space Grotesk',monospace;font-size:11px;color:#5a5347;letter-spacing:1px}
+  .sq-coord span{color:#C4A265}
+  .sq-particle{position:absolute;border-radius:50%;pointer-events:none;z-index:2}
+  .sq-curtain{position:fixed;left:0;right:0;height:51%;background:#0f0e0c;z-index:10000;pointer-events:none}
+  .sq-ct{top:0;transform:translateY(-101%)}
+  .sq-cb{bottom:0;transform:translateY(101%)}
+  .sq-curtain.close{transition:transform .7s cubic-bezier(.76,0,.24,1)}
+  .sq-curtain.close.sq-ct{transform:translateY(0)}
+  .sq-curtain.close.sq-cb{transform:translateY(0)}
+  .sq-curtain.open{transition:transform .8s cubic-bezier(.76,0,.24,1)}
+  .sq-curtain.open.sq-ct{transform:translateY(-101%)}
+  .sq-curtain.open.sq-cb{transform:translateY(101%)}
+
+  @keyframes sqFadeIn{to{opacity:1}}
+  @keyframes sqSlideDown{to{opacity:1;transform:translateY(0)}}
+  @keyframes sqSlideUp{to{opacity:1;transform:translateY(0)}}
+  @keyframes sqSpin{to{transform:rotate(360deg)}}
+  @keyframes sqScanDown{0%{top:0;opacity:0}10%{opacity:1}90%{opacity:1}100%{top:100%;opacity:0}}
+  @keyframes sqFloat{0%,100%{transform:translateY(0) scale(1);opacity:0}10%{opacity:.6}50%{transform:translateY(-40px) scale(1.2);opacity:.3}90%{opacity:.5}}
+</style>
+</head>
+<body>
+
+<!-- ── PRELOADER ─────────────────────────────────────────────── -->
+<div class="sq-preloader" id="sqPre">
+  <div class="sq-grid"></div>
+  <div class="sq-scan"></div>
+  <div class="sq-particle" style="width:2px;height:2px;background:#C4A265;left:12%;top:25%;animation:sqFloat 6s ease-in-out 0s infinite"></div>
+  <div class="sq-particle" style="width:3px;height:3px;background:#B8704D;left:78%;top:18%;animation:sqFloat 5s ease-in-out .8s infinite"></div>
+  <div class="sq-particle" style="width:2px;height:2px;background:#6B7B4C;left:42%;top:72%;animation:sqFloat 7s ease-in-out 1.5s infinite"></div>
+  <div class="sq-particle" style="width:1.5px;height:1.5px;background:#C4A265;left:88%;top:55%;animation:sqFloat 5.5s ease-in-out 2s infinite"></div>
+  <div class="sq-particle" style="width:2px;height:2px;background:#E8DCC8;left:22%;top:82%;animation:sqFloat 6.5s ease-in-out .5s infinite"></div>
+  <div class="sq-particle" style="width:1.5px;height:1.5px;background:#B8704D;left:65%;top:40%;animation:sqFloat 4.5s ease-in-out 1.2s infinite"></div>
+  <div class="sq-top">
+    <div class="sq-brand">
+      <div class="sq-icon">
+        <div class="sq-orbit sq-o1"></div>
+        <div class="sq-orbit sq-o2"></div>
+        <div class="sq-orbit sq-o3"></div>
+        <div class="sq-sat"></div>
+      </div>
