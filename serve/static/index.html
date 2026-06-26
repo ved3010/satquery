@@ -282,3 +282,98 @@
       </div>
 
       <!-- ── question ─────────────────────────────────────────── -->
+      <label style="margin-top:15px">Question</label>
+      <textarea id="q" placeholder="Describe the land-cover and major objects visible in this image."></textarea>
+      <div class="chips" id="examples"></div>
+      <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+        <button id="run">Run query</button>
+        <button class="ghost" id="clear">Clear</button>
+      </div>
+      <div class="err" id="err"></div>
+    </div>
+
+    <div class="card">
+      <h2>Model registry</h2>
+      <div class="models" id="registry"><span class="muted">loading…</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="card">
+      <h2>Result</h2>
+      <div id="result"><span class="muted">Pick an area, fetch imagery, then ask a
+        question. You'll get the answer, the models the agent selected, and the
+        full execution trace.</span></div>
+    </div>
+    <div class="card">
+      <h2>Recent runs</h2>
+      <div id="runs"><span class="muted">none yet</span></div>
+    </div>
+  </section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const API = location.origin;
+const $ = id => document.getElementById(id);
+let AOI = null;          // [w,s,e,n]
+let FETCHED = [];        // image refs from /aoi/fetch
+let MODE = "map";
+
+// ── map ───────────────────────────────────────────────────────────
+const map = L.map("map", { zoomControl:true }).setView([23.03, 72.58], 12);
+// Esri World Imagery: real satellite basemap, no API key required.
+L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+  { maxZoom: 19, attribution: "Esri, Maxar, Earthstar Geographics" }).addTo(map);
+
+let box = null, dragStart = null, ghost = null;
+
+// Drag draws a rectangle; Shift+drag pans. Implemented directly rather than
+// pulling in leaflet-draw — one dependency less to load, and the interaction
+// is a single gesture.
+map.dragging.disable();
+map.on("mousedown", e => {
+  if (e.originalEvent.shiftKey) return;
+  dragStart = e.latlng;
+  if (ghost){ map.removeLayer(ghost); ghost = null; }
+});
+map.on("mousemove", e => {
+  if (!dragStart) return;
+  const b = L.latLngBounds(dragStart, e.latlng);
+  if (ghost) ghost.setBounds(b);
+  else ghost = L.rectangle(b, {color:"#2f81f7", weight:2, fillOpacity:.12}).addTo(map);
+});
+map.on("mouseup", e => {
+  if (!dragStart) return;
+  const b = L.latLngBounds(dragStart, e.latlng);
+  dragStart = null;
+  if (box) map.removeLayer(box);
+  if (ghost){ map.removeLayer(ghost); ghost = null; }
+  const w = b.getWest(), s = b.getSouth(), ee = b.getEast(), n = b.getNorth();
+  if (Math.abs(ee-w) < 1e-4 || Math.abs(n-s) < 1e-4){ setAOI(null); return; }
+  box = L.rectangle(b, {color:"#2f81f7", weight:2, fillOpacity:.12}).addTo(map);
+  setAOI([w, s, ee, n]);
+});
+document.addEventListener("keydown", e => { if (e.key === "Shift") map.dragging.enable(); });
+document.addEventListener("keyup",   e => { if (e.key === "Shift") map.dragging.disable(); });
+
+function setAOI(b){
+  AOI = b;
+  $("fetch").disabled = !b;
+  if (!b){ $("aoiInfo").textContent = "draw a box first"; return; }
+  // rough ground size: 1 deg lat ~ 111 km, lon scaled by cos(lat)
+  const midLat = (b[1]+b[3])/2;
+  const kmW = (b[2]-b[0]) * 111.32 * Math.cos(midLat*Math.PI/180);
+  const kmH = (b[3]-b[1]) * 110.57;
+  const big = (kmW > 10 || kmH > 10);
+  $("aoiInfo").innerHTML = `${kmW.toFixed(1)} × ${kmH.toFixed(1)} km` +
+    (big ? ' <span style="color:var(--warn)">— likely too large, draw smaller</span>' : "");
+}
+
+// the eight IndiaSat regions — one click each, spanning every climate zone
+const PRESETS = [
+  ["Ahmedabad", 23.03, 72.58], ["Ludhiana", 30.90, 75.85],
+  ["Kochi", 9.93, 76.27],      ["Sundarbans", 21.95, 88.90],
+  ["Jaisalmer", 26.91, 70.92], ["Guwahati", 26.14, 91.73],
+  ["Pune", 18.52, 73.86],      ["Shimla", 31.10, 77.17],
+];
