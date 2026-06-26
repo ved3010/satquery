@@ -187,3 +187,98 @@
         <div class="sq-orbit sq-o3"></div>
         <div class="sq-sat"></div>
       </div>
+      <div class="sq-bname">SatQuery</div>
+    </div>
+    <div class="sq-topR">Spatial Intelligence<br>Engine v2.0</div>
+  </div>
+  <div class="sq-center">
+    <div class="sq-counter" id="sqCounter"><span id="sqNum">0</span><span class="sq-pct">%</span></div>
+    <div class="sq-tagline">Satellite Data Analysis Platform</div>
+    <span class="sq-tline"></span>
+  </div>
+  <div class="sq-bottom">
+    <div class="sq-track"><div class="sq-fill" id="sqFill"><div class="sq-glow"></div></div></div>
+    <div class="sq-binfo">
+      <div class="sq-words">
+        <div class="sq-word" id="sw0">Initializing Systems</div>
+        <div class="sq-word" id="sw1">Loading Geospatial Data</div>
+        <div class="sq-word" id="sw2">Rendering Terrain Maps</div>
+        <div class="sq-word" id="sw3">Calibrating Sensors</div>
+        <div class="sq-word" id="sw4">Ready for Launch</div>
+      </div>
+      <div class="sq-bR">
+        <div class="sq-coord"><span>LAT</span> 28.6139°N</div>
+        <div class="sq-coord"><span>LNG</span> 77.2090°E</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="sq-curtain sq-ct" id="sqCT"></div>
+<div class="sq-curtain sq-cb" id="sqCB"></div>
+<!-- ── END PRELOADER ─────────────────────────────────────────── -->
+
+<header>
+  <h1>SatQuery AI</h1>
+  <span class="sub">agentic remote-sensing assistant · SIH PS 26167</span>
+  <span class="pill" id="health">checking…</span>
+</header>
+
+<main>
+  <section>
+    <div class="card">
+      <div class="tabs">
+        <button class="tab sel" id="tabMap">Pick an area on the map</button>
+        <button class="tab" id="tabUp">Upload images</button>
+      </div>
+
+      <!-- ── map mode ─────────────────────────────────────────── -->
+      <div id="modeMap">
+        <div id="map"></div>
+        <div class="hint">
+          <b>Drag on the map</b> to draw a box (hold <kbd>Shift</kbd> to pan instead).
+          Keep it under ~10 km a side — bigger areas are refused, and the whole
+          box must sit inside one Sentinel scene.
+        </div>
+        <div class="chips" id="presets"></div>
+
+        <div class="row" style="margin-top:11px">
+          <div><label>Imagery from</label><input type="date" id="d1" value="2024-01-01"></div>
+          <div><label>to</label><input type="date" id="d2" value="2024-12-31"></div>
+        </div>
+        <div class="row3">
+          <div><label>Max cloud %</label><input type="number" id="cloud" value="20" min="0" max="100"></div>
+          <div><label>SAR (Sentinel-1)</label>
+            <select id="sar"><option value="1">fetch if quick</option><option value="0">skip</option></select></div>
+          <div><label>Compare to</label>
+            <select id="bit"><option value="">single date</option>
+              <option value="2021">2021 (change)</option>
+              <option value="2020">2020 (change)</option>
+              <option value="2019">2019 (change)</option></select></div>
+        </div>
+
+        <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+          <button id="fetch" disabled>Fetch imagery</button>
+          <span class="muted" id="aoiInfo">draw a box first</span>
+        </div>
+        <div id="fetched"></div>
+      </div>
+
+      <!-- ── upload mode ──────────────────────────────────────── -->
+      <div id="modeUp" class="hidden">
+        <label>Image 1 <span class="muted">(GeoTIFF / TIFF / PNG / JPEG)</span></label>
+        <input type="file" id="f1" accept=".tif,.tiff,.png,.jpg,.jpeg">
+        <div class="row">
+          <div><label>Modality</label><select id="mod1"><option value="">auto</option>
+            <option value="optical">optical</option><option value="sar">SAR</option></select></div>
+          <div><label>Date</label><input type="text" id="ud1" placeholder="2024-01-15"></div>
+        </div>
+        <label style="margin-top:12px">Image 2 <span class="muted">— second date, or the SAR half</span></label>
+        <input type="file" id="f2" accept=".tif,.tiff,.png,.jpg,.jpeg">
+        <div class="row">
+          <div><label>Modality</label><select id="mod2"><option value="">auto</option>
+            <option value="optical">optical</option><option value="sar">SAR</option></select></div>
+          <div><label>Date</label><input type="text" id="ud2" placeholder="2021-01-15"></div>
+        </div>
+      </div>
+
+      <!-- ── question ─────────────────────────────────────────── -->
