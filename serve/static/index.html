@@ -377,3 +377,98 @@ const PRESETS = [
   ["Jaisalmer", 26.91, 70.92], ["Guwahati", 26.14, 91.73],
   ["Pune", 18.52, 73.86],      ["Shimla", 31.10, 77.17],
 ];
+$("presets").innerHTML = PRESETS.map(([n,la,lo]) =>
+  `<button class="chip" data-la="${la}" data-lo="${lo}">${n}</button>`).join("");
+$("presets").onclick = e => {
+  const t = e.target; if (!t.dataset.la) return;
+  const la = +t.dataset.la, lo = +t.dataset.lo, d = 0.02;   // ~4 km box
+  map.setView([la, lo], 13);
+  if (box) map.removeLayer(box);
+  const b = L.latLngBounds([la-d, lo-d], [la+d, lo+d]);
+  box = L.rectangle(b, {color:"#2f81f7", weight:2, fillOpacity:.12}).addTo(map);
+  setAOI([lo-d, la-d, lo+d, la+d]);
+};
+
+// ── tabs ──────────────────────────────────────────────────────────
+$("tabMap").onclick = () => {
+  MODE = "map"; $("tabMap").classList.add("sel"); $("tabUp").classList.remove("sel");
+  $("modeMap").classList.remove("hidden"); $("modeUp").classList.add("hidden");
+  setTimeout(() => map.invalidateSize(), 50);
+};
+$("tabUp").onclick = () => {
+  MODE = "upload"; $("tabUp").classList.add("sel"); $("tabMap").classList.remove("sel");
+  $("modeUp").classList.remove("hidden"); $("modeMap").classList.add("hidden");
+};
+
+// ── examples ──────────────────────────────────────────────────────
+const EXAMPLES = [
+  "Describe the land-cover and major objects visible in this image.",
+  "Is a building present?",
+  "Highlight the water body referred to in the query.",
+  "What changed between these two dates, and where did the change occur?",
+  "Has the built-up area increased, decreased, or remained unchanged?",
+  "Use the optical and SAR images together to identify built-up and water-covered regions."
+];
+$("examples").innerHTML = EXAMPLES.map(e =>
+  `<button class="chip" data-q="${e.replace(/"/g,'&quot;')}">${e.length>42?e.slice(0,42)+'…':e}</button>`).join("");
+$("examples").onclick = e => { if (e.target.dataset.q) $("q").value = e.target.dataset.q; };
+
+function esc(s){ return String(s ?? "").replace(/[<>&]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;"}[c])); }
+
+// ── fetch imagery for the AOI ─────────────────────────────────────
+$("fetch").onclick = async () => {
+  if (!AOI) return;
+  $("err").textContent = "";
+  $("fetch").disabled = true;
+  $("fetched").innerHTML = '<div class="hint"><span class="spin"></span>searching Sentinel archives and reading bands… this can take 30–90 s on a slow link.</div>';
+  try{
+    const bit = $("bit").value;
+    const body = {
+      bbox: AOI, start: $("d1").value, end: $("d2").value,
+      max_cloud: +$("cloud").value, want_sar: $("sar").value === "1",
+      start2: bit ? `${bit}-01-01` : null,
+      end2:   bit ? `${bit}-12-31` : null
+    };
+    const r = await fetch(API + "/aoi/fetch", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify(body)});
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || "fetch failed");
+    FETCHED = d.images;
+
+    let h = "";
+    (d.warnings||[]).forEach(w => h += `<div class="note"><b>Note.</b> ${esc(w)}</div>`);
+    h += `<div class="previews">` + d.images.map(i =>
+      `<div class="pv"><img src="${i.preview}" alt="${esc(i.role)}">
+        <div class="cap">${esc(i.role)}<br>${esc(i.date)}</div></div>`).join("") + `</div>`;
+    h += `<div class="hint"><b>${d.size_px[0]}×${d.size_px[1]} px</b>
+      (${d.ground_km[0]}×${d.ground_km[1]} km) · sources: ` +
+      d.scenes.map(s => `${esc(s.id)} <span class="muted">${esc(s.date)}${
+        s.cloud!=null ? ` · ${s.cloud}% cloud` : ""}</span>`).join(" · ") + `</div>`;
+    $("fetched").innerHTML = h;
+  }catch(e){
+    $("err").textContent = e.message;
+    $("fetched").innerHTML = "";
+  }finally{ $("fetch").disabled = false; }
+};
+
+async function upload(input){
+  if (!input.files || !input.files[0]) return null;
+  const fd = new FormData(); fd.append("file", input.files[0]);
+  const r = await fetch(API + "/upload", { method:"POST", body: fd });
+  if (!r.ok) throw new Error((await r.json()).detail || "upload failed");
+  return await r.json();
+}
+
+// ── run the query ─────────────────────────────────────────────────
+$("run").onclick = async () => {
+  const q = $("q").value.trim();
+  $("err").textContent = "";
+  if (!q){ $("err").textContent = "Enter a question."; return; }
+
+  let images = [];
+  if (MODE === "map"){
+    if (!FETCHED.length){ $("err").textContent = "Fetch imagery for the area first."; return; }
+    images = FETCHED.map(i => ({ path:i.path, modality:i.modality, date:i.date }));
+  }
+  $("run").disabled = true;
