@@ -472,3 +472,98 @@ $("run").onclick = async () => {
     images = FETCHED.map(i => ({ path:i.path, modality:i.modality, date:i.date }));
   }
   $("run").disabled = true;
+  $("result").innerHTML = '<span class="spin"></span><span class="muted">running…</span>';
+  try{
+    if (MODE === "upload"){
+      for (const [fi, mi, di] of [["f1","mod1","ud1"], ["f2","mod2","ud2"]]){
+        const up = await upload($(fi));
+        if (!up) continue;
+        images.push({ path: up.path, modality: $(mi).value || up.modality || "optical",
+                      date: $(di).value || null });
+      }
+    }
+    const r = await fetch(API + "/query", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ query:q, images })});
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || "query failed");
+    render(d); recent();
+  }catch(e){
+    $("err").textContent = e.message;
+    $("result").innerHTML = '<span class="muted">no result</span>';
+  }finally{ $("run").disabled = false; }
+};
+
+function render(d){
+  let h = "";
+  if (d.rejected){
+    h += `<div class="note"><b>Refused.</b> ${esc(d.rejected)}
+      <div class="muted" style="margin-top:5px">Correctly refusing an impossible
+      request is required behaviour — PS 26167 asks for input compatibility
+      checking.</div></div>`;
+  } else {
+    h += `<p class="answer">${esc(d.answer) || '<span class="muted">no answer produced</span>'}</p>`;
+  }
+  h += `<div class="meta">
+      <span>task <b>${esc(d.task || "—")}</b></span>
+      <span>input <b>${esc(d.input_config)}</b></span>
+      <span>models <b>${(d.models_invoked||[]).join(", ") || "—"}</b></span>
+      <span>conf <b>${d.confidence != null ? d.confidence.toFixed(3) : "—"}</b></span>
+      <span>total <b>${d.total_ms} ms</b></span></div>`;
+  h += `<table><thead><tr><th>#</th><th>step</th><th>model</th>
+        <th>key parameters</th><th class="num">ms</th><th class="num">conf</th></tr></thead><tbody>`;
+  (d.steps||[]).forEach((s,i) => {
+    const p = Object.entries(s.params||{}).map(([k,v]) => `${k}=${v}`).join(", ") || "—";
+    const stub = s.params && s.params.STUB;
+    h += `<tr><td class="num">${i+1}</td>
+      <td>${esc(s.node)}${s.error ? ` <span class="tag stub">${esc(s.error.slice(0,26))}</span>`:""}</td>
+      <td>${s.model_id ? esc(s.model_id)+" "+esc(s.model_name) : "—"}
+          ${stub ? '<span class="tag stub">STUB</span>' : ""}</td>
+      <td>${esc(p)}</td><td class="num">${s.latency_ms}</td>
+      <td class="num">${s.confidence != null ? s.confidence.toFixed(2) : "—"}</td></tr>`;
+  });
+  h += `</tbody></table>
+        <div style="margin-top:11px"><button class="ghost" id="dl">Download report (.md)</button></div>`;
+  $("result").innerHTML = h;
+  $("dl").onclick = () => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([d.markdown||""], {type:"text/markdown"}));
+    a.download = `${d.run_id}.md`; a.click();
+  };
+}
+
+$("clear").onclick = () => {
+  ["q","f1","f2","ud1","ud2"].forEach(i => { if ($(i)) $(i).value = ""; });
+  if (box){ map.removeLayer(box); box = null; }
+  setAOI(null); FETCHED = [];
+  $("fetched").innerHTML = ""; $("err").textContent = "";
+  $("result").innerHTML = '<span class="muted">Pick an area and ask a question.</span>';
+};
+
+async function health(){
+  try{
+    const j = await (await fetch(API + "/health")).json();
+    $("health").textContent = `backend up · ${(j.models_trained||[]).length}/${j.models_registered} trained`;
+    $("health").className = "pill on";
+  }catch{ $("health").textContent = "backend unreachable"; $("health").className = "pill off"; }
+}
+async function registry(){
+  try{
+    const ms = await (await fetch(API + "/models")).json();
+    $("registry").innerHTML = ms.map(m => `<div class="m"><span class="id">${m.id}</span>
+      <span class="nm">${m.name}</span>
+      <span class="muted">${m.n_images} img · ${m.params_m ?? "?"}M</span>
+      <span class="tag ${m.trained?"real":"stub"}">${m.trained?"trained":"stub"}</span></div>`).join("");
+  }catch{ $("registry").innerHTML = '<span class="muted">unavailable</span>'; }
+}
+async function recent(){
+  try{
+    const rs = await (await fetch(API + "/runs?limit=8")).json();
+    $("runs").innerHTML = rs.length ? `<table><thead><tr><th>query</th><th>task</th>
+      <th>models</th><th class="num">ms</th></tr></thead><tbody>` + rs.map(r =>
+      `<tr><td>${esc(r.query||"").slice(0,32)}</td>
+        <td>${esc(r.rejected?"refused":(r.task||"—"))}</td>
+        <td>${(r.models_invoked||[]).join(",")||"—"}</td>
+        <td class="num">${r.total_ms??"—"}</td></tr>`).join("") + "</tbody></table>"
+      : '<span class="muted">none yet</span>';
+  }catch{}
