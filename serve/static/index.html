@@ -567,3 +567,67 @@ async function recent(){
         <td class="num">${r.total_ms??"—"}</td></tr>`).join("") + "</tbody></table>"
       : '<span class="muted">none yet</span>';
   }catch{}
+}
+health(); registry(); recent(); setInterval(health, 15000);
+</script>
+
+<!-- ── PRELOADER SCRIPT ──────────────────────────────────────── -->
+<script>
+(function(){
+  const DUR = 4200;
+  const STEPS = [
+    {el:'sw0',s:0,e:20},{el:'sw1',s:20,e:45},{el:'sw2',s:45,e:65},
+    {el:'sw3',s:65,e:85},{el:'sw4',s:85,e:100}
+  ];
+  const num = document.getElementById('sqNum');
+  const fill = document.getElementById('sqFill');
+  const pre = document.getElementById('sqPre');
+  const ct = document.getElementById('sqCT');
+  const cb = document.getElementById('sqCB');
+  let t0 = null;
+
+  function ease(t){ return t===1?1:1-Math.pow(2,-10*t); }
+
+  function tick(ts){
+    if(!t0) t0=ts;
+    const raw = Math.min((ts-t0)/DUR,1);
+    const pct = Math.min(Math.round(ease(raw)*100), raw>=1?100:99);
+    num.textContent = pct;
+    fill.style.width = pct+'%';
+
+    STEPS.forEach(function(st){
+      const el = document.getElementById(st.el);
+      if(pct>=st.s && pct<st.e){ el.classList.add('active'); el.classList.remove('done'); }
+      else if(pct>=st.e){ el.classList.remove('active'); el.classList.add('done'); }
+      else { el.classList.remove('active','done'); }
+    });
+
+    if(raw<1){
+      requestAnimationFrame(tick);
+    } else {
+      num.textContent='100'; fill.style.width='100%';
+      document.getElementById('sw4').classList.add('active');
+      document.getElementById('sw4').classList.remove('done');
+
+      setTimeout(function(){
+        pre.style.transition='opacity 0.5s ease';
+        pre.style.opacity='0';
+        setTimeout(function(){
+          pre.style.display='none';
+          ct.classList.add('close'); cb.classList.add('close');
+          setTimeout(function(){
+            ct.classList.remove('close'); ct.classList.add('open');
+            cb.classList.remove('close'); cb.classList.add('open');
+            setTimeout(function(){
+              ct.style.display='none'; cb.style.display='none';
+            },900);
+          },700);
+        },500);
+      },500);
+    }
+  }
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
