@@ -20,3 +20,10 @@ class TestApiEndpoints(unittest.TestCase):
         response = self.client.get("/health")
         self.assertEqual(response.status_code, 200)
         data = response.json()
+        self.assertEqual(data["status"], "ok")
+        self.assertEqual(data["models_registered"], 8)
+        self.assertIn("M-2 single-image VQA", data["mandatory_coverage"])
+
+    def test_models_endpoint(self):
+        response = self.client.get("/models")
+        self.assertEqual(response.status_code, 200)
