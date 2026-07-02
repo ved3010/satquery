@@ -27,3 +27,11 @@ class TestApiEndpoints(unittest.TestCase):
     def test_models_endpoint(self):
         response = self.client.get("/models")
         self.assertEqual(response.status_code, 200)
+        models = response.json()
+        self.assertEqual(len(models), 8)
+        ids = {m["id"] for m in models}
+        self.assertTrue({"M1", "M2", "M3", "M4", "M5a", "M5b", "M6", "M7"}.issubset(ids))
+
+
+if __name__ == "__main__":
+    unittest.main()
