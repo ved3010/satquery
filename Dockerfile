@@ -10,3 +10,15 @@ RUN npm run build
 # Stage 2: Python Backend & Unified Runner
 FROM python:3.11-slim AS runner
 
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    gdal-bin \
+    libgdal-dev \
+    nodejs \
+    npm \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt ./
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
