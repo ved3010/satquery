@@ -22,3 +22,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt ./
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
+
+# Copy backend code
+COPY agent/ ./agent/
+COPY models/ ./models/
+COPY serve/ ./serve/
+COPY data/ ./data/
+COPY scripts/ ./scripts/
+
+# Copy built web application
+COPY --from=web-builder /app/web/.next ./web/.next
+COPY --from=web-builder /app/web/public ./web/public
+COPY --from=web-builder /app/web/package*.json ./web/
+COPY --from=web-builder /app/web/node_modules ./web/node_modules
+
+EXPOSE 8000 3001
+
+CMD ["uvicorn", "serve.api:app", "--host", "0.0.0.0", "--port", "8000"]
