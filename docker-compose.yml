@@ -10,3 +10,13 @@ services:
       - "8000:8000"
     environment:
       - PORT=8000
+    volumes:
+      - ./data:/app/data
+      - ./serve:/app/serve
+      - ./agent:/app/agent
+      - ./models:/app/models
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
