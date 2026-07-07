@@ -90,3 +90,43 @@ STATIC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 @app.get("/")
 def index():
     """Serve the test console at the API origin, so the page's fetch() calls
+    are same-origin and never hit CORS."""
+    return FileResponse(os.path.join(STATIC, "index.html"))
+
+
+@app.get("/health")
+def health() -> dict[str, Any]:
+    trained = [m for m, s in REGISTRY.items() if s.is_trained]
+    return {
+        "status": "ok",
+        "models_registered": len(REGISTRY),
+        "models_trained": trained,
+        "mandatory_coverage": assert_mandatory_coverage(),
+    }
+
+
+@app.get("/models")
+def models() -> list[dict[str, Any]]:
+    """Registry contents — the dashboard renders this as the model panel."""
+    return [{
+        "id": s.id, "name": s.name, "version": s.version,
+        "tasks": [t.value for t in s.tasks],
+        "modalities": [m.value for m in s.modalities],
+        "n_images": s.n_images, "runtime": s.runtime,
+        "params_m": s.params_m, "trained": s.is_trained,
+        "metrics": s.metrics, "notes": s.notes,
+    } for s in REGISTRY.values()]
+
+
+@app.post("/upload")
+async def upload(file: UploadFile = File(...)) -> dict[str, Any]:
+    """Store an uploaded image and return a path usable in /query.
+
+    Validation is deliberately strict here rather than deep in the graph: the
+    PS asks for "input upload and compatibility checking", and rejecting a bad
+    file at the door produces a much clearer error than a failure mid-pipeline.
+    """
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in ALLOWED_EXT:
+        raise HTTPException(415, f"Unsupported format {ext!r}. "
+                                 f"Allowed: {', '.join(sorted(ALLOWED_EXT))}")
