@@ -20,3 +20,13 @@ services:
   web:
     build:
       context: .
+      dockerfile: Dockerfile
+    command: npm --prefix web start -- -p 3001
+    ports:
+      - "3001:3001"
+    environment:
+      - SATQUERY_API=http://api:8000
+      - NEXT_PUBLIC_SATQUERY_API=http://localhost:8000
+    depends_on:
+      - api
+    restart: unless-stopped
