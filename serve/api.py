@@ -170,3 +170,96 @@ def aoi_fetch(req: AOIRequest) -> dict[str, Any]:
     Returns image refs usable directly in /query, plus the scene provenance
     (product id, date, cloud cover) so the answer can cite what it looked at.
     """
+    if len(req.bbox) != 4:
+        raise HTTPException(400, "bbox must be [west, south, east, north]")
+    w, s_, e, n = req.bbox
+    if not (-180 <= w < e <= 180 and -90 <= s_ < n <= 90):
+        raise HTTPException(400, "bbox is not a valid west/south/east/north box")
+
+    from serve.aoi import fetch_aoi
+    try:
+        out = fetch_aoi(req.bbox, req.start, req.end, req.max_cloud,
+                        req.want_sar, req.start2, req.end2)
+    except Exception as exc:
+        raise HTTPException(502, f"imagery fetch failed: {type(exc).__name__}: {exc}")
+    if "error" in out:
+        raise HTTPException(404, out["error"])
+
+    # hand back preview URLs the browser can load
+    for img in out["images"]:
+        img["preview"] = "/preview?path=" + quote(img["path"])
+    return out
+
+
+@app.get("/geocode")
+def geocode(q: str = "", limit: int = 8) -> list[dict[str, Any]]:
+    """Fast pan-India location search and autosuggestions."""
+    from serve.geocode import search_locations
+    return search_locations(q, limit=limit)
+
+
+@app.get("/preview")
+def preview(path: str, mode: str = "rgb"):
+    """Serve a fetched AOI image as PNG for display in the map console with optional spectral modes."""
+    real = os.path.realpath(path)
+    allowed = (os.path.realpath(os.path.join(ROOT, "data", "aoi_fetch")),
+               os.path.realpath(UPLOADS))
+    if not any(real.startswith(a + os.sep) for a in allowed):
+        raise HTTPException(403, "path outside the served directories")
+    if not os.path.exists(real):
+        raise HTTPException(404, "not found")
+
+    mode_suffix = "" if mode == "rgb" else f"_{mode}"
+    png = real.rsplit(".", 1)[0] + f"_preview{mode_suffix}.png"
+    if not os.path.exists(png):
+        try:
+            import numpy as np
+            from PIL import Image
+
+            stem = real.rsplit(".", 1)[0]
+            npz_path = stem + ".npz"
+
+            if mode != "rgb" and os.path.exists(npz_path):
+                z = np.load(npz_path)
+                if "s2" in z:
+                    s2 = z["s2"]
+                    def stretch(b):
+                        p2, p98 = np.percentile(b[b > 0] if np.any(b > 0) else b, (2, 98))
+                        if p98 <= p2: p98 = p2 + 1
+                        return np.clip((b.astype(float) - p2) / (p98 - p2) * 255, 0, 255).astype(np.uint8)
+
+                    if mode == "cir":
+                        # False Color Infrared: NIR(7), Red(3), Green(2)
+                        arr = np.stack([stretch(s2[7]), stretch(s2[3]), stretch(s2[2])], axis=-1)
+                        Image.fromarray(arr).save(png)
+                        return FileResponse(png, media_type="image/png")
+                    elif mode == "swir":
+                        # SWIR: SWIR2(11), NIR(7), Red(3)
+                        arr = np.stack([stretch(s2[11]), stretch(s2[7]), stretch(s2[3])], axis=-1)
+                        Image.fromarray(arr).save(png)
+                        return FileResponse(png, media_type="image/png")
+                    elif mode == "ndvi":
+                        # NDVI Heatmap: (NIR - Red) / (NIR + Red)
+                        nir = s2[7].astype(float)
+                        red = s2[3].astype(float)
+                        denom = nir + red
+                        denom[denom == 0] = 1e-6
+                        ndvi = (nir - red) / denom
+                        h, w = ndvi.shape
+                        rgb_ndvi = np.zeros((h, w, 3), dtype=np.uint8)
+                        rgb_ndvi[ndvi < 0.05] = [35, 95, 210]          # Water
+                        rgb_ndvi[(ndvi >= 0.05) & (ndvi < 0.2)] = [185, 150, 105]  # Built/Bare
+                        rgb_ndvi[(ndvi >= 0.2) & (ndvi < 0.45)] = [140, 195, 75]   # Sparse Veg
+                        rgb_ndvi[ndvi >= 0.45] = [25, 170, 55]         # Dense Veg
+                        Image.fromarray(rgb_ndvi).save(png)
+                        return FileResponse(png, media_type="image/png")
+
+            # Default RGB
+            import rasterio
+            with rasterio.open(real) as ds:
+                arr = ds.read([1, 2, 3]) if ds.count >= 3 else ds.read([1, 1, 1])
+            Image.fromarray(arr.transpose(1, 2, 0).astype("uint8")).save(png)
+        except Exception as exc:
+            raise HTTPException(500, f"preview failed: {exc}")
+    return FileResponse(png, media_type="image/png")
+
