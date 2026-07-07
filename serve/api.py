@@ -130,3 +130,43 @@ async def upload(file: UploadFile = File(...)) -> dict[str, Any]:
     if ext not in ALLOWED_EXT:
         raise HTTPException(415, f"Unsupported format {ext!r}. "
                                  f"Allowed: {', '.join(sorted(ALLOWED_EXT))}")
+
+    dest = os.path.join(UPLOADS, f"{uuid.uuid4().hex[:12]}{ext}")
+    size = 0
+    # Stream to a temp file so an oversized upload never lands in the store,
+    # and cannot fill the disk before the size check runs.
+    with tempfile.NamedTemporaryFile(delete=False, dir=UPLOADS) as tmp:
+        while chunk := await file.read(1 << 20):
+            size += len(chunk)
+            if size > MAX_BYTES:
+                tmp.close()
+                os.unlink(tmp.name)
+                raise HTTPException(413, f"File exceeds {MAX_BYTES // (1 << 20)} MB")
+            tmp.write(chunk)
+    shutil.move(tmp.name, dest)
+
+    return {"path": dest, "filename": file.filename, "bytes": size,
+            "modality": _guess_modality(file.filename or "")}
+
+
+def _guess_modality(name: str) -> str | None:
+    """Filename hint only — never authoritative.
+
+    Real modality comes from GeoTIFF metadata during INGEST. This exists so the
+    upload UI can pre-select a sensible dropdown value for the user to confirm.
+    """
+    low = name.lower()
+    if any(k in low for k in ("s1", "sar", "risat", "grd", "vv", "vh")):
+        return "sar"
+    if any(k in low for k in ("s2", "optical", "cartosat", "msi", "rgb")):
+        return "optical"
+    return None
+
+
+@app.post("/aoi/fetch")
+def aoi_fetch(req: AOIRequest) -> dict[str, Any]:
+    """Fetch live Sentinel imagery for a map-drawn area of interest.
+
+    Returns image refs usable directly in /query, plus the scene provenance
+    (product id, date, cloud cover) so the answer can cite what it looked at.
+    """
