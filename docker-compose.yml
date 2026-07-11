@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: uvicorn serve.api:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+    volumes:
+      - ./data:/app/data
+      - ./serve:/app/serve
+      - ./agent:/app/agent
+      - ./models:/app/models
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: npm --prefix web start -- -p 3001
+    ports:
+      - "3001:3001"
+    environment:
+      - SATQUERY_API=http://api:8000
+      - NEXT_PUBLIC_SATQUERY_API=http://localhost:8000
+    depends_on:
+      - api
+    restart: unless-stopped
