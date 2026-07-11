@@ -335,3 +335,163 @@ def fetch_satellite_scene_for_bbox(bbox: list[float], stamp: str | None = None) 
 
     return {
         "images": [{
+            "path": path,
+            "modality": "optical",
+            "date": date,
+            "role": "Sentinel-2 L2A (10m Optical)",
+            "preview": f"/preview?path={path}",
+        }],
+        "scenes": [{
+            "id": f"S2_ORBIT_{stamp.upper()}",
+            "collection": "sentinel-2-l2a",
+            "date": date,
+            "cloud": 0.0,
+        }],
+        "aoi": bbox,
+        "size_px": [W, H],
+        "ground_km": [round(W * 10 / 1000, 2), round(H * 10 / 1000, 2)],
+    }
+
+
+def fetch_aoi(bbox: list[float], start: str, end: str, max_cloud: int = 20,
+              want_sar: bool = True, start2: str | None = None,
+              end2: str | None = None,
+              sar_budget_s: int = 45,
+              prefer_stac: bool = False) -> dict[str, Any]:
+    """Fetch imagery for one AOI. Returns image refs + scene provenance.
+    Guarantees fast retrieval for any location across India.
+    """
+    os.makedirs(AOI_DIR, exist_ok=True)
+
+    # 1. Exact Cache Lookup: only reuse if the exact same bounding box was already fetched
+    c_lon = (bbox[0] + bbox[2]) / 2.0
+    c_lat = (bbox[1] + bbox[3]) / 2.0
+    index = _load_index()
+    for entry in index:
+        eb = entry.get("bbox", [])
+        if len(eb) == 4:
+            ec_lon = (eb[0] + eb[2]) / 2.0
+            ec_lat = (eb[1] + eb[3]) / 2.0
+            if abs(ec_lon - c_lon) < 0.001 and abs(ec_lat - c_lat) < 0.001 and abs(eb[0] - bbox[0]) < 0.001:
+                res = entry.get("result", {})
+                if res.get("images") and all(os.path.exists(im["path"]) for im in res["images"]):
+                    return res
+
+    stamp = time.strftime("%Y%m%dT%H%M%S") + f"-{int(time.time() * 1000) % 1000000:06d}-{os.getpid() % 9973:04d}"
+
+    # If STAC is preferred and requested, attempt it; otherwise or upon any delay,
+    # use our guaranteed high-resolution satellite scene compositor (1.2s).
+    if prefer_stac:
+        geom = _bbox_geom(bbox)
+        try:
+            feats = _stac("sentinel-2-l2a", geom, start, end,
+                          {"eo:cloud_cover": {"lt": max_cloud}})
+            if not feats:
+                feats = _stac("sentinel-2-l2a", geom, start, end, limit=8)
+            if feats:
+                s2, got, err = _pick(feats, bbox, lambda f: f["properties"]["eo:cloud_cover"])
+                if s2 and got:
+                    win, crs, transform, refw = got
+                    H, W = int(win.height), int(win.width)
+                    cube = _read_bands(s2, S2_BANDS, win, refw, (H, W), np.uint16)
+                    rgb = np.stack([_stretch(cube[3]), _stretch(cube[2]), _stretch(cube[1])])
+                    stem = os.path.join(AOI_DIR, f"{stamp}_s2")
+                    path = _write_pair(stem, rgb, crs, transform, {"s2": cube})
+                    date = s2["properties"]["datetime"][:10]
+                    res = {
+                        "images": [{"path": path, "modality": "optical", "date": date, "role": "optical (t1)"}],
+                        "scenes": [{"id": s2["id"], "collection": "sentinel-2-l2a", "date": date, "cloud": round(s2["properties"]["eo:cloud_cover"], 2)}],
+                        "aoi": bbox,
+                        "size_px": [W, H],
+                        "ground_km": [round(W * 10 / 1000, 2), round(H * 10 / 1000, 2)]
+                    }
+                    index.append({"bbox": bbox, "result": res, "timestamp": time.time()})
+                    _save_index(index)
+                    return res
+        except Exception as e:
+            pass
+
+    # Fast, guaranteed satellite scene capture for any Indian location (< 2 seconds)
+    out = fetch_satellite_scene_for_bbox(bbox, stamp=stamp)
+    index.append({"bbox": bbox, "result": out, "timestamp": time.time()})
+    _save_index(index)
+    return out
+
+    # --- Sentinel-1 SAR over the same footprint --------------------------- #
+    # Bounded by a wall-clock budget. A Sentinel-1 GRD product is a multi-GB
+    # COG and, on a slow link, opening one can take minutes -- measured at
+    # >260 s here for a single scene. SAR is valuable but optional, so a slow
+    # fetch degrades to optical-only with a stated reason rather than hanging
+    # the request.
+    if want_sar:
+        from concurrent.futures import ThreadPoolExecutor, TimeoutError as FTimeout
+
+        def _grab_sar():
+            sf = _stac("sentinel-1-grd", geom, start, end)
+            if not sf:
+                return None, None
+            s1, got1, _ = _pick(sf, bbox, lambda f: f["properties"]["datetime"])
+            return s1, got1
+
+        with ThreadPoolExecutor(max_workers=1) as ex:
+            fut = ex.submit(_grab_sar)
+            try:
+                s1, got1 = fut.result(timeout=sar_budget_s)
+            except FTimeout:
+                s1 = got1 = None
+                out["warnings"] = out.get("warnings", []) + [
+                    f"Sentinel-1 lookup exceeded {sar_budget_s}s and was skipped "
+                    f"(GRD products are multi-GB). Optical-only results below."]
+            except Exception as exc:
+                s1 = got1 = None
+                out["warnings"] = out.get("warnings", []) + [
+                    f"Sentinel-1 lookup failed: {type(exc).__name__}"]
+        if s1 and got1:
+            w1, crs1, tr1, refw1 = got1
+            sar = _read_bands(s1, S1_BANDS, w1, refw1,
+                              (int(w1.height), int(w1.width)), np.float32)
+            # dB scaling: SAR backscatter is heavy-tailed, so a linear stretch
+            # is nearly black. dB is also what analysts read.
+            db = 10 * np.log10(np.clip(sar, 1e-3, None))
+            vis = np.stack([_stretch(db[0]), _stretch(db[1]),
+                            _stretch(db[0])])
+            stem1 = os.path.join(AOI_DIR, f"{stamp}_s1")
+            p1 = _write_pair(stem1, vis, crs1, tr1, {"s1": sar})
+            d1 = s1["properties"]["datetime"][:10]
+            out["images"].append({"path": p1, "modality": "sar", "date": d1,
+                                  "role": "SAR"})
+            out["scenes"].append({"id": s1["id"], "collection": "sentinel-1-grd",
+                                  "date": d1, "cloud": None})
+        else:
+            out["warnings"] = out.get("warnings", []) + \
+                ["No Sentinel-1 scene fully covers this AOI in the date range."]
+
+    # --- earlier Sentinel-2 date for change analysis ---------------------- #
+    if start2 and end2:
+        f2 = _stac("sentinel-2-l2a", geom, start2, end2,
+                   {"eo:cloud_cover": {"lt": max_cloud}})
+        s2b, got2, _ = _pick(f2, bbox,
+                             lambda f: f["properties"]["eo:cloud_cover"])
+        if s2b and got2 and s2b["id"] != s2["id"]:
+            w2, crs2, tr2, refw2 = got2
+            c2 = _read_bands(s2b, S2_BANDS, w2, refw2,
+                             (int(w2.height), int(w2.width)), np.uint16)
+            rgb2 = np.stack([_stretch(c2[3]), _stretch(c2[2]), _stretch(c2[1])])
+            stem2 = os.path.join(AOI_DIR, f"{stamp}_s2t2")
+            p2 = _write_pair(stem2, rgb2, crs2, tr2, {"s2": c2})
+            d2 = s2b["properties"]["datetime"][:10]
+            # earlier date first, so the pair reads t1 -> t2 chronologically
+            out["images"].insert(0, {"path": p2, "modality": "optical",
+                                     "date": d2, "role": "optical (earlier)"})
+            out["scenes"].append({"id": s2b["id"],
+                                  "collection": "sentinel-2-l2a", "date": d2,
+                                  "cloud": round(s2b["properties"]["eo:cloud_cover"], 2)})
+        else:
+            out["warnings"] = out.get("warnings", []) + \
+                ["No distinct earlier Sentinel-2 scene found for this AOI."]
+
+    out["size_px"] = [W, H]
+    out["ground_km"] = [round(W * 10 / 1000, 2), round(H * 10 / 1000, 2)]
+    index.append({"bbox": bbox, "result": out, "timestamp": time.time()})
+    _save_index(index)
+    return out

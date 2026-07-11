@@ -213,3 +213,135 @@ def analyse(images: list[dict[str, Any]]) -> dict[str, Any]:
                            "thresholds": {"water_mndwi": 0.0,
                                           "vegetation_ndvi": 0.30,
                                           "sparse_vegetation_ndvi": 0.18,
+                                          "built_up_bui": 0.0,
+                                          "change_dindex": 0.10}}
+    if len(usable) == 1:
+        img, s2 = usable[0]
+        out["mode"] = "single"
+        out["dates"] = [img.get("date")]
+        out["scene"] = scene_stats(s2)
+        return out
+
+    # earlier date first; serve.aoi already inserts it that way, but a caller
+    # can hand us anything, and comparing t2 against t1 backwards would flip
+    # every sign in the report.
+    pair = sorted(usable[:2], key=lambda x: x[0].get("date") or "")
+    (ia_, sa), (ib_, sb) = pair
+    out["mode"] = "bi-temporal"
+    out["dates"] = [ia_.get("date"), ib_.get("date")]
+    out["t1"] = scene_stats(sa)
+    out["t2"] = scene_stats(sb)
+    out["change"] = change_stats(sa, sb)
+    return out
+
+
+# --------------------------------------------------------------------------- #
+# markdown
+# --------------------------------------------------------------------------- #
+def _row(cells) -> str:
+    return "| " + " | ".join(str(c) for c in cells) + " |"
+
+
+def to_markdown(a: dict[str, Any]) -> list[str]:
+    """The measured-statistics section of the run report."""
+    if not a.get("available"):
+        return ["## Measured land cover", "",
+                f"_Not computable: {a['reason']}_", ""]
+
+    out = ["## Measured land cover", "",
+           f"Computed from the pixels, not from a model. {a['method']}. "
+           f"Ground sample distance {a['gsd_m']:.0f} m.", ""]
+
+    if a["mode"] == "single":
+        s = a["scene"]
+        if "error" in s:
+            return out + [f"_{s['error']}_", ""]
+        out += [f"Acquisition **{a['dates'][0] or 'unknown date'}** · "
+                f"{s['area_km2']} km² of valid pixels.", "",
+                _row(["class", "cover %", "area km²"]),
+                _row(["---", "---:", "---:"])]
+        for name, v in s["cover"].items():
+            out.append(_row([name, f"{v['pct']:.2f}%", f"{v['km2']:.3f}"]))
+        out += ["", f"Mean NDVI **{s['mean_ndvi']:+.4f}** · "
+                    f"mean MNDWI **{s['mean_mndwi']:+.4f}** · "
+                    f"mean NDBI **{s['mean_ndbi']:+.4f}**.", ""]
+        return out
+
+    c = a["change"]
+    if "error" in c:
+        return out + [f"_{c['error']}_", ""]
+    d1, d2 = a["dates"][0] or "t1", a["dates"][1] or "t2"
+    out += [f"**{d1} → {d2}** · {c['area_km2']} km² compared.", "",
+            _row(["class", f"{d1} %", f"{d2} %", "Δ pp", "Δ relative",
+                  f"{d2} km²"]),
+            _row(["---", "---:", "---:", "---:", "---:", "---:"])]
+    for name, v in c["classes"].items():
+        rel = "—" if v["relative_pct"] is None else f"{v['relative_pct']:+.1f}%"
+        out.append(_row([name, f"{v['t1_pct']:.2f}%", f"{v['t2_pct']:.2f}%",
+                         f"{v['delta_pp']:+.2f}", rel, f"{v['t2_km2']:.3f}"]))
+
+    vg, wt, nb = (c["vegetation_index_change"], c["water_index_change"],
+                  c["new_built_up"])
+    out += ["",
+            f"**Vegetation.** Mean ΔNDVI {vg['mean_dndvi']:+.4f}. "
+            f"{vg['gain_pct']:.2f}% of the area gained vegetation "
+            f"(ΔNDVI > +0.10) and {vg['loss_pct']:.2f}% lost it; "
+            f"{vg['changed_pct']:.2f}% changed either way.",
+            "",
+            f"**Urbanisation.** Built-up cover moved from "
+            f"{c['classes']['built-up']['t1_pct']:.2f}% to "
+            f"{c['classes']['built-up']['t2_pct']:.2f}% of the area "
+            f"({c['classes']['built-up']['delta_pp']:+.2f} pp). "
+            f"{nb['km2']:.3f} km² became built-up that was not before "
+            f"({nb['pct_of_scene']:.2f}% of the scene)"
+            + (", converted from "
+               + ", ".join(f"{k} {v:.1f}%"
+                           for k, v in nb["converted_from_pct"].items())
+               if nb["converted_from_pct"] else "") + ".",
+            "",
+            f"**Water.** Open water moved from "
+            f"{c['classes']['water']['t1_pct']:.2f}% to "
+            f"{c['classes']['water']['t2_pct']:.2f}% "
+            f"({c['classes']['water']['delta_pp']:+.2f} pp). "
+            f"Mean ΔMNDWI {wt['mean_dmndwi']:+.4f}; {wt['gain_pct']:.2f}% of "
+            f"the area wetted and {wt['loss_pct']:.2f}% dried.",
+            "",
+            f"**{c['transitioned_pct']:.2f}%** of pixels changed class "
+            f"between the two dates.", ""]
+    return out
+
+
+def dominant_class(a: dict[str, Any]) -> str | None:
+    """The largest measured class, for cross-checking a generated description.
+
+    Taken from the later acquisition in a bi-temporal run, because that is the
+    image a scene description is generated from.
+    """
+    if not a.get("available"):
+        return None
+    scene = a.get("scene") or a.get("t2")
+    cover = (scene or {}).get("cover")
+    if not cover:
+        return None
+    return max(cover.items(), key=lambda kv: kv[1]["pct"])[0]
+
+
+def headline(a: dict[str, Any]) -> list[dict[str, Any]]:
+    """The three numbers the console shows as tiles. Empty when not measurable."""
+    if not a.get("available"):
+        return []
+    if a["mode"] == "single":
+        cv = a["scene"].get("cover", {})
+        return [{"label": "VEGETATION", "value": f"{cv.get('vegetation', {}).get('pct', 0):.2f}%",
+                 "note": f"{cv.get('vegetation', {}).get('km2', 0):.2f} km²"},
+                {"label": "BUILT-UP", "value": f"{cv.get('built-up', {}).get('pct', 0):.2f}%",
+                 "note": f"{cv.get('built-up', {}).get('km2', 0):.2f} km²"},
+                {"label": "WATER", "value": f"{cv.get('water', {}).get('pct', 0):.2f}%",
+                 "note": f"{cv.get('water', {}).get('km2', 0):.2f} km²"}]
+    c = a["change"]["classes"]
+    return [{"label": "VEGETATION", "value": f"{c['vegetation']['delta_pp']:+.2f} pp",
+             "note": f"{c['vegetation']['t1_pct']:.2f}% → {c['vegetation']['t2_pct']:.2f}%"},
+            {"label": "URBANISATION", "value": f"{c['built-up']['delta_pp']:+.2f} pp",
+             "note": f"{a['change']['new_built_up']['km2']:.3f} km² newly built-up"},
+            {"label": "WATER", "value": f"{c['water']['delta_pp']:+.2f} pp",
+             "note": f"{c['water']['t1_pct']:.2f}% → {c['water']['t2_pct']:.2f}%"}]
