@@ -41,3 +41,46 @@ body {
 ::selection { background: rgba(0, 243, 255, 0.35); color: #fff; }
 
 :focus-visible {
+  outline: 2px solid var(--color-ice);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #04060a; }
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 243, 255, 0.22);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(0, 243, 255, 0.45); }
+
+/* ------------------------------------------------------------ typography */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-mute);
+}
+
+.mono { font-family: var(--font-mono); }
+.tactical { font-family: var(--font-tactical); }
+
+.display {
+  letter-spacing: -0.033em;
+  line-height: 1.04;
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------- Tactical God's Eye HUD Styles */
+.tactical-glass {
+  background: rgba(6, 10, 18, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 243, 255, 0.16);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6), inset 0 0 12px 0 rgba(0, 243, 255, 0.03);
+}
+
+.tactical-glass-subtle {
+  background: rgba(8, 12, 22, 0.70);
+  backdrop-filter: blur(12px);
