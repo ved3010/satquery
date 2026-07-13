@@ -1,0 +1,43 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Share+Tech+Mono&display=swap');
+@import "maplibre-gl/dist/maplibre-gl.css";
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #000000;
+  --color-panel: #06080d;
+  --color-panel-card: rgba(8, 12, 20, 0.82);
+  --color-line: rgba(0, 243, 255, 0.14);
+  --color-line-solid: rgba(255, 255, 255, 0.08);
+  --color-mute: rgba(255, 255, 255, 0.46);
+  --color-dim: rgba(255, 255, 255, 0.70);
+  --color-brand: #2f7bf0;
+  --color-brand-soft: #7fb2ff;
+  --color-ice: #00f3ff;
+  --color-verd: #10b981;
+  --color-signal: #f59e0b;
+  --color-danger: #ef4444;
+
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-tactical: "Share Tech Mono", "JetBrains Mono", monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 76px;
+  background: #000;
+  color-scheme: dark;
+}
+
+body {
+  background: #000;
+  color: #fff;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+::selection { background: rgba(0, 243, 255, 0.35); color: #fff; }
+
+:focus-visible {
