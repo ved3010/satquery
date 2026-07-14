@@ -127,3 +127,46 @@ body {
     rgba(0, 255, 0, 0.005),
     rgba(0, 0, 255, 0.01)
   );
+  background-size: 100% 3px, 6px 100%;
+  pointer-events: none;
+}
+
+.grid-bg {
+  background-size: 32px 32px;
+  background-image: 
+    linear-gradient(to right, rgba(0, 243, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 243, 255, 0.04) 1px, transparent 1px);
+}
+
+/* Tactical Crosshair Animation */
+@keyframes hud-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes hud-pulse {
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(1.08); }
+}
+
+.animate-hud-spin {
+  animation: hud-spin 20s linear infinite;
+}
+
+.animate-hud-pulse {
+  animation: hud-pulse 3s ease-in-out infinite;
+}
+
+/* MapLibre Canvas Container */
+.maplibregl-map {
+  font-family: inherit;
+}
+
+.maplibregl-ctrl-attrib {
+  display: none !important;
+}
+
+/* ------------------------------------------------------- Console Animations & Keyframes */
+@keyframes fadeInScale {
+  0% {
+    opacity: 0;
