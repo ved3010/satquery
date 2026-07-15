@@ -9,3 +9,17 @@ export const metadata: Metadata = {
     "remote sensing",
     "vision-language model",
     "SAR",
+    "change detection",
+    "Earth observation",
+    "agentic AI",
+    "Sentinel-2",
+  ],
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#000000",
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
