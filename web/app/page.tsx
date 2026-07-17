@@ -9,3 +9,7 @@ import { Footer } from "@/components/Footer";
 export default function Page() {
   return (
     <>
+      <Nav />
+      <main id="main">
+        <Hero trained={data.trained_count} total={data.models.length} />
+        <Problem />
