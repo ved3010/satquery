@@ -16,3 +16,7 @@ export default function Page() {
         <Solution />
         <Measured />
         <Models />
+        <Corpus />
+        <Business />
+      </main>
+      <Footer />
