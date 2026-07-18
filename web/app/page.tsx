@@ -13,3 +13,6 @@ export default function Page() {
       <main id="main">
         <Hero trained={data.trained_count} total={data.models.length} />
         <Problem />
+        <Solution />
+        <Measured />
+        <Models />
