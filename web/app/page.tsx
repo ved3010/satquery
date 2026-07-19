@@ -20,3 +20,6 @@ export default function Page() {
         <Business />
       </main>
       <Footer />
+    </>
+  );
+}
