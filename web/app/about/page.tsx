@@ -106,3 +106,57 @@ export default function AboutPage() {
                 </div>
                 <h3 className="text-lg font-bold text-white">Measured, Not Generated</h3>
                 <p className="text-[13px] text-[var(--color-mute)] leading-relaxed">
+                  Quantitative figures never originate from language hallucinations. Land-cover percentages
+                  are directly measured from calibrated surface reflectance pixels via published spectral indices (NDVI, MNDWI, NDBI).
+                </p>
+              </div>
+
+              <div className="p-6 rounded-2xl border border-white/10 bg-white/[0.02] space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
+                  <Cpu className="w-5 h-5 text-purple-400" />
+                </div>
+                <h3 className="text-lg font-bold text-white">8 Specialist Models</h3>
+                <p className="text-[13px] text-[var(--color-mute)] leading-relaxed">
+                  A modular registry of 8 specialist models spanning single-image VQA, scene captioning,
+                  referring grounding, bi-temporal change detection, and our lightweight M7 VLM — all CPU-runnable.
+                </p>
+              </div>
+
+              <div className="p-6 rounded-2xl border border-white/10 bg-white/[0.02] space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                  <Database className="w-5 h-5 text-emerald-400" />
+                </div>
+                <h3 className="text-lg font-bold text-white">IndiaSat Corpus</h3>
+                <p className="text-[13px] text-[var(--color-mute)] leading-relaxed">
+                  A 100% Indian benchmark corpus of 985 patches and 8,962 annotations across 8 distinct
+                  Köppen climate zones from Jaisalmer to the Sundarbans, replacing Europe-only datasets like BigEarthNet.
+                </p>
+              </div>
+
+              <div className="p-6 rounded-2xl border border-white/10 bg-white/[0.02] space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+                  <Eye className="w-5 h-5 text-blue-400" />
+                </div>
+                <h3 className="text-lg font-bold text-white">Orbit-to-Ground CCTV</h3>
+                <p className="text-[13px] text-[var(--color-mute)] leading-relaxed">
+                  A synchronized dual surveillance cockpit pairing 10m Sentinel-2 passes with live street-level
+                  municipal CCTV feeds across Pune, Mumbai, Bengaluru, Delhi, and Hyderabad.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 7-Step LangGraph Architecture */}
+        <section className="px-5 py-20 sm:px-8 max-w-[1240px] mx-auto border-b border-[var(--color-line)]">
+          <div className="space-y-4 max-w-[700px] mb-12">
+            <span className="mono text-[11px] uppercase tracking-[0.2em] text-[var(--color-brand)] font-bold">
+              The Engine
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
+              7-Step Auditable LangGraph Pipeline
+            </h2>
+            <p className="text-[14.5px] text-[var(--color-mute)]">
+              Every query executes across a deterministic LangGraph state machine. Each state transition
+              is checkpointed, producing an auditable trace in Markdown and Obsidian vault format.
+            </p>
