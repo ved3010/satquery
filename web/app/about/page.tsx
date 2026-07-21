@@ -214,3 +214,58 @@ export default function AboutPage() {
             <div className="p-5 rounded-2xl border border-white/10 bg-white/[0.02] space-y-2">
               <span className="mono text-[12px] text-teal-400 font-bold">07 · EVIDENCE</span>
               <h4 className="text-[15px] font-bold text-white">Auditable Run Record</h4>
+              <p className="text-[12.5px] text-[var(--color-mute)]">
+                Assembles markdown run report with model latencies, thresholds, and spatial evidence overlays.
+              </p>
+            </div>
+
+            <div className="p-5 rounded-2xl border border-cyan-500/30 bg-cyan-950/20 flex flex-col justify-center space-y-2">
+              <span className="mono text-[11px] text-cyan-300 font-bold">END-TO-END AUDIT</span>
+              <p className="text-[12.5px] text-cyan-100">
+                100% auditable pipeline. No black-box answers.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Technical Data Sources & Credits */}
+        <section className="px-5 py-20 sm:px-8 max-w-[1240px] mx-auto">
+          <div className="p-8 sm:p-12 rounded-3xl border border-white/15 bg-gradient-to-br from-white/[0.04] to-transparent space-y-8">
+            <div className="space-y-3">
+              <span className="mono text-[11px] uppercase tracking-[0.2em] text-[var(--color-brand)] font-bold">
+                Open Data Standards
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-bold text-white">
+                Data Provenance &amp; Scientific Citations
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-[13px] text-[var(--color-mute)] leading-relaxed">
+              <div className="space-y-2">
+                <h4 className="text-white font-semibold">Spaceborne Imagery</h4>
+                <p>
+                  Copernicus Sentinel-1 (C-band SAR, VV/VH) and Sentinel-2 (12-band MSI L2A surface reflectance), European Union / ESA. Keyless open access via Microsoft Planetary Computer STAC.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-white font-semibold">Land-Cover Ground Truth</h4>
+                <p>
+                  ESA WorldCover 10m Global Land Cover product (CC-BY-4.0). Replaces Europe-only CORINE labels for complete Indian subcontinent climate alignment.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-white font-semibold">Published Indices</h4>
+                <p>
+                  Normalized Difference Vegetation Index (NDVI), Modified Normalized Difference Water Index (MNDWI, Xu 2006), and Normalized Difference Built-up Index (NDBI, Zha 2003).
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+      <Footer />
+    </>
+  );
+}
