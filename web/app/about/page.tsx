@@ -160,3 +160,57 @@ export default function AboutPage() {
               Every query executes across a deterministic LangGraph state machine. Each state transition
               is checkpointed, producing an auditable trace in Markdown and Obsidian vault format.
             </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-5 rounded-2xl border border-white/10 bg-white/[0.02] space-y-2">
+              <span className="mono text-[12px] text-cyan-400 font-bold">01 · INGEST</span>
+              <h4 className="text-[15px] font-bold text-white">Multimodal Acquisition</h4>
+              <p className="text-[12.5px] text-[var(--color-mute)]">
+                Validates input bands, CRS projection, GSD resolution, and acquisition timestamps for optical and SAR.
+              </p>
+            </div>
+
+            <div className="p-5 rounded-2xl border border-white/10 bg-white/[0.02] space-y-2">
+              <span className="mono text-[12px] text-amber-400 font-bold">02 · VALIDATE</span>
+              <h4 className="text-[15px] font-bold text-white">Input Compatibility</h4>
+              <p className="text-[12.5px] text-[var(--color-mute)]">
+                Ensures supplied modalities match user intent. Accurately refuses single-image change requests with auditable reasons.
+              </p>
+            </div>
+
+            <div className="p-5 rounded-2xl border border-white/10 bg-white/[0.02] space-y-2">
+              <span className="mono text-[12px] text-blue-400 font-bold">03 · ROUTE</span>
+              <h4 className="text-[15px] font-bold text-white">Task Classification</h4>
+              <p className="text-[12.5px] text-[var(--color-mute)]">
+                Selects the appropriate specialist models strictly from the declarative ModelSpec registry.
+              </p>
+            </div>
+
+            <div className="p-5 rounded-2xl border border-white/10 bg-white/[0.02] space-y-2">
+              <span className="mono text-[12px] text-purple-400 font-bold">04 · EXECUTE</span>
+              <h4 className="text-[15px] font-bold text-white">Model Inference</h4>
+              <p className="text-[12.5px] text-[var(--color-mute)]">
+                Runs specialist heads (M1–M6) for classification, grounding boxes, and delta-change spatial masks.
+              </p>
+            </div>
+
+            <div className="p-5 rounded-2xl border border-white/10 bg-white/[0.02] space-y-2">
+              <span className="mono text-[12px] text-emerald-400 font-bold">05 · MEASURE</span>
+              <h4 className="text-[15px] font-bold text-white">Spectral Surface Metrics</h4>
+              <p className="text-[12.5px] text-[var(--color-mute)]">
+                Computes pixel-exact NDVI, MNDWI, and NDBI decision cascades summing cleanly to 100%.
+              </p>
+            </div>
+
+            <div className="p-5 rounded-2xl border border-white/10 bg-white/[0.02] space-y-2">
+              <span className="mono text-[12px] text-pink-400 font-bold">06 · SYNTHESIS</span>
+              <h4 className="text-[15px] font-bold text-white">M7 VLM Narrative</h4>
+              <p className="text-[12.5px] text-[var(--color-mute)]">
+                Causal decoder articulates observational context without fabricating quantitative numbers.
+              </p>
+            </div>
+
+            <div className="p-5 rounded-2xl border border-white/10 bg-white/[0.02] space-y-2">
+              <span className="mono text-[12px] text-teal-400 font-bold">07 · EVIDENCE</span>
+              <h4 className="text-[15px] font-bold text-white">Auditable Run Record</h4>
