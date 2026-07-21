@@ -27,3 +27,13 @@ export function Hero({ trained, total }: { trained: number; total: number }) {
 
         <p className="mt-7 max-w-[58ch] text-[15px] leading-[1.65] text-[var(--color-mute)] sm:text-[16.5px]">
           {HERO.sub}
+        </p>
+
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-x-7 gap-y-4">
+          <a
+            href={HERO.cta.href}
+            className="group inline-flex items-center gap-2 text-[15px] text-white transition-opacity hover:opacity-70"
+          >
+            {HERO.cta.label}
+            <span className="transition-transform duration-300 group-hover:translate-x-1">
+              →
