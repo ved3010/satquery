@@ -37,3 +37,13 @@ export function Hero({ trained, total }: { trained: number; total: number }) {
             {HERO.cta.label}
             <span className="transition-transform duration-300 group-hover:translate-x-1">
               →
+            </span>
+          </a>
+          <span className="mono text-[11.5px] tracking-[0.12em] text-[var(--color-mute)]">
+            {trained}/{total} MODELS TRAINED · MEASURED, NOT ASSERTED
+          </span>
+        </div>
+      </div>
+    </section>
+  );
+}
