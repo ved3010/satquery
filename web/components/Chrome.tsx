@@ -50,3 +50,55 @@ export function Nav() {
         </div>
 
         <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-label="Toggle navigation"
+          className="grid h-9 w-9 place-items-center rounded-md border border-[var(--color-line)] md:hidden"
+        >
+          <span className="relative block h-[9px] w-[15px]">
+            <span className="absolute inset-x-0 top-0 h-px bg-white" />
+            <span className="absolute inset-x-0 bottom-0 h-px bg-white" />
+          </span>
+        </button>
+      </nav>
+
+      {open && (
+        <div className="border-t border-[var(--color-line)] bg-black/95 px-5 py-4 md:hidden">
+          {NAV.map((l) => (
+            <a
+              key={l.href}
+              href={l.href}
+              onClick={() => setOpen(false)}
+              className="block py-2.5 text-[15px] text-[var(--color-dim)]"
+            >
+              {l.label}
+            </a>
+          ))}
+          <a href="/console" className="block py-2.5 text-[15px] text-[var(--color-brand-soft)]">
+            Console
+          </a>
+        </div>
+      )}
+    </header>
+  );
+}
+
+function Mark() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="12" cy="12" r="7.2" stroke="white" strokeWidth="1.5" />
+      <ellipse
+        cx="12"
+        cy="12"
+        rx="11"
+        ry="4.2"
+        stroke="var(--color-brand)"
+        strokeWidth="1.5"
+        transform="rotate(-28 12 12)"
+      />
+    </svg>
+  );
+}
+
+/* ----------------------------------------------------------- starfield */
