@@ -102,3 +102,55 @@ function Mark() {
 }
 
 /* ----------------------------------------------------------- starfield */
+export function Starfield() {
+  const ref = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const cv = ref.current;
+    if (!cv) return;
+    const ctx = cv.getContext("2d");
+    if (!ctx) return;
+
+    // Drawn once to a canvas rather than rendered as hundreds of DOM nodes:
+    // the same field costs one element and no layout work on scroll.
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    let stars: { x: number; y: number; r: number; a: number }[] = [];
+
+    const draw = () => {
+      const w = window.innerWidth;
+      const h = Math.max(window.innerHeight, 700);
+      cv.width = w * dpr;
+      cv.height = h * dpr;
+      cv.style.width = `${w}px`;
+      cv.style.height = `${h}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+
+      const n = Math.round((w * h) / 3400);
+      stars = Array.from({ length: n }, () => ({
+        x: Math.random() * w,
+        // bias upward: the lower half of the hero is the planet, and stars
+        // drawn there would sit "inside" it
+        y: Math.pow(Math.random(), 1.5) * h,
+        r: Math.random() * 1.15 + 0.25,
+        a: Math.random() * 0.72 + 0.16,
+      }));
+
+      for (const s of stars) {
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${s.a})`;
+        ctx.fill();
+      }
+    };
+
+    draw();
+    let t: ReturnType<typeof setTimeout>;
+    const onResize = () => {
+      clearTimeout(t);
+      t = setTimeout(draw, 180);
+    };
+    window.addEventListener("resize", onResize);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("resize", onResize);
