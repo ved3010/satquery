@@ -103,3 +103,55 @@ export function Solution() {
 
       {/* capability families */}
       <Reveal>
+        <p className="eyebrow mt-24">Five task families</p>
+      </Reveal>
+      <div className="mt-8 grid gap-px overflow-hidden rounded-lg border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-2 lg:grid-cols-3">
+        {CAPABILITIES.map((c, i) => (
+          <Reveal key={c.n} delay={i * 55}>
+            <div className="h-full bg-black p-7">
+              <p className="mono text-[10.5px] tracking-[0.18em] text-[var(--color-brand-soft)]">
+                {c.tag}
+              </p>
+              <h3 className="mt-4 text-[16.5px] font-medium text-white">{c.title}</h3>
+              <p className="mt-3 text-[14px] leading-[1.7] text-[var(--color-mute)]">
+                {c.body}
+              </p>
+            </div>
+          </Reveal>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+/* --------------------------------------------------------------- measured */
+export function Measured() {
+  return (
+    <Section id="measured">
+      <Head kicker={MEASURED.kicker} title={MEASURED.title} lede={MEASURED.body} />
+
+      <div className="mt-14 grid gap-6 lg:grid-cols-[1fr_1.05fr]">
+        <Reveal>
+          <div className="panel h-full rounded-lg p-6 sm:p-7">
+            <p className="eyebrow">Indices computed per pixel</p>
+            <ul className="mt-6 space-y-5">
+              {MEASURED.indices.map((ix) => (
+                <li
+                  key={ix.code}
+                  className="border-b border-[var(--color-line)] pb-5 last:border-0 last:pb-0"
+                >
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <span className="mono text-[13px] font-medium text-white">
+                      {ix.code}
+                    </span>
+                    <span className="text-[12.5px] text-[var(--color-mute)]">
+                      {ix.reads}
+                    </span>
+                  </div>
+                  <p className="mono mt-2 text-[12.5px] text-[var(--color-brand-soft)]">
+                    {ix.formula}
+                  </p>
+                  <p className="mono mt-1.5 text-[11.5px] text-[var(--color-mute)]">
+                    {ix.rule}
+                  </p>
+                </li>
