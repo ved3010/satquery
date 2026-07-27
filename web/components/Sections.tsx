@@ -155,3 +155,56 @@ export function Measured() {
                     {ix.rule}
                   </p>
                 </li>
+              ))}
+            </ul>
+          </div>
+        </Reveal>
+
+        <Reveal delay={90}>
+          <div className="panel h-full overflow-hidden rounded-lg">
+            <div className="flex items-center gap-2 border-b border-[var(--color-line)] px-5 py-3">
+              <span className="h-2 w-2 rounded-full bg-[var(--color-verd)]" />
+              <span className="mono text-[11px] tracking-[0.14em] text-[var(--color-mute)]">
+                RUN REPORT · MARKDOWN
+              </span>
+            </div>
+            <pre className="mono overflow-x-auto px-5 py-5 text-[11.5px] leading-[1.85] text-[var(--color-dim)]">
+              {MEASURED.sample}
+            </pre>
+            <p className="border-t border-[var(--color-line)] px-5 py-4 text-[12.5px] leading-[1.6] text-[var(--color-mute)]">
+              {MEASURED.sampleNote}
+            </p>
+          </div>
+        </Reveal>
+      </div>
+    </Section>
+  );
+}
+
+/* ---------------------------------------------------------------- corpus */
+export function Corpus() {
+  return (
+    <Section>
+      <div className="grid gap-12 lg:grid-cols-[1fr_1fr] lg:gap-20">
+        <Head kicker={DATA_NOTE.kicker} title={DATA_NOTE.title} />
+        <Reveal delay={80}>
+          <p className="text-[15px] leading-[1.75] text-[var(--color-mute)]">
+            {DATA_NOTE.body}
+          </p>
+          <dl className="mt-9 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-4">
+            {DATA_NOTE.stats.map((s) => (
+              <div key={s.label} className="bg-black px-4 py-5 text-center">
+                <dt className="text-[21px] font-medium tracking-tight text-white">
+                  {s.value}
+                </dt>
+                <dd className="mono mt-1.5 text-[10.5px] tracking-[0.14em] text-[var(--color-mute)]">
+                  {s.label.toUpperCase()}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </Reveal>
+      </div>
+    </Section>
+  );
+}
