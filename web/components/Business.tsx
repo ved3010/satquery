@@ -60,3 +60,66 @@ function Rings() {
       />
       <circle
         cx="150"
+        cy={150 + R - r(MARKET[2].share)}
+        r={r(MARKET[2].share)}
+        fill="#a4f4fd"
+        stroke="#a4f4fd"
+      />
+      <text x="150" y="46" textAnchor="middle" className="mono"
+            fill="rgba(255,255,255,0.85)" fontSize="11" letterSpacing="2">TAM</text>
+      <text x="150" y="238" textAnchor="middle" className="mono"
+            fill="rgba(255,255,255,0.85)" fontSize="11" letterSpacing="2">SAM</text>
+      <text x="196" y="288" textAnchor="middle" className="mono"
+            fill="#a4f4fd" fontSize="11" letterSpacing="2">SOM</text>
+      <line x1="164" y1="281" x2="176" y2="284" stroke="#a4f4fd" strokeWidth="0.8" />
+    </svg>
+  );
+}
+
+export function Business() {
+  return (
+    <Section id="business">
+      <Head
+        kicker="Business plan"
+        title="A global market, entered through the segment the models actually compete in."
+        lede="Market studies from different houses disagree by a factor of two on the same words, so each figure below states the definition it belongs to and the house that published it. The one number that is ours is labelled as ours."
+      />
+
+      {/* -------------------------------------------------- TAM SAM SOM */}
+      <div className="mt-16 grid gap-12 lg:grid-cols-[320px_1fr] lg:gap-16">
+        <Reveal className="flex items-start justify-center lg:justify-start">
+          <Rings />
+        </Reveal>
+
+        <div className="space-y-px overflow-hidden rounded-lg border border-[var(--color-line)] bg-[var(--color-line)]">
+          {MARKET.map((m, i) => (
+            <Reveal key={m.tier} delay={i * 80}>
+              <div className="bg-black p-6 sm:p-8">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="mono text-[13px] font-medium tracking-[0.16em] text-white">
+                    {m.tier}
+                  </span>
+                  <span className="text-[15px] text-[var(--color-dim)]">{m.name}</span>
+                  <BasisTag basis={m.basis} />
+                </div>
+
+                <div className="mt-5 flex flex-wrap items-baseline gap-x-4 gap-y-2">
+                  {m.value2025 !== "—" && (
+                    <>
+                      <span className="text-[19px] font-medium tabular-nums text-[var(--color-mute)]">
+                        {m.value2025}
+                      </span>
+                      <span className="text-[var(--color-mute)]">→</span>
+                    </>
+                  )}
+                  <span className="text-[clamp(1.6rem,3.2vw,2.15rem)] font-medium tracking-tight tabular-nums text-white">
+                    {m.value2030}
+                  </span>
+                  <span className="mono rounded-full bg-[var(--color-brand)]/15 px-2.5 py-1 text-[11px] tracking-[0.1em] text-[var(--color-brand-soft)]">
+                    {m.cagr === "year-3 target" ? "YEAR-3 TARGET" : `${m.cagr} CAGR`}
+                  </span>
+                  {m.value2025 !== "—" && (
+                    <span className="mono text-[11px] text-[var(--color-mute)]">
+                      2025 → 2030
+                    </span>
+                  )}
