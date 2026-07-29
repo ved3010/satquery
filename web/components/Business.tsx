@@ -123,3 +123,66 @@ export function Business() {
                       2025 → 2030
                     </span>
                   )}
+                </div>
+
+                <p className="mt-5 text-[14px] leading-[1.72] text-[var(--color-mute)]">
+                  <span className="text-[var(--color-dim)]">{m.definition}</span> {m.body}
+                </p>
+
+                <p className="mono mt-4 text-[11px] leading-[1.6] text-[var(--color-mute)]">
+                  Source:{" "}
+                  {m.href ? (
+                    <a
+                      href={m.href}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="underline decoration-white/20 underline-offset-2 transition-colors hover:text-white"
+                    >
+                      {m.source}
+                    </a>
+                  ) : (
+                    m.source
+                  )}
+                </p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+
+      {/* ------------------------------------------------------- context */}
+      <div className="mt-14 grid gap-px overflow-hidden rounded-lg border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-2 lg:grid-cols-4">
+        {MARKET_CONTEXT.map((c, i) => (
+          <Reveal key={c.label} delay={i * 55}>
+            <div className="h-full bg-black p-6">
+              <p className="text-[17px] font-medium tabular-nums tracking-tight text-white">
+                {c.value}
+              </p>
+              <p className="mono mt-2 text-[10.5px] tracking-[0.1em] text-[var(--color-brand-soft)]">
+                {c.cagr.toUpperCase()}
+              </p>
+              <p className="mt-3 text-[13px] leading-[1.6] text-[var(--color-mute)]">
+                {c.label}
+              </p>
+              <p className="mono mt-3 text-[10px] text-[var(--color-mute)]">{c.source}</p>
+            </div>
+          </Reveal>
+        ))}
+      </div>
+
+      {/* ------------------------------------------------------- revenue */}
+      <Reveal>
+        <p className="eyebrow mt-24">How it makes money</p>
+        <h3 className="display mt-4 max-w-[24ch] text-[clamp(1.4rem,2.6vw,1.95rem)] text-white">
+          Open core. Revenue from operating it, not from locking it.
+        </h3>
+      </Reveal>
+
+      <div className="mt-10 grid gap-px overflow-hidden rounded-lg border border-[var(--color-line)] bg-[var(--color-line)] lg:grid-cols-3">
+        {REVENUE.map((p, i) => (
+          <Reveal key={p.id} delay={i * 80}>
+            <div
+              className={`flex h-full flex-col p-7 sm:p-8 ${
+                p.featured ? "bg-[#07090f]" : "bg-black"
+              }`}
+            >
