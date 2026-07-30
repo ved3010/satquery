@@ -51,3 +51,57 @@ export function Models() {
 
                 <span className="text-[14.5px] text-[var(--color-dim)]">
                   {r.task}
+                  <span className="mono ml-2 text-[11.5px] text-[var(--color-mute)]">
+                    {r.name}
+                  </span>
+                </span>
+
+                <span className="mono text-[11.5px] text-[var(--color-mute)]">
+                  {r.metric}
+                </span>
+
+                <span className="text-[17px] font-medium tabular-nums text-white">
+                  {pct(r.value)}
+                </span>
+
+                <div>
+                  <div className="relative h-[5px] w-full overflow-hidden rounded-full bg-white/[0.07]">
+                    {b !== null && (
+                      <div
+                        className="absolute inset-y-0 left-0 rounded-full bg-white/25"
+                        style={{ width: `${Math.min(b * 100, 100)}%` }}
+                      />
+                    )}
+                    <div
+                      className="absolute inset-y-0 left-0 rounded-full bg-[var(--color-brand)]"
+                      style={{ width: `${Math.min(v * 100, 100)}%`, opacity: 0.92 }}
+                    />
+                  </div>
+                  <p className="mono mt-2 text-[11px] text-[var(--color-mute)]">
+                    {b === null
+                      ? `no baseline defined · n=${r.n ?? "?"}`
+                      : `${pct(b)} ${r.baseline_label} · n=${r.n ?? "?"}`}
+                  </p>
+                </div>
+              </div>
+            </Reveal>
+          );
+        })}
+      </div>
+
+      <Reveal>
+        <p className="mt-5 text-[13px] leading-[1.7] text-[var(--color-mute)]">
+          M2 is measured on the RSVQA-LR held-out test split (10,004 QA pairs, 100
+          unseen tiles). Every other row is measured on the IndiaSat test split,
+          whose patches are separated from train by a deterministic grid hash so
+          neighbouring — and therefore overlapping — patches never straddle the
+          split. M7&apos;s baseline is the same weights with the visual tokens zeroed:
+          the difference is the part of the answer that comes from the image, and
+          on multiple choice it is 40 points. It also reaches 0.941 on yes/no and
+          0.926 next-token on captions — and <strong className="font-medium text-[var(--color-dim)]">0.000
+          on referring boxes</strong>, because it emits four coordinates as words and
+          an exact string match on those is close to unwinnable. Grounding is M4&apos;s
+          job, scored properly above; the box questions stay in M7&apos;s training mix
+          because they teach spatial language, not because M7 is the grounding model.
+        </p>
+      </Reveal>
