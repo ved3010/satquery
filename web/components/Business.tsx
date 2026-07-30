@@ -186,3 +186,66 @@ export function Business() {
                 p.featured ? "bg-[#07090f]" : "bg-black"
               }`}
             >
+              <div className="flex items-center justify-between">
+                <span className="mono text-[10.5px] tracking-[0.16em] text-[var(--color-mute)]">
+                  {p.tier.toUpperCase()}
+                </span>
+                {p.featured && (
+                  <span className="mono rounded-full bg-[var(--color-brand)]/18 px-2.5 py-1 text-[9.5px] tracking-[0.14em] text-[var(--color-brand-soft)]">
+                    PRIMARY
+                  </span>
+                )}
+              </div>
+              <h4 className="mt-5 text-[19px] font-medium text-white">{p.name}</h4>
+              <p className="mt-3 flex items-baseline gap-2">
+                <span className="text-[26px] font-medium tracking-tight text-white">
+                  {p.price}
+                </span>
+                <span className="text-[12.5px] text-[var(--color-mute)]">{p.cadence}</span>
+              </p>
+              <p className="mt-4 text-[13.5px] leading-[1.7] text-[var(--color-mute)]">
+                {p.desc}
+              </p>
+              <ul className="mt-6 space-y-2.5 border-t border-[var(--color-line)] pt-6">
+                {p.features.map((f) => (
+                  <li
+                    key={f}
+                    className="flex gap-2.5 text-[13px] leading-[1.6] text-[var(--color-dim)]"
+                  >
+                    <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-[var(--color-brand-soft)]" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </Reveal>
+        ))}
+      </div>
+
+      <Reveal>
+        <p className="mt-6 max-w-[74ch] text-[13.5px] leading-[1.72] text-[var(--color-mute)]">
+          {REVENUE_NOTE}
+        </p>
+      </Reveal>
+
+      {/* ---------------------------------------------------------- moat */}
+      <Reveal>
+        <p className="eyebrow mt-24">Why it holds</p>
+      </Reveal>
+      <div className="mt-8 grid gap-px overflow-hidden rounded-lg border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-2 lg:grid-cols-4">
+        {MOAT.map((m, i) => (
+          <Reveal key={m.title} delay={i * 60}>
+            <div className="h-full bg-black p-6">
+              <h4 className="text-[15.5px] font-medium leading-snug text-white">
+                {m.title}
+              </h4>
+              <p className="mt-3 text-[13.5px] leading-[1.7] text-[var(--color-mute)]">
+                {m.body}
+              </p>
+            </div>
+          </Reveal>
+        ))}
+      </div>
+    </Section>
+  );
+}
