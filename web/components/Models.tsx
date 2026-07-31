@@ -159,3 +159,57 @@ export function Models() {
                         )}
                       </span>
                     </div>
+                    <div className="relative h-[6px] w-full overflow-hidden rounded-full bg-white/[0.07]">
+                      <div
+                        className="absolute inset-y-0 left-0 rounded-full bg-[var(--color-brand)]/45"
+                        style={{ width: `${clear * 100}%` }}
+                      />
+                      {cloud !== undefined && (
+                        <div
+                          className="absolute inset-y-0 left-0 rounded-full bg-[var(--color-brand)]"
+                          style={{ width: `${cloud * 100}%` }}
+                        />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Reveal>
+        </div>
+      )}
+
+      {/* ------------------------------------------------- the registry */}
+      <Reveal>
+        <p className="eyebrow mt-20">The registry — the router&apos;s only source of models</p>
+      </Reveal>
+      <div className="mt-8 grid gap-px overflow-hidden rounded-lg border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-2 lg:grid-cols-4">
+        {data.models.map((m, i) => (
+          <Reveal key={m.id} delay={i * 40}>
+            <div className="h-full bg-black p-5">
+              <div className="flex items-baseline justify-between">
+                <span className="mono text-[12.5px] font-medium text-white">{m.id}</span>
+                <span
+                  className={`mono text-[10px] tracking-[0.14em] ${
+                    m.trained ? "text-[var(--color-verd)]" : "text-[var(--color-signal)]"
+                  }`}
+                >
+                  {m.trained ? "TRAINED" : "PENDING"}
+                </span>
+              </div>
+              <p className="mono mt-1.5 text-[12px] text-[var(--color-brand-soft)]">
+                {m.name}
+              </p>
+              <p className="mono mt-3 text-[10.5px] leading-[1.7] text-[var(--color-mute)]">
+                {m.tasks.join(" · ")}
+                <br />
+                {m.n_images} image{m.n_images > 1 ? "s" : ""} · {m.runtime}
+                {m.params_m ? ` · ${m.params_m}M` : ""}
+              </p>
+            </div>
+          </Reveal>
+        ))}
+      </div>
+    </Section>
+  );
+}
