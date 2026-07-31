@@ -105,3 +105,57 @@ export function Models() {
           because they teach spatial language, not because M7 is the grounding model.
         </p>
       </Reveal>
+
+      {/* --------------------------------------------- the cloud ablation */}
+      {ab && Object.keys(ab).length > 0 && (
+        <div className="mt-20 grid gap-10 lg:grid-cols-[1fr_1.15fr] lg:gap-16">
+          <Reveal>
+            <p className="eyebrow">Why fusion exists</p>
+            <h3 className="display mt-4 text-[clamp(1.4rem,2.6vw,1.95rem)] text-white">
+              Occlude the optical channel and only the fused model survives.
+            </h3>
+            <p className="mt-5 text-[14.5px] leading-[1.72] text-[var(--color-mute)]">
+              Simulating 50% cloud cover collapses the optical-only model. SAR is
+              unaffected — it sees through cloud, day or night — and the fused model
+              degrades gracefully instead of failing. During a monsoon flood that
+              difference is the difference between an assessment and a wait.
+            </p>
+          </Reveal>
+
+          <Reveal delay={90}>
+            <div className="panel rounded-lg p-6 sm:p-7">
+              <div className="mb-6 flex items-center justify-between">
+                <span className="mono text-[11px] tracking-[0.14em] text-[var(--color-mute)]">
+                  M6 · mAP
+                </span>
+                <span className="mono text-[11px] text-[var(--color-mute)]">
+                  clear vs 50% cloud
+                </span>
+              </div>
+              {[
+                { k: "fused", label: "Optical + SAR" },
+                { k: "s2_only", label: "Optical only" },
+                { k: "s1_only", label: "SAR only" },
+              ].map(({ k, label }) => {
+                const clear = ab[k];
+                const cloud = ab[`${k}_cloud50`];
+                if (clear === undefined) return null;
+                return (
+                  <div key={k} className="mb-6 last:mb-0">
+                    <div className="mb-2 flex items-baseline justify-between">
+                      <span className="text-[13.5px] text-[var(--color-dim)]">{label}</span>
+                      <span className="mono text-[12.5px] tabular-nums text-white">
+                        {clear.toFixed(3)}
+                        {cloud !== undefined && (
+                          <span
+                            className={
+                              cloud < clear - 0.05
+                                ? "ml-2 text-[var(--color-signal)]"
+                                : "ml-2 text-[var(--color-verd)]"
+                            }
+                          >
+                            → {cloud.toFixed(3)}
+                          </span>
+                        )}
+                      </span>
+                    </div>
