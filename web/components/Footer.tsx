@@ -21,3 +21,27 @@ export function Footer() {
               <span>·</span>
               <a href="/#solution" className="hover:text-white transition-colors">Solution</a>
               <span>·</span>
+              <a href="https://github.com/ved3010/satquery" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">GitHub</a>
+            </div>
+          </div>
+
+          <dl className="grid grid-cols-2 gap-x-10 gap-y-4 text-[12.5px] sm:text-right">
+            <div>
+              <dt className="mono text-[10px] tracking-[0.14em] text-[var(--color-mute)]">
+                MODELS
+              </dt>
+              <dd className="mt-1 text-white">
+                {data.trained_count}/{data.models.length} trained
+              </dd>
+            </div>
+            <div>
+              <dt className="mono text-[10px] tracking-[0.14em] text-[var(--color-mute)]">
+                CORPUS
+              </dt>
+              <dd className="mt-1 text-white">
+                {data.dataset.patches} patches · {data.dataset.annotations} annotations
+              </dd>
+            </div>
+            <div>
+              <dt className="mono text-[10px] tracking-[0.14em] text-[var(--color-mute)]">
+                IMAGERY
