@@ -45,3 +45,24 @@ export function Footer() {
             <div>
               <dt className="mono text-[10px] tracking-[0.14em] text-[var(--color-mute)]">
                 IMAGERY
+              </dt>
+              <dd className="mt-1 text-white">Copernicus Sentinel-1 &amp; 2</dd>
+            </div>
+            <div>
+              <dt className="mono text-[10px] tracking-[0.14em] text-[var(--color-mute)]">
+                LABELS
+              </dt>
+              <dd className="mt-1 text-white">ESA WorldCover, CC-BY-4.0</dd>
+            </div>
+          </dl>
+        </div>
+
+        <p className="mono mt-14 border-t border-[var(--color-line)] pt-6 text-[10.5px] leading-[1.8] text-[var(--color-mute)]">
+          Metrics on this page are read from models/reports/*.json, written by the
+          training scripts themselves. Market figures carry their published source.
+          Nothing here is a placeholder.
+        </p>
+      </div>
+    </footer>
+  );
+}
