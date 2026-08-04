@@ -65,3 +65,36 @@ export const PIPELINE = [
 export const CAPABILITIES = [
   {
     n: "01",
+    tag: "VQA · CAPTIONING",
+    title: "Single-image understanding",
+    body: "Ask what a scene contains, what dominates its land cover, or what a structure is — answered from one optical or SAR observation, with scene description alongside.",
+  },
+  {
+    n: "02",
+    tag: "OPTICAL + SAR",
+    title: "Cross-modal analysis",
+    body: "Optical carries spectral context; SAR carries structure and sees through cloud, day or night. Read together they resolve built-up and water regions that either alone leaves ambiguous.",
+  },
+  {
+    n: "03",
+    tag: "BI-TEMPORAL",
+    title: "Multitemporal change",
+    body: "Two co-registered dates become a question about what changed, where, and by how much — with a change mask as the spatial evidence.",
+  },
+  {
+    n: "04",
+    tag: "REFERRING EXPRESSION",
+    title: "Text-guided grounding",
+    body: "“The water body north of the settlement” resolves to a box on the scene, so the answer points at something rather than merely describing it.",
+  },
+  {
+    n: "05",
+    tag: "TASK ROUTING",
+    title: "Agentic orchestration",
+    body: "The question decides the pipeline, not the developer. A LangGraph state machine classifies, validates, selects, sequences and integrates — and checkpoints every transition.",
+  },
+  {
+    n: "06",
+    tag: "AUDITABLE TRACE",
+    title: "Evidence-grounded results",
+    body: "Every run writes a Markdown report carrying the measured table, the models invoked, the resolved parameters and per-step latency and confidence.",
