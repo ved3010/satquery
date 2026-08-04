@@ -98,3 +98,37 @@ export const CAPABILITIES = [
     tag: "AUDITABLE TRACE",
     title: "Evidence-grounded results",
     body: "Every run writes a Markdown report carrying the measured table, the models invoked, the resolved parameters and per-step latency and confidence.",
+  },
+];
+
+/* Why the measured section exists, in one paragraph the judges can quote. */
+export const MEASURED = {
+  kicker: "Real numbers",
+  title: "The percentages are measured, not generated.",
+  body: "Vegetation, urbanisation and water figures are computed from Sentinel-2 surface reflectance using NDVI, MNDWI (Xu 2006) and NDBI (Zha 2003), over the real pixels of the scene the user asked about. The thresholds are published and stated in every report, so a reader can disagree with a number by disagreeing with a threshold rather than by trusting the system. The vision-language model writes the sentence around them; it is never allowed to supply the figure.",
+  indices: [
+    { code: "NDVI", formula: "(NIR − RED) / (NIR + RED)", reads: "vegetation vigour", rule: "≥ 0.30 dense · 0.18–0.30 sparse" },
+    { code: "MNDWI", formula: "(GREEN − SWIR) / (GREEN + SWIR)", reads: "open water", rule: "> 0.00" },
+    { code: "NDBI", formula: "(SWIR − NIR) / (SWIR + NIR)", reads: "built-up", rule: "NDBI − NDVI > 0" },
+    { code: "ΔIndex", formula: "index(t₂) − index(t₁)", reads: "change between dates", rule: "|Δ| > 0.10" },
+  ],
+  sample: `| class | 2023-02-10 | 2024-03-15 | Δ pp | Δ relative |
+| --- | ---: | ---: | ---: | ---: |
+| water | 4.11% | 7.32% | +3.21 | +78.2% |
+| vegetation | 23.97% | 17.58% | −6.38 | −26.6% |
+| built-up | 23.38% | 19.34% | −4.05 | −17.3% |`,
+  sampleNote:
+    "An actual report table, from a live Sentinel-2 fetch over an 18.1 km² area of interest. Two acquisitions in different seasons — the seasonal signal is real and the report says so rather than smoothing it away.",
+};
+
+export const DATA_NOTE = {
+  kicker: "The corpus",
+  title: "BigEarthNet contains zero Indian data.",
+  body: "Its labels come from CORINE Land Cover, a Europe-only product, so its latitude and longitude ranges do not overlap India at all. Swapping CORINE for ESA WorldCover — 10 m, global, CC-BY-4.0 — reproduces the recipe over India. IndiaSat is 985 patches across eight regions spanning tropical monsoon, arid desert, savannah, humid subtropical and montane: every Köppen zone absent from BigEarthNet, from keyless public sources, annotated in the same schema so the two corpora concatenate into one training mix.",
+  stats: [
+    { value: "985", label: "patches" },
+    { value: "8,962", label: "annotations" },
+    { value: "8", label: "regions" },
+    { value: "100%", label: "India" },
+  ],
+};
