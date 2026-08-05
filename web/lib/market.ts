@@ -134,3 +134,49 @@ export const REVENUE = [
     desc:
       "An on-premise deployment for a department or agency, with the sensor adaptation and support that operational use needs.",
     features: [
+      "On-premise install — no imagery leaves the network",
+      "Adapter retraining for the buyer's own sensors",
+      "Auditable execution traces and Markdown report export",
+      "Priority support and version pinning",
+    ],
+    featured: true,
+  },
+  {
+    id: "programme",
+    tier: "National scale",
+    name: "Programme",
+    price: "Engagement",
+    cadence: "scoped per mission",
+    desc:
+      "Integration with national geoportals and mission archives, with adapters maintained per sensor as new missions come online.",
+    features: [
+      "Geoportal integration surface (Bhuvan / Bhoonidhi class)",
+      "New-sensor adapters inside the same agent",
+      "Multi-tenant deployment across departments",
+      "Model cards and reproducibility guarantees",
+    ],
+    featured: false,
+  },
+];
+
+export const REVENUE_NOTE =
+  "The core stays open and self-hostable. Revenue comes from operating it — sensor adaptation, on-premise support, integration — not from locking the capability behind a licence. That is what makes it deployable inside a national space agency without vendor lock-in.";
+
+export const MOAT = [
+  {
+    title: "One backbone, swappable adapters",
+    body: "Eight specialists share a single remote-sensing encoder. A new capability is an adapter of a few million parameters, not another model to host.",
+  },
+  {
+    title: "A new sensor is a new adapter",
+    body: "When a future mission comes online its radiometry and ground sample distance are absorbed by a thin band-adapter layer. The agent, the registry and the interface do not change.",
+  },
+  {
+    title: "Auditability is the product",
+    body: "Every answer carries the task, the models, the resolved parameters, the latency and the confidence. That is the property that lets an AI system into an operational government workflow rather than an exploratory one.",
+  },
+  {
+    title: "Measured, never asserted",
+    body: "Percentages come from published spectral indices computed on the actual reflectance values. The language model narrates; it is never allowed to supply a number.",
+  },
+];
