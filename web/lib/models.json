@@ -102,3 +102,108 @@
       "version": "1.0.0",
       "tasks": [
         "fusion"
+      ],
+      "modalities": [
+        "optical",
+        "sar"
+      ],
+      "n_images": 2,
+      "runtime": "torch",
+      "params_m": 2.48,
+      "trained": true
+    },
+    {
+      "id": "M7",
+      "name": "vlm",
+      "version": "1.0.0",
+      "tasks": [
+        "synthesis",
+        "vqa",
+        "caption"
+      ],
+      "modalities": [
+        "any"
+      ],
+      "n_images": 1,
+      "runtime": "torch",
+      "params_m": 2.34,
+      "trained": true
+    }
+  ],
+  "trained_count": 8,
+  "headline": [
+    {
+      "id": "M6",
+      "name": "fusion",
+      "task": "Optical\u2013SAR land cover",
+      "metric": "mAP",
+      "value": 0.9149570621718361,
+      "baseline": 0.3423946125551708,
+      "baseline_label": "class prior",
+      "n": 151
+    },
+    {
+      "id": "M3",
+      "name": "caption",
+      "task": "Scene description",
+      "metric": "next-token accuracy",
+      "value": 0.9005385392123864,
+      "baseline": 0.07434761201378631,
+      "baseline_label": "most frequent token",
+      "n": 151
+    },
+    {
+      "id": "M5b",
+      "name": "change_vqa",
+      "task": "Bi-temporal change VQA",
+      "metric": "accuracy",
+      "value": 0.7947019867549668,
+      "baseline": 0.47019867549668876,
+      "baseline_label": "majority class",
+      "n": 151
+    },
+    {
+      "id": "M2",
+      "name": "vqa",
+      "task": "Single-image VQA",
+      "metric": "overall accuracy",
+      "value": 0.7587,
+      "baseline": 0.5749,
+      "baseline_label": "majority answer",
+      "n": 10004
+    },
+    {
+      "id": "M5a",
+      "name": "change_map",
+      "task": "Change mask",
+      "metric": "IoU",
+      "value": 0.4419672566231462,
+      "baseline": null,
+      "baseline_label": null,
+      "n": 151
+    },
+    {
+      "id": "M4",
+      "name": "ground",
+      "task": "Referring-expression grounding",
+      "metric": "mean IoU",
+      "value": 0.30823880434036255,
+      "baseline": 0.19834666209956447,
+      "baseline_label": "mean training box",
+      "n": 180
+    },
+    {
+      "id": "M1",
+      "name": "rsclip",
+      "task": "Image\u2013text retrieval",
+      "metric": "R@1",
+      "value": 0.13907285034656525,
+      "baseline": 0.006622516556291391,
+      "baseline_label": "chance",
+      "n": 151
+    },
+    {
+      "id": "M7",
+      "name": "vlm",
+      "task": "Instruction-following VLM",
+      "metric": "MCQ exact match",
