@@ -1,0 +1,104 @@
+{
+  "generated_by": "scripts/export_site_data.py",
+  "models": [
+    {
+      "id": "M1",
+      "name": "rsclip",
+      "version": "1.0.0",
+      "tasks": [
+        "retrieval"
+      ],
+      "modalities": [
+        "optical",
+        "sar"
+      ],
+      "n_images": 1,
+      "runtime": "torch",
+      "params_m": 1.57,
+      "trained": true
+    },
+    {
+      "id": "M2",
+      "name": "vqa",
+      "version": "1.0.0",
+      "tasks": [
+        "vqa"
+      ],
+      "modalities": [
+        "optical"
+      ],
+      "n_images": 1,
+      "runtime": "onnx",
+      "params_m": 2.5,
+      "trained": true
+    },
+    {
+      "id": "M3",
+      "name": "caption",
+      "version": "1.0.0",
+      "tasks": [
+        "caption"
+      ],
+      "modalities": [
+        "optical",
+        "sar"
+      ],
+      "n_images": 1,
+      "runtime": "torch",
+      "params_m": 1.89,
+      "trained": true
+    },
+    {
+      "id": "M4",
+      "name": "ground",
+      "version": "1.0.0",
+      "tasks": [
+        "grounding"
+      ],
+      "modalities": [
+        "optical",
+        "sar"
+      ],
+      "n_images": 1,
+      "runtime": "torch",
+      "params_m": 1.67,
+      "trained": true
+    },
+    {
+      "id": "M5a",
+      "name": "change_map",
+      "version": "1.0.0",
+      "tasks": [
+        "change_map"
+      ],
+      "modalities": [
+        "optical",
+        "sar"
+      ],
+      "n_images": 2,
+      "runtime": "torch",
+      "params_m": 1.97,
+      "trained": true
+    },
+    {
+      "id": "M5b",
+      "name": "change_vqa",
+      "version": "1.0.0",
+      "tasks": [
+        "change_vqa"
+      ],
+      "modalities": [
+        "optical",
+        "sar"
+      ],
+      "n_images": 2,
+      "runtime": "torch",
+      "params_m": 1.97,
+      "trained": true
+    },
+    {
+      "id": "M6",
+      "name": "fusion",
+      "version": "1.0.0",
+      "tasks": [
+        "fusion"
