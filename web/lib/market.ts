@@ -89,3 +89,48 @@ export const MARKET_CONTEXT = [
     value: "US$12.1B → US$29.6B",
     label: "Satellite data services, 2024 → 2030",
     cagr: "16.3% CAGR",
+    source: "Grand View Research",
+    basis: "research" as Basis,
+  },
+  {
+    value: "23.8%",
+    label: "Government share of imagery-analytics outlays, 2025",
+    cagr: "largest end-user segment",
+    source: "MarketsandMarkets",
+    basis: "research" as Basis,
+  },
+  {
+    value: "US$0",
+    label: "Acquisition cost of the imagery SatQuery runs on",
+    cagr: "Copernicus Sentinel-1 & 2, open data",
+    source: "European Union / ESA",
+    basis: "research" as Basis,
+  },
+];
+
+export const REVENUE = [
+  {
+    id: "community",
+    tier: "Open core",
+    name: "Community",
+    price: "Free",
+    cadence: "self-hosted, forever",
+    desc:
+      "The agent, the model registry and the trained adapters, under an open licence. For researchers, students and any department evaluating the system.",
+    features: [
+      "Full agent graph and specialist registry",
+      "Open adapter weights",
+      "Single-image, cross-modal and bi-temporal tasks",
+      "Runs on CPU — no GPU required",
+    ],
+    featured: false,
+  },
+  {
+    id: "institutional",
+    tier: "Per department",
+    name: "Institutional",
+    price: "US$15–25k",
+    cadence: "per year, per deployment",
+    desc:
+      "An on-premise deployment for a department or agency, with the sensor adaptation and support that operational use needs.",
+    features: [
