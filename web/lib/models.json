@@ -207,3 +207,93 @@
       "name": "vlm",
       "task": "Instruction-following VLM",
       "metric": "MCQ exact match",
+      "value": 0.9074,
+      "baseline": 0.5079,
+      "baseline_label": "same weights, image zeroed",
+      "n": 443
+    }
+  ],
+  "coverage": {
+    "M-2 single-image VQA": [
+      "M2",
+      "M7"
+    ],
+    "M-3 caption or grounding": [
+      "M3",
+      "M4",
+      "M7"
+    ],
+    "M-4 change analysis": [
+      "M5b"
+    ],
+    "M-5 optical-SAR fusion": [
+      "M6"
+    ]
+  },
+  "cloud_ablation": {
+    "fused": 0.915,
+    "s2_only": 0.7306,
+    "s1_only": 0.6869,
+    "fused_cloud50": 0.8467,
+    "s2_only_cloud50": 0.6508,
+    "s1_only_cloud50": 0.6869
+  },
+  "vlm": {
+    "architecture": "frozen M1 vision tower -> 17 visual tokens -> 4-layer causal decoder (d=256, 2.34M trainable)",
+    "epochs": 20,
+    "seconds": 2850.2,
+    "test": {
+      "captioning": {
+        "n": 151,
+        "majority_baseline": 0.0409,
+        "next_token_acc": 0.9255
+      },
+      "binary": {
+        "n": 595,
+        "majority_baseline": 0.6016,
+        "exact_match": 0.9412
+      },
+      "mcq": {
+        "n": 443,
+        "majority_baseline": 0.2695,
+        "exact_match": 0.9074
+      },
+      "bounding box": {
+        "n": 180,
+        "majority_baseline": 0.0075,
+        "exact_match": 0.0
+      }
+    },
+    "blind_ablation": {
+      "captioning": {
+        "n": 151,
+        "majority_baseline": 0.0409,
+        "next_token_acc": 0.8464
+      },
+      "binary": {
+        "n": 595,
+        "majority_baseline": 0.6016,
+        "exact_match": 0.8387
+      },
+      "mcq": {
+        "n": 443,
+        "majority_baseline": 0.2695,
+        "exact_match": 0.5079
+      },
+      "bounding box": {
+        "n": 180,
+        "majority_baseline": 0.0075,
+        "exact_match": 0.0
+      }
+    },
+    "caveat": "Word-level vocabulary of 265 tokens over one corpus. It answers IndiaSat-style instructions about Indian Sentinel patches; it is not a general-purpose VLM. Quantitative percentages in a report come from the measured spectral indices, never from this model."
+  },
+  "dataset": {
+    "name": "IndiaSat",
+    "patches": 985,
+    "annotations": 8962,
+    "regions": 8,
+    "bands": "Sentinel-2 (12) + Sentinel-1 (VV/VH) + ESA WorldCover",
+    "note": "BigEarthNet contains zero Indian data \u2014 its labels come from CORINE, a Europe-only product. Swapping CORINE for ESA WorldCover reproduces the recipe over India."
+  }
+}
