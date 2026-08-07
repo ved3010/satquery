@@ -180,3 +180,49 @@ export const api = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+    }).then(json<AoiResult>),
+
+  query: (query: string, images: ImageRef[]) =>
+    fetch(`${BASE}/query`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query,
+        images: images.map((i) => ({ path: i.path, modality: i.modality, date: i.date ?? null })),
+      }),
+    }).then(json<Trace>),
+
+  reportUrl: (runId: string) => `${BASE}/runs/${runId}/report.md`,
+  previewUrl: (path: string, mode: "rgb" | "cir" | "swir" | "ndvi" = "rgb") =>
+    `${BASE}/preview?path=${encodeURIComponent(path)}${mode !== "rgb" ? `&mode=${mode}` : ""}`,
+};
+
+export function getPreviewUrl(img: ImageRef, mode: "rgb" | "cir" | "swir" | "ndvi" = "rgb"): string {
+  if (img.path) {
+    return api.previewUrl(img.path, mode);
+  }
+  if (img.preview) {
+    return img.preview.startsWith("http") ? img.preview : `${BASE}${img.preview}`;
+  }
+  return "";
+}
+
+/** The eight IndiaSat regions, as map presets. */
+export const REGIONS = [
+  { key: "ahmedabad", name: "Ahmedabad", state: "Gujarat", lat: 23.03, lon: 72.58, zone: "Arid, steppe, hot" },
+  { key: "guwahati", name: "Guwahati", state: "Assam", lat: 26.14, lon: 91.74, zone: "Humid subtropical" },
+  { key: "jaisalmer", name: "Jaisalmer", state: "Rajasthan", lat: 26.92, lon: 70.91, zone: "Arid desert, hot" },
+  { key: "kochi", name: "Kochi", state: "Kerala", lat: 9.93, lon: 76.27, zone: "Tropical monsoon" },
+  { key: "ludhiana", name: "Ludhiana", state: "Punjab", lat: 30.9, lon: 75.86, zone: "Semi-arid" },
+  { key: "pune", name: "Pune", state: "Maharashtra", lat: 18.52, lon: 73.86, zone: "Tropical savannah" },
+  { key: "shimla", name: "Shimla", state: "Himachal Pradesh", lat: 31.1, lon: 77.17, zone: "Montane" },
+  { key: "sundarbans", name: "Sundarbans", state: "West Bengal", lat: 21.95, lon: 88.9, zone: "Mangrove delta" },
+] as const;
+
+export const EXAMPLE_QUERIES = [
+  { label: "Land cover", text: "Describe the land-cover and major objects visible in this image." },
+  { label: "Change", text: "What changed between these two dates, and where did the change occur?" },
+  { label: "Urban growth", text: "Has the built-up area increased, decreased, or remained unchanged?" },
+  { label: "Optical + SAR", text: "Use the optical and SAR images together to identify built-up and water-covered regions." },
+  { label: "Grounding", text: "Highlight the water body referred to in this query." },
+] as const;
