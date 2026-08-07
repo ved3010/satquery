@@ -134,3 +134,49 @@ const BASE = (process.env.NEXT_PUBLIC_SATQUERY_API ?? "/api").replace(/\/$/, "")
 export const API_BASE = BASE;
 export const IS_DIRECT = BASE !== "/api";
 
+async function json<T>(res: Response): Promise<T> {
+  if (!res.ok) {
+    // FastAPI puts the useful message in `detail`; surfacing the raw status
+    // instead would turn "AOI is too large" into "422", which tells the user
+    // nothing about what to do next.
+    let detail = `HTTP ${res.status}`;
+    try {
+      const body = await res.json();
+      if (body?.detail) detail = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail);
+    } catch {
+      /* non-JSON error body — keep the status line */
+    }
+    throw new Error(detail);
+  }
+  return res.json() as Promise<T>;
+}
+
+export const api = {
+  health: () => fetch(`${BASE}/health`, { cache: "no-store" }).then(json<Health>),
+
+  models: () => fetch(`${BASE}/models`, { cache: "no-store" }).then(json<Model[]>),
+
+  runs: (limit = 8) =>
+    fetch(`${BASE}/runs?limit=${limit}`, { cache: "no-store" }).then(json<RunSummary[]>),
+
+  upload: (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return fetch(`${BASE}/upload`, { method: "POST", body: fd }).then(
+      json<{ path: string; filename: string; bytes: number; modality: string | null }>,
+    );
+  },
+
+  aoiFetch: (body: {
+    bbox: number[];
+    start: string;
+    end: string;
+    max_cloud: number;
+    want_sar: boolean;
+    start2?: string | null;
+    end2?: string | null;
+  }) =>
+    fetch(`${BASE}/aoi/fetch`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
