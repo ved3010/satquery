@@ -177,3 +177,63 @@ export default function ConsolePage() {
     setSelectedFeaturePoint(null);
 
     // Automatically fetch real satellite imagery and attach to chatbox
+    void fetchAoi(loc.bbox);
+  };
+
+  // Handle uploading custom image (.tif, .png, .jpg)
+  const handleUploadImage = async (file: File) => {
+    setBusy("upload");
+    try {
+      const res = await api.upload(file);
+      const newImg: ImageRef = {
+        path: res.path,
+        modality: (res.modality as "optical" | "sar") || "optical",
+        date: today(),
+        role: `Uploaded (${res.filename})`,
+        preview: api.previewUrl(res.path),
+      };
+      setImages((prev) => [newImg, ...prev]);
+      setCurrentAttachedImage(newImg);
+    } catch (e) {
+      console.error("Upload error:", e);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  // Run natural language question against attached satellite image in Gemini chat style
+  const handleRunQuery = async (queryText: string, imagesToUse: ImageRef[]) => {
+    const trimmed = queryText.trim();
+    if (!trimmed) return;
+
+    const targetImages = imagesToUse.length > 0 ? imagesToUse : (currentAttachedImage ? [currentAttachedImage] : images.slice(0, 1));
+    if (targetImages.length === 0) {
+      // Add assistant warning message
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          role: "user",
+          text: trimmed,
+          timestamp: formatTime(),
+        },
+        {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          text: "Please search a location or click anywhere on the 3D globe to acquire a satellite scene before asking.",
+          timestamp: formatTime(),
+          isError: true,
+        },
+      ]);
+      setQueryInput("");
+      return;
+    }
+
+    // 1. Add User Message with attached image
+    const userMsg: ChatMessage = {
+      id: Date.now().toString(),
+      role: "user",
+      text: trimmed,
+      timestamp: formatTime(),
+      attachedImages: targetImages,
+      locationName: selectedLocation?.name,
