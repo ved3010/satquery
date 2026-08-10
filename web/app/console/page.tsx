@@ -117,3 +117,63 @@ export default function ConsolePage() {
     const targetBbox = customBbox || bbox;
     if (!targetBbox) return;
 
+    setBusy("fetch");
+    try {
+      const r = await api.aoiFetch({
+        bbox: targetBbox,
+        start: yearAgo(1),
+        end: today(),
+        max_cloud: 25,
+        want_sar: false,
+      });
+
+      if (r.images && r.images.length > 0) {
+        setImages(r.images);
+        setScenes(r.scenes);
+        // Automatically attach the acquired satellite image to the Gemini chatbox
+        setCurrentAttachedImage(r.images[0]);
+      }
+    } catch (e) {
+      console.warn("Satellite fetch notice:", e);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  // Acquire imagery on initial mount
+  useEffect(() => {
+    if (bbox && images.length === 0) {
+      void fetchAoi(bbox);
+    }
+  }, []);
+
+  // Handle clicking anywhere on the 3D globe
+  const handleMapClick = async (coords: [number, number]) => {
+    const [lon, lat] = coords;
+    setFlyToCoords(coords);
+    const newBbox = [
+      Number((lon - 0.02).toFixed(5)),
+      Number((lat - 0.02).toFixed(5)),
+      Number((lon + 0.02).toFixed(5)),
+      Number((lat + 0.02).toFixed(5)),
+    ];
+    setBbox(newBbox);
+
+    const point = inspectSingleCoordinate(coords, newBbox, latestTrace?.analysis);
+    setSelectedFeaturePoint(point);
+
+    const briefing = await reverseGeocodeLocation(lat, lon);
+    setSelectedLocation(briefing);
+
+    // Fetch satellite image for clicked spot and attach to chatbox
+    void fetchAoi(newBbox);
+  };
+
+  // Handle selecting a location from the search bar
+  const handleSelectLocation = (loc: LocationBriefing) => {
+    setSelectedLocation(loc);
+    setBbox(loc.bbox);
+    setFlyToCoords(loc.coords);
+    setSelectedFeaturePoint(null);
+
+    // Automatically fetch real satellite imagery and attach to chatbox
