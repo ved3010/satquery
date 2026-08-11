@@ -357,3 +357,43 @@ export default function ConsolePage() {
               onSetQueryPrompt={(q) => setQueryInput(q)}
             />
           </div>
+
+          {/* Center Space - Free for globe interaction (clicks pass through to Earth canvas) */}
+          <div className="flex-1 pointer-events-none" />
+
+          {/* Floating Glassmorphic Gemini Chatbox (Earth clearly visible through it!) */}
+          <div className="w-full max-w-[880px] mx-auto pointer-events-auto max-h-[380px] sm:max-h-[420px] flex flex-col mt-2">
+            <GeminiChatBox
+              currentImage={currentAttachedImage}
+              availableImages={images}
+              onSelectImage={setCurrentAttachedImage}
+              onClearAttachedImage={() => setCurrentAttachedImage(null)}
+              onUploadImage={handleUploadImage}
+              onRunQuery={handleRunQuery}
+              isQuerying={busy === "query"}
+              isFetchingImage={busy === "fetch"}
+              selectedLocationName={selectedLocation?.name}
+              messages={messages}
+              onClearMessages={() => setMessages([])}
+              queryInput={queryInput}
+              setQueryInput={setQueryInput}
+              hasCctvFeed={!!matchedCctv}
+              onOpenDualCockpit={() => setIsDualCockpitOpen(true)}
+            />
+          </div>
+        </div>
+
+        {/* Dual Orbit-to-Ground Side-by-Side Surveillance Cockpit Modal */}
+        {isDualCockpitOpen && matchedCctv && (
+          <DualSurveillanceCockpit
+            cctvFeed={matchedCctv}
+            satelliteImage={currentAttachedImage || (images.length > 0 ? images[0] : null)}
+            locationName={selectedLocation?.name || "Pune"}
+            coords={(flyToCoords || selectedLocation?.coords || [73.8567, 18.5018]) as [number, number]}
+            onClose={() => setIsDualCockpitOpen(false)}
+          />
+        )}
+      </main>
+    </>
+  );
+}
