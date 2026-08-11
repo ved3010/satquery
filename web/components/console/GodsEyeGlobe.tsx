@@ -138,3 +138,73 @@ const LAYER_CONFIGS: Record<SensorLayer, { name: string; url: string; maxZoom: n
     desc: "10 m Copernicus Sentinel-2 MSI Surface Reflectance",
   },
   sar: {
+    name: "SAR Radar (Sentinel-1)",
+    url: "https://services.arcgisonline.com/arcgis/rest/services/Polar/ArcticOceanBase/MapServer/tile/{z}/{y}/{x}",
+    maxZoom: 16,
+    desc: "C-Band Synthetic Aperture Radar Microwave Backscatter (VV/VH)",
+  },
+  ndvi: {
+    name: "NDVI / False Color Infrared",
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/USA_Topo_Maps/MapServer/tile/{z}/{y}/{x}",
+    maxZoom: 15,
+    desc: "Multispectral NIR Differential Vegetation Index",
+  },
+  night: {
+    name: "Night Radiance (VIIRS)",
+    url: "https://map1.vis.earthdata.nasa.gov/wmts-webmerc/VIIRS_CityLights_2012/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpg",
+    maxZoom: 8,
+    desc: "NASA Suomi-NPP VIIRS Day/Night Band Thermal Radiance",
+  },
+  tactical: {
+    name: "Dark Infrastructure Grid",
+    url: "https://basemaps.cartocdn.com/dark_all/{z}/{y}/{x}@2x.png",
+    maxZoom: 19,
+    desc: "High-contrast infrastructure vectors & spatial grid",
+  },
+};
+
+interface GodsEyeGlobeProps {
+  bbox: number[] | null;
+  onBboxChange: (bbox: number[]) => void;
+  activeLayer: SensorLayer;
+  onLayerChange: (layer: SensorLayer) => void;
+  selectedPreset?: TargetPreset | null;
+  onSelectPreset?: (preset: TargetPreset) => void;
+  isScanning?: boolean;
+  flyToTarget?: [number, number] | null;
+  onMapClick?: (coords: [number, number]) => void;
+  detectedFeatures?: DetectedFeaturePoint[];
+  selectedFeaturePoint?: DetectedFeaturePoint | null;
+  onSelectFeaturePoint?: (point: DetectedFeaturePoint | null) => void;
+  onAskAboutPoint?: (query: string) => void;
+}
+
+export function GodsEyeGlobe({
+  bbox,
+  onBboxChange,
+  activeLayer,
+  onLayerChange,
+  selectedPreset,
+  onSelectPreset,
+  isScanning = false,
+  flyToTarget,
+  onMapClick,
+  detectedFeatures = [],
+  selectedFeaturePoint = null,
+  onSelectFeaturePoint,
+  onAskAboutPoint,
+}: GodsEyeGlobeProps) {
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<MapLibreMap | null>(null);
+  const markerRef = useRef<maplibregl.Marker | null>(null);
+  const featureMarkersRef = useRef<maplibregl.Marker[]>([]);
+  const isDraggingAoi = useRef(false);
+  const aoiStartPoint = useRef<[number, number] | null>(null);
+  const animFrameRef = useRef<number | null>(null);
+
+  const [telemetry, setTelemetry] = useState({
+    lat: 23.0225,
+    lng: 72.5714,
+    zoom: 4.5,
+    pitch: 45,
+    bearing: 0,
