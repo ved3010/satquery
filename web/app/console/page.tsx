@@ -297,3 +297,63 @@ export default function ConsolePage() {
             onSelectFeaturePoint={setSelectedFeaturePoint}
             onAskAboutPoint={(q) => {
               setQueryInput(q);
+            }}
+          />
+        </div>
+
+        {/* Floating Glassmorphic UI Layer (Z-10) */}
+        <div className="relative z-10 flex flex-col justify-between h-[calc(100vh-60px)] pointer-events-none px-4 sm:px-6 pt-3 pb-3 max-w-[1400px] mx-auto w-full">
+          {/* Top Controls: Target Status + Glass Search Bar */}
+          <div className="w-full max-w-[880px] mx-auto space-y-2 pointer-events-auto">
+            {/* Top Bar Status */}
+            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/15 shadow-lg">
+              <div className="flex items-center gap-2.5">
+                <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                <h1 className="text-[13.5px] font-semibold tracking-tight text-white flex items-center gap-2">
+                  <span>Console</span>
+                  <span className="text-white/30">/</span>
+                  <span className="text-cyan-300 font-normal">
+                    {selectedLocation?.name || "Global Orbit"}
+                  </span>
+                </h1>
+                {selectedLocation?.state && (
+                  <span className="hidden sm:inline-block px-2 py-0.5 rounded text-[10.5px] font-mono bg-white/10 text-white/70 border border-white/15">
+                    {selectedLocation.state}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                {matchedCctv && (
+                  <button
+                    type="button"
+                    onClick={() => setIsDualCockpitOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-red-500/40 bg-red-600/30 text-[11px] text-red-200 font-mono hover:bg-red-600/50 transition-all shadow-[0_0_15px_rgba(239,68,68,0.3)] animate-pulse"
+                    title="View live street CCTV camera footage side-by-side with satellite view"
+                  >
+                    <Video className="w-3.5 h-3.5 text-red-400" />
+                    <span className="font-bold">LIVE STREET CCTV</span>
+                  </button>
+                )}
+
+                {backend.kind === "up" ? (
+                  <div className="flex items-center gap-2 px-2.5 py-0.5 rounded-full border border-emerald-500/30 bg-emerald-950/30 text-[10.5px] text-emerald-300 font-mono">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>ONLINE ({backend.health.models_registered} MODELS)</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 px-2.5 py-0.5 rounded-full border border-amber-500/30 bg-amber-950/30 text-[10.5px] text-amber-300 font-mono">
+                    <AlertTriangle className="w-3 h-3 text-amber-400" />
+                    <span>CONNECTING</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Frosted Glass Location Search */}
+            <LocationSearch
+              selectedLocation={selectedLocation}
+              onSelectLocation={handleSelectLocation}
+              onSetQueryPrompt={(q) => setQueryInput(q)}
+            />
+          </div>
