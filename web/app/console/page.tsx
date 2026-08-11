@@ -237,3 +237,63 @@ export default function ConsolePage() {
       timestamp: formatTime(),
       attachedImages: targetImages,
       locationName: selectedLocation?.name,
+    };
+
+    setMessages((prev) => [...prev, userMsg]);
+    setQueryInput("");
+    setBusy("query");
+
+    // 2. Query AI backend
+    try {
+      const res = await api.query(trimmed, targetImages);
+      setLatestTrace(res);
+
+      const assistantMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        text: res.answer || "Analysis complete.",
+        timestamp: formatTime(),
+        trace: res,
+      };
+      setMessages((prev) => [...prev, assistantMsg]);
+    } catch (e) {
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          text: `Query error: ${errorMsg}. Please try rephrasing or selecting another region.`,
+          timestamp: formatTime(),
+          isError: true,
+        },
+      ]);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <>
+      <Nav />
+      <main className="relative min-h-screen pt-[60px] text-white flex flex-col overflow-hidden">
+        <Starfield />
+
+        {/* Immersive Full-Screen 3D Earth Globe Canvas (Spans full viewport behind the glass chatbox!) */}
+        <div className="fixed inset-0 top-[60px] w-full h-[calc(100vh-60px)] z-0 bg-transparent overflow-hidden">
+          <GodsEyeGlobe
+            bbox={bbox}
+            onBboxChange={(newBbox) => {
+              setBbox(newBbox);
+              void fetchAoi(newBbox);
+            }}
+            activeLayer={activeLayer}
+            onLayerChange={setActiveLayer}
+            isScanning={busy === "fetch"}
+            flyToTarget={flyToCoords}
+            onMapClick={handleMapClick}
+            detectedFeatures={detectedFeatures}
+            selectedFeaturePoint={selectedFeaturePoint}
+            onSelectFeaturePoint={setSelectedFeaturePoint}
+            onAskAboutPoint={(q) => {
+              setQueryInput(q);
