@@ -208,3 +208,74 @@ export function GodsEyeGlobe({
     zoom: 4.5,
     pitch: 45,
     bearing: 0,
+    cursorLat: 23.0225,
+    cursorLng: 72.5714,
+  });
+
+  const [autoRotate, setAutoRotate] = useState(false);
+  const [satPassIndex, setSatPassIndex] = useState(0);
+  const [showFeaturesLayer, setShowFeaturesLayer] = useState(true);
+  const [isBoxSelectMode, setIsBoxSelectMode] = useState(false);
+  const isBoxSelectModeRef = useRef(false);
+
+  useEffect(() => {
+    isBoxSelectModeRef.current = isBoxSelectMode;
+    const map = mapRef.current;
+    if (map) {
+      map.getCanvas().style.cursor = isBoxSelectMode ? "crosshair" : "";
+    }
+  }, [isBoxSelectMode]);
+
+  useEffect(() => {
+    if (!mapContainerRef.current || mapRef.current) return;
+
+    const initialPreset = selectedPreset ?? TARGET_PRESETS[0];
+
+    const map = new maplibregl.Map({
+      container: mapContainerRef.current,
+      style: {
+        version: 8,
+        sources: {
+          "satellite-tiles": {
+            type: "raster",
+            tiles: [LAYER_CONFIGS.optical.url],
+            tileSize: 256,
+            maxzoom: LAYER_CONFIGS.optical.maxZoom,
+          },
+        },
+        layers: [
+          {
+            id: "satellite-layer",
+            type: "raster",
+            source: "satellite-tiles",
+            paint: {
+              "raster-opacity": 1.0,
+              "raster-fade-duration": 300,
+            },
+          },
+        ],
+        sky: {
+          "sky-color": "#01030a",
+          "sky-horizon-blend": 0.6,
+          "horizon-color": "#0a254d",
+          "horizon-fog-blend": 0.8,
+          "fog-color": "#010814",
+          "fog-ground-blend": 0.7,
+        },
+      },
+      center: [72.5714, 23.0225],
+      zoom: 14.2,
+      pitch: 68,
+      bearing: -30,
+      maxPitch: 85,
+      renderWorldCopies: true,
+    });
+
+    mapRef.current = map;
+
+    map.on("load", () => {
+      try {
+        if (typeof (map as any).setProjection === "function") {
+          (map as any).setProjection({ type: "globe" });
+        }
+      } catch {
