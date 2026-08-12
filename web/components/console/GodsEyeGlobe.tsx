@@ -279,3 +279,73 @@ export function GodsEyeGlobe({
           (map as any).setProjection({ type: "globe" });
         }
       } catch {
+        // mercator fallback
+      }
+
+      // Smooth cinematic zoom-out sequence pulling back into orbit
+      setTimeout(() => {
+        if (!mapRef.current) return;
+        map.flyTo({
+          center: [78.5, 21.8],
+          zoom: 4.6,
+          pitch: 45,
+          bearing: 0,
+          speed: 0.55,
+          curve: 1.8,
+          duration: 3800,
+          essential: true,
+        });
+      }, 350);
+
+      map.addSource("aoi-box", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+
+      map.addLayer({
+        id: "aoi-fill",
+        type: "fill",
+        source: "aoi-box",
+        paint: {
+          "fill-color": "#2f7bf0",
+          "fill-opacity": 0.16,
+        },
+      });
+
+      map.addLayer({
+        id: "aoi-line",
+        type: "line",
+        source: "aoi-box",
+        paint: {
+          "line-color": "#7fb2ff",
+          "line-width": 2,
+        },
+      });
+
+      map.addSource("sat-orbits", {
+        type: "geojson",
+        data: generateOrbitalPaths(),
+      });
+
+      map.addLayer({
+        id: "sat-orbit-lines",
+        type: "line",
+        source: "sat-orbits",
+        paint: {
+          "line-color": "#2f7bf0",
+          "line-width": 1.5,
+          "line-opacity": 0.35,
+          "line-dasharray": [4, 4],
+        },
+      });
+
+      if (bbox) updateAoiLayer(bbox);
+    });
+
+    // Click anywhere on globe to point, pin and inspect
+    map.on("click", (e) => {
+      if (isDraggingAoi.current) return;
+      const coords: [number, number] = [
+        Number(e.lngLat.lng.toFixed(5)),
+        Number(e.lngLat.lat.toFixed(5)),
+      ];
