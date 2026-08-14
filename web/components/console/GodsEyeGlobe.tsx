@@ -490,3 +490,73 @@ export function GodsEyeGlobe({
   useEffect(() => {
     if (bbox) updateAoiLayer(bbox);
   }, [bbox]);
+
+  // Render on-map detected feature points (hotspots, developments, alerts)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    // Clear existing feature markers
+    featureMarkersRef.current.forEach((m) => m.remove());
+    featureMarkersRef.current = [];
+
+    if (!showFeaturesLayer || detectedFeatures.length === 0) return;
+
+    detectedFeatures.forEach((feat) => {
+      const el = document.createElement("div");
+      el.className = "detected-spatial-feature-marker cursor-pointer group";
+
+      let color = "#f59e0b"; // amber for built-up
+      let badge = "DEV";
+      if (feat.category === "vegetation_loss") {
+        color = "#ef4444";
+        badge = "ALERT";
+      } else if (feat.category === "vegetation_gain") {
+        color = "#10b981";
+        badge = "VEG";
+      } else if (feat.category === "water") {
+        color = "#00f3ff";
+        badge = "H2O";
+      } else if (feat.category === "farmland") {
+        color = "#eab308";
+        badge = "AGRI";
+      }
+
+      el.innerHTML = `
+        <div style="position: relative; display: flex; flex-direction: column; align-items: center;">
+          <div style="background: rgba(0,0,0,0.85); color: #fff; font-family: monospace; font-size: 9px; padding: 2px 6px; border-radius: 4px; border: 1px solid ${color}; white-space: nowrap; margin-bottom: 2px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+            <strong style="color: ${color}">${badge}</strong> ${feat.name.split(" ")[0]}
+          </div>
+          <div style="position: relative; width: 18px; height: 18px; border-radius: 9999px; background: ${color}; border: 2px solid #fff; box-shadow: 0 0 12px ${color}; display: flex; align-items: center; justify-content: center;">
+            <div style="width: 5px; height: 5px; border-radius: 9999px; background: #fff;"></div>
+          </div>
+        </div>
+      `;
+
+      el.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        onSelectFeaturePoint?.(feat);
+      });
+
+      const marker = new maplibregl.Marker({ element: el })
+        .setLngLat(feat.coords)
+        .addTo(map);
+
+      featureMarkersRef.current.push(marker);
+    });
+  }, [detectedFeatures, showFeaturesLayer]);
+
+  // Sync flyToTarget
+  useEffect(() => {
+    if (!flyToTarget) return;
+    const map = mapRef.current;
+    if (map) {
+      if (markerRef.current) {
+        markerRef.current.remove();
+        markerRef.current = null;
+      }
+
+      const el = document.createElement("div");
+      el.className = "geospatial-target-marker cursor-pointer";
+      el.innerHTML = `
+        <div style="position: relative; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px;">
