@@ -419,3 +419,74 @@ export function GodsEyeGlobe({
       }
     });
 
+    map.on("mouseup", (e) => {
+      if (isDraggingAoi.current && aoiStartPoint.current) {
+        map.dragPan.enable();
+        isDraggingAoi.current = false;
+        const [w0, s0] = aoiStartPoint.current;
+        const w1 = e.lngLat.lng;
+        const s1 = e.lngLat.lat;
+        const west = Math.min(w0, w1);
+        const south = Math.min(s0, s1);
+        const east = Math.max(w0, w1);
+        const north = Math.max(s0, s1);
+
+        if (Math.abs(east - west) > 0.003 && Math.abs(north - south) > 0.003) {
+          const finalBbox = [
+            Number(west.toFixed(5)),
+            Number(south.toFixed(5)),
+            Number(east.toFixed(5)),
+            Number(north.toFixed(5)),
+          ];
+          onBboxChange(finalBbox);
+          updateAoiLayer(finalBbox);
+        }
+        aoiStartPoint.current = null;
+        if (isBoxSelectModeRef.current) {
+          setIsBoxSelectMode(false);
+        }
+      }
+    });
+
+    return () => {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      map.remove();
+      mapRef.current = null;
+    };
+  }, []);
+
+  const updateAoiLayer = (b: number[]) => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+
+    const source = map.getSource("aoi-box") as GeoJSONSource;
+    if (!source) return;
+
+    const [west, south, east, north] = b;
+    const polygon = {
+      type: "FeatureCollection" as const,
+      features: [
+        {
+          type: "Feature" as const,
+          properties: {},
+          geometry: {
+            type: "Polygon" as const,
+            coordinates: [
+              [
+                [west, south],
+                [east, south],
+                [east, north],
+                [west, north],
+                [west, south],
+              ],
+            ],
+          },
+        },
+      ],
+    };
+    source.setData(polygon);
+  };
+
+  useEffect(() => {
+    if (bbox) updateAoiLayer(bbox);
+  }, [bbox]);
