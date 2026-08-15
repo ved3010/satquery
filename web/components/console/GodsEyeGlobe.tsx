@@ -560,3 +560,73 @@ export function GodsEyeGlobe({
       el.className = "geospatial-target-marker cursor-pointer";
       el.innerHTML = `
         <div style="position: relative; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px;">
+          <div style="position: absolute; inset: -4px; border-radius: 9999px; background: rgba(47, 123, 240, 0.4); animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+          <div style="position: relative; width: 22px; height: 22px; border-radius: 9999px; background: #2f7bf0; border: 2.5px solid #ffffff; box-shadow: 0 0 16px #00f3ff; display: flex; align-items: center; justify-content: center;">
+            <div style="width: 7px; height: 7px; border-radius: 9999px; background: #ffffff;"></div>
+          </div>
+        </div>
+      `;
+
+      const marker = new maplibregl.Marker({ element: el })
+        .setLngLat(flyToTarget)
+        .addTo(map);
+
+      markerRef.current = marker;
+
+      map.flyTo({
+        center: flyToTarget,
+        zoom: 12.2,
+        pitch: 52,
+        bearing: Math.floor(Math.random() * 30) - 15,
+        speed: 1.3,
+        curve: 1.3,
+        essential: true,
+      });
+    }
+  }, [flyToTarget]);
+
+  // Switch sensor layers
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+
+    const config = LAYER_CONFIGS[activeLayer];
+    const source = map.getSource("satellite-tiles") as any;
+
+    if (source && source.setTiles) {
+      source.setTiles([config.url]);
+    } else if (map.getLayer("satellite-layer")) {
+      map.removeLayer("satellite-layer");
+      if (map.getSource("satellite-tiles")) map.removeSource("satellite-tiles");
+
+      map.addSource("satellite-tiles", {
+        type: "raster",
+        tiles: [config.url],
+        tileSize: 256,
+        maxzoom: config.maxZoom,
+      });
+
+      map.addLayer(
+        {
+          id: "satellite-layer",
+          type: "raster",
+          source: "satellite-tiles",
+          paint: { "raster-opacity": 1.0, "raster-fade-duration": 300 },
+        },
+        "aoi-fill"
+      );
+    }
+  }, [activeLayer]);
+
+  const handleFlyToPreset = (preset: TargetPreset) => {
+    onSelectPreset?.(preset);
+    onBboxChange(preset.bbox);
+    updateAoiLayer(preset.bbox);
+
+    const map = mapRef.current;
+    if (map) {
+      map.flyTo({
+        center: preset.coords,
+        zoom: preset.zoom,
+        pitch: preset.pitch,
+        bearing: Math.floor(Math.random() * 40) - 20,
