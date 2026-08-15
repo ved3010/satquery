@@ -630,3 +630,74 @@ export function GodsEyeGlobe({
         zoom: preset.zoom,
         pitch: preset.pitch,
         bearing: Math.floor(Math.random() * 40) - 20,
+        speed: 1.4,
+        curve: 1.2,
+        essential: true,
+      });
+    }
+  };
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    let isRunning = autoRotate;
+
+    const rotate = () => {
+      if (!isRunning || !map) return;
+      const currentBearing = map.getBearing();
+      map.setBearing(currentBearing + 0.12);
+      animFrameRef.current = requestAnimationFrame(rotate);
+    };
+
+    if (autoRotate) {
+      rotate();
+    } else if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+    }
+
+    return () => {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    };
+  }, [autoRotate]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSatPassIndex((prev) => (prev + 1) % 4);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const SATELLITE_ORBITS = [
+    { name: "Sentinel-2A (Optical)", alt: "786 km", status: "Acquiring" },
+    { name: "Sentinel-1A (SAR Radar)", alt: "693 km", status: "Active" },
+    { name: "Sentinel-2B (Optical)", alt: "786 km", status: "Standby" },
+    { name: "ISRO Cartosat-3", alt: "505 km", status: "Pointed" },
+  ];
+
+  const currentSat = SATELLITE_ORBITS[satPassIndex];
+
+  const triggerCinematicZoomOut = () => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.flyTo({
+      center: [78.5, 21.8],
+      zoom: 4.4,
+      pitch: 45,
+      bearing: 0,
+      speed: 0.55,
+      curve: 1.8,
+      duration: 3500,
+      essential: true,
+    });
+  };
+
+  return (
+    <div className="relative w-full h-full min-h-[480px] overflow-hidden select-none bg-transparent">
+      {/* 3D WebGL Globe Container */}
+      <div ref={mapContainerRef} className="absolute inset-0 w-full h-full cursor-crosshair z-0" />
+
+      {/* Interactive Point Inspector HUD Card on the Map */}
+      {selectedFeaturePoint && (
+        <PointInspectorHud
+          point={selectedFeaturePoint}
