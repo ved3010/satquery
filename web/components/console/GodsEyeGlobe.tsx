@@ -771,3 +771,65 @@ export function GodsEyeGlobe({
           </button>
 
           <button
+            onClick={triggerCinematicZoomOut}
+            className="px-3 py-1.5 rounded-full border border-[var(--color-line)] bg-black/75 text-[11px] mono text-[var(--color-brand-soft)] hover:text-white hover:border-[var(--color-brand)] transition flex items-center gap-1.5"
+            title="Cinematic Zoom-Out to Full Earth Orbit"
+          >
+            <Compass className="w-3 h-3" />
+            <span>Cinematic Orbit</span>
+          </button>
+          <button
+            onClick={() => setAutoRotate(!autoRotate)}
+            className={`px-3 py-1.5 rounded-full border text-[11px] mono transition flex items-center gap-1.5 ${
+              autoRotate
+                ? "bg-[var(--color-brand)] border-[var(--color-brand)] text-white"
+                : "border-[var(--color-line)] bg-black/75 text-[var(--color-mute)] hover:text-white"
+            }`}
+          >
+            {autoRotate ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+            <span>Rotate</span>
+          </button>
+          <button
+            onClick={() => mapRef.current?.zoomIn()}
+            className="p-1.5 rounded-full border border-[var(--color-line)] bg-black/75 text-[var(--color-mute)] hover:text-white transition"
+          >
+            <ZoomIn className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => mapRef.current?.zoomOut()}
+            className="p-1.5 rounded-full border border-[var(--color-line)] bg-black/75 text-[var(--color-mute)] hover:text-white transition"
+          >
+            <ZoomOut className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Left Sensor Matrix Selector */}
+      <div className="absolute left-3 top-16 z-20 pointer-events-auto flex flex-col gap-1.5 max-w-[210px]">
+        <div className="p-2.5 rounded-xl border border-[var(--color-line)] bg-black/80 backdrop-blur-md space-y-1.5">
+          <div className="mono text-[10px] tracking-[0.16em] text-[var(--color-mute)] uppercase px-1">
+            Sensor Matrix
+          </div>
+          {(Object.keys(LAYER_CONFIGS) as SensorLayer[]).map((layer) => {
+            const cfg = LAYER_CONFIGS[layer];
+            const isSelected = activeLayer === layer;
+            return (
+              <button
+                key={layer}
+                onClick={() => onLayerChange(layer)}
+                className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] transition flex items-center justify-between border ${
+                  isSelected
+                    ? "bg-[var(--color-brand)]/20 border-[var(--color-brand)] text-white font-medium"
+                    : "border-transparent text-[var(--color-mute)] hover:text-white hover:bg-white/5"
+                }`}
+              >
+                <span className="truncate">{cfg.name}</span>
+                {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-brand)]" />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Bottom Hint */}
+      <div className="absolute bottom-3 left-3 z-20 pointer-events-none">
