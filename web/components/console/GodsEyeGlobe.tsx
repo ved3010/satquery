@@ -701,3 +701,73 @@ export function GodsEyeGlobe({
       {selectedFeaturePoint && (
         <PointInspectorHud
           point={selectedFeaturePoint}
+          onClose={() => onSelectFeaturePoint?.(null)}
+          onAskAboutPoint={onAskAboutPoint}
+        />
+      )}
+
+      {/* Scanning Indicator & Laser Sweep */}
+      {isScanning && (
+        <div className="absolute inset-0 pointer-events-none z-20 flex items-center justify-center bg-black/40 backdrop-blur-xs overflow-hidden">
+          <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-[var(--color-brand-soft)] to-transparent shadow-[0_0_15px_#2f7bf0] animate-laser-scan" />
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-12 h-12 rounded-full border-2 border-t-[var(--color-brand)] border-white/20 animate-spin" />
+            <span className="mono text-[11px] tracking-[0.18em] text-[var(--color-brand-soft)] uppercase animate-pulse">
+              Acquiring Copernicus Sentinel-1 & 2 Imagery...
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Top Overlay: Satellite Status & Telemetry */}
+      <div className="absolute top-3 inset-x-3 z-20 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[var(--color-line)] bg-black/80 backdrop-blur-md pointer-events-auto transition-all hover:border-white/20">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-brand)] opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--color-brand)]" />
+          </span>
+          <Satellite className="w-3.5 h-3.5 text-[var(--color-brand-soft)]" />
+          <span className="mono text-[10.5px] font-medium text-white">{currentSat.name}</span>
+          <span className="text-[var(--color-line)]">|</span>
+          <span className="mono text-[10px] text-[var(--color-mute)]">{currentSat.alt}</span>
+          <span className="mono text-[10px] text-[var(--color-verd)]">{currentSat.status}</span>
+        </div>
+
+        <div className="flex items-center gap-3 px-3 py-1.5 rounded-full border border-[var(--color-line)] bg-black/75 backdrop-blur-md pointer-events-auto mono text-[10.5px] text-[var(--color-mute)]">
+          <span>{telemetry.cursorLat}° N, {telemetry.cursorLng}° E</span>
+          <span className="text-[var(--color-line)]">|</span>
+          <span>Zoom: {telemetry.zoom}</span>
+          <span className="text-[var(--color-line)]">|</span>
+          <span>Pitch: {telemetry.pitch}°</span>
+        </div>
+
+        <div className="flex items-center gap-1.5 pointer-events-auto">
+          {detectedFeatures.length > 0 && (
+            <button
+              onClick={() => setShowFeaturesLayer(!showFeaturesLayer)}
+              className={`px-3 py-1.5 rounded-full border text-[11px] mono transition flex items-center gap-1.5 ${
+                showFeaturesLayer
+                  ? "bg-amber-500/20 border-amber-500/50 text-amber-300 font-medium"
+                  : "border-[var(--color-line)] bg-black/75 text-[var(--color-mute)]"
+              }`}
+              title="Toggle On-Map Detected Feature Points"
+            >
+              <Activity className="w-3 h-3" />
+              <span>Features ({detectedFeatures.length})</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => setIsBoxSelectMode(!isBoxSelectMode)}
+            className={`px-3 py-1.5 rounded-full border text-[11px] mono transition flex items-center gap-1.5 ${
+              isBoxSelectMode
+                ? "bg-[var(--color-brand)] border-[var(--color-brand)] text-white font-medium shadow-[0_0_15px_rgba(47,123,240,0.5)]"
+                : "border-[var(--color-line)] bg-black/75 text-[var(--color-mute)] hover:text-white hover:border-white/20"
+            }`}
+            title="Click and drag anywhere on the globe to draw a custom bounding box"
+          >
+            <Crop className="w-3 h-3 text-[var(--color-brand-soft)]" />
+            <span>{isBoxSelectMode ? "Drawing Active..." : "Select Area (Draw Box)"}</span>
+          </button>
+
+          <button
