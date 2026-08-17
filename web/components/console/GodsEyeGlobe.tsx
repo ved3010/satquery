@@ -833,3 +833,47 @@ export function GodsEyeGlobe({
 
       {/* Bottom Hint */}
       <div className="absolute bottom-3 left-3 z-20 pointer-events-none">
+        <div className="px-3 py-1.5 rounded-full border border-[var(--color-line)] bg-black/75 backdrop-blur-md mono text-[10px] text-[var(--color-mute)] flex items-center gap-2">
+          <span className="text-white">Click any point</span>
+          <span>to pin & acquire · Click &quot;Select Area (Draw Box)&quot; or Shift+Drag to draw box</span>
+          {bbox && (
+            <span className="text-[var(--color-verd)]">
+              • BBox: [{bbox[0]}, {bbox[1]}, {bbox[2]}, {bbox[3]}]
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function generateOrbitalPaths(): any {
+  const features = [];
+  const inclinations = [98.5, 98.18, 97.5, 53.0];
+
+  for (let i = 0; i < inclinations.length; i++) {
+    const inc = (inclinations[i] * Math.PI) / 180;
+    const coords: [number, number][] = [];
+    const offsetLng = (i * 90) - 180;
+
+    for (let lng = -180; lng <= 180; lng += 4) {
+      const radLng = ((lng - offsetLng) * Math.PI) / 180;
+      const lat = Math.asin(Math.sin(inc) * Math.sin(radLng)) * (180 / Math.PI);
+      coords.push([lng, lat]);
+    }
+
+    features.push({
+      type: "Feature",
+      properties: { sat_id: `SAT-${i + 1}` },
+      geometry: {
+        type: "LineString",
+        coordinates: coords,
+      },
+    });
+  }
+
+  return {
+    type: "FeatureCollection",
+    features,
+  };
+}
