@@ -73,3 +73,28 @@ export function TacticalHud({ backendHealth, backendError, activeLayer }: Tactic
       </div>
 
       {/* Center Telemetry Banner */}
+      <div className="hidden md:flex items-center gap-6 tactical text-xs">
+        <div className="flex items-center gap-2 text-[var(--color-mute)]">
+          <Clock className="w-3.5 h-3.5 text-[var(--color-ice)]" />
+          <span className="tabular-nums text-white">{zuluTime || "SYNCING TIME..."}</span>
+        </div>
+
+        <div className="w-px h-4 bg-[var(--color-line)]" />
+
+        <div className="flex items-center gap-2 text-[var(--color-mute)]">
+          <Compass className="w-3.5 h-3.5 text-[var(--color-verd)]" />
+          <span>SENSOR: <strong className="text-white uppercase">{activeLayer}</strong></span>
+        </div>
+      </div>
+
+      {/* Right System Health & Fullscreen Controls */}
+      <div className="flex items-center gap-3 tactical text-xs">
+        {backendHealth ? (
+          <div className="flex items-center gap-2 px-3 py-1 rounded bg-emerald-950/40 border border-emerald-500/30 text-emerald-300">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+            </span>
+            <span className="text-[11px] font-bold">API ONLINE</span>
+            <span className="text-[9px] opacity-75 hidden sm:inline">
+              ({backendHealth.models_registered} MODELS)
