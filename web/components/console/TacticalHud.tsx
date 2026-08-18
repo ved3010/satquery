@@ -98,3 +98,28 @@ export function TacticalHud({ backendHealth, backendError, activeLayer }: Tactic
             <span className="text-[11px] font-bold">API ONLINE</span>
             <span className="text-[9px] opacity-75 hidden sm:inline">
               ({backendHealth.models_registered} MODELS)
+            </span>
+          </div>
+        ) : backendError ? (
+          <div className="flex items-center gap-2 px-3 py-1 rounded bg-red-950/40 border border-red-500/30 text-red-300">
+            <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
+            <span className="text-[11px] font-bold">API DISCONNECTED</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 px-3 py-1 rounded bg-white/5 border border-white/10 text-[var(--color-mute)]">
+            <Radio className="w-3.5 h-3.5 animate-spin" />
+            <span className="text-[11px]">CONNECTING...</span>
+          </div>
+        )}
+
+        <button
+          onClick={toggleFullscreen}
+          className="p-1.5 rounded bg-white/5 hover:bg-white/10 border border-white/10 text-[var(--color-mute)] hover:text-white transition"
+          title="Toggle Fullscreen Cockpit"
+        >
+          <Maximize className="w-4 h-4" />
+        </button>
+      </div>
+    </header>
+  );
+}
