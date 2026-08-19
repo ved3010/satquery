@@ -131,3 +131,37 @@ export function PointInspectorHud({ point, onClose, onAskAboutPoint }: PointInsp
           <div className="mono text-[9px] text-[var(--color-mute)] uppercase">MNDWI (Water)</div>
           <div
             className={`text-[13px] font-bold mt-0.5 ${
+              point.mndwi > 0 ? "text-cyan-400" : "text-white"
+            }`}
+          >
+            {point.mndwi.toFixed(2)}
+          </div>
+        </div>
+      </div>
+
+      {/* Transition & Confidence Note */}
+      <div className="p-2.5 rounded-lg bg-white/5 border border-white/10 text-[11.5px] space-y-1">
+        <div className="flex items-center justify-between">
+          <span className="mono text-[10px] text-[var(--color-mute)] uppercase">Transition:</span>
+          <span className="text-white font-medium">{point.changeType}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="mono text-[10px] text-[var(--color-mute)] uppercase">AI Confidence:</span>
+          <span className="text-[var(--color-verd)] font-bold">{(point.confidence * 100).toFixed(0)}%</span>
+        </div>
+      </div>
+
+      {/* Action Button: Ask AI Agent About This Point */}
+      <button
+        onClick={() => {
+          const prompt = `Analyze the recent development and land-cover change at coordinates [${point.coords[1]}, ${point.coords[0]}] (${point.name}).`;
+          onAskAboutPoint?.(prompt);
+        }}
+        className="w-full py-2 rounded-lg bg-[var(--color-brand)] hover:bg-[#4b8ef5] text-xs font-medium text-white transition flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(47,123,240,0.3)]"
+      >
+        <Sparkles className="w-3.5 h-3.5" />
+        <span>Ask Agent About This Specific Point</span>
+      </button>
+    </div>
+  );
+}
