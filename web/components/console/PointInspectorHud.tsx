@@ -98,3 +98,36 @@ export function PointInspectorHud({ point, onClose, onAskAboutPoint }: PointInsp
       {/* Description & Change Details */}
       <div className="text-[12.5px] leading-relaxed text-white/90">
         {point.description}
+      </div>
+
+      {/* Spectral Reflectance Gauges */}
+      <div className="grid grid-cols-3 gap-2">
+        {/* NDVI */}
+        <div className="p-2 rounded-lg bg-black/50 border border-[var(--color-line)] text-center">
+          <div className="mono text-[9px] text-[var(--color-mute)] uppercase">NDVI (Veg)</div>
+          <div
+            className={`text-[13px] font-bold mt-0.5 ${
+              point.ndvi >= 0.3 ? "text-emerald-400" : point.ndvi >= 0.18 ? "text-yellow-400" : "text-white"
+            }`}
+          >
+            {point.ndvi.toFixed(2)}
+          </div>
+        </div>
+
+        {/* NDBI */}
+        <div className="p-2 rounded-lg bg-black/50 border border-[var(--color-line)] text-center">
+          <div className="mono text-[9px] text-[var(--color-mute)] uppercase">NDBI (Built)</div>
+          <div
+            className={`text-[13px] font-bold mt-0.5 ${
+              point.ndbi > 0.1 ? "text-amber-400" : "text-white"
+            }`}
+          >
+            {point.ndbi.toFixed(2)}
+          </div>
+        </div>
+
+        {/* MNDWI */}
+        <div className="p-2 rounded-lg bg-black/50 border border-[var(--color-line)] text-center">
+          <div className="mono text-[9px] text-[var(--color-mute)] uppercase">MNDWI (Water)</div>
+          <div
+            className={`text-[13px] font-bold mt-0.5 ${
