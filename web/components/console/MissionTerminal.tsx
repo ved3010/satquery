@@ -176,3 +176,92 @@ export function MissionTerminal({
                 <div className="flex items-center justify-between">
                   <span className="tactical text-[11px] font-bold text-[var(--color-ice)] flex items-center gap-1.5 uppercase">
                     <Scan className="w-3.5 h-3.5" /> 01. Area of Interest & Acquisition Window
+                  </span>
+                  <span className="text-[10px] tactical text-[var(--color-mute)]">
+                    {bbox ? `AOI: [${bbox.join(", ")}]` : "NO AOI LOCKED"}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] tactical text-[var(--color-mute)] block mb-1">
+                      Primary Target Date Window (T1)
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="date"
+                        value={start}
+                        onChange={(e) => setStart(e.target.value)}
+                        className="bg-black/60 border border-[var(--color-line)] rounded px-2.5 py-1.5 text-xs tactical text-white focus:border-[var(--color-ice)] outline-none w-full"
+                      />
+                      <span className="text-[var(--color-mute)] text-xs">→</span>
+                      <input
+                        type="date"
+                        value={end}
+                        onChange={(e) => setEnd(e.target.value)}
+                        className="bg-black/60 border border-[var(--color-line)] rounded px-2.5 py-1.5 text-xs tactical text-white focus:border-[var(--color-ice)] outline-none w-full"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <label className="text-[10px] tactical text-[var(--color-mute)] block mb-1">
+                        Max Cloud Threshold ({cloud}%)
+                      </label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={cloud}
+                        onChange={(e) => setCloud(Number(e.target.value))}
+                        className="w-full accent-[var(--color-ice)]"
+                      />
+                    </div>
+
+                    <div className="flex flex-col justify-end">
+                      <label className="text-[10px] tactical text-[var(--color-mute)] block mb-1">
+                        SAR Radar
+                      </label>
+                      <button
+                        onClick={() => setWantSar(!wantSar)}
+                        className={`px-3 py-1.5 rounded text-xs tactical border transition ${
+                          wantSar
+                            ? "bg-[var(--color-signal)]/20 border-[var(--color-signal)] text-[var(--color-signal)] font-bold"
+                            : "bg-white/5 border-white/10 text-[var(--color-mute)]"
+                        }`}
+                      >
+                        {wantSar ? "SAR ACTIVE" : "OPTICAL ONLY"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bi-temporal toggle */}
+                <div className="pt-2 border-t border-white/5 flex flex-wrap items-center justify-between gap-2">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs tactical text-white">
+                    <input
+                      type="checkbox"
+                      checked={bitemporal}
+                      onChange={(e) => setBitemporal(e.target.checked)}
+                      className="accent-[var(--color-ice)]"
+                    />
+                    <span>Bi-Temporal Change Analysis (T0 Comparison Baseline)</span>
+                  </label>
+
+                  {bitemporal && (
+                    <div className="flex items-center gap-1.5 text-xs tactical">
+                      <input
+                        type="date"
+                        value={start2}
+                        onChange={(e) => setStart2(e.target.value)}
+                        className="bg-black/60 border border-[var(--color-line)] rounded px-2 py-1 text-[11px] text-white"
+                      />
+                      <span className="text-[var(--color-mute)]">→</span>
+                      <input
+                        type="date"
+                        value={end2}
+                        onChange={(e) => setEnd2(e.target.value)}
+                        className="bg-black/60 border border-[var(--color-line)] rounded px-2 py-1 text-[11px] text-white"
+                      />
+                    </div>
