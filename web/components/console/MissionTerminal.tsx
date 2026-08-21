@@ -354,3 +354,92 @@ export function MissionTerminal({
                     <button
                       key={eq.label}
                       onClick={() => setQuery(eq.text)}
+                      className="px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] tactical text-[var(--color-mute)] hover:text-white transition"
+                    >
+                      {eq.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Run Agent Button */}
+                <button
+                  onClick={onRunQuery}
+                  disabled={busy !== null || !query.trim()}
+                  className={`w-full py-2.5 rounded-lg tactical text-xs font-bold tracking-wider flex items-center justify-center gap-2 border transition ${
+                    busy === "query"
+                      ? "bg-[var(--color-signal)]/20 border-[var(--color-signal)] text-[var(--color-signal)] cursor-wait"
+                      : query.trim()
+                      ? "bg-[var(--color-verd)]/20 border-[var(--color-verd)] text-[var(--color-verd)] hover:bg-[var(--color-verd)]/30 hover:shadow-[0_0_15px_rgba(16,185,129,0.3)] cursor-pointer"
+                      : "bg-white/5 border-white/10 text-[var(--color-mute)] cursor-not-allowed"
+                  }`}
+                >
+                  <Send className={`w-4 h-4 ${busy === "query" ? "animate-spin" : ""}`} />
+                  {busy === "query"
+                    ? "EXECUTING LANGGRAPH REASONING & TORCH HEADS..."
+                    : "DISPATCH MULTIMODAL AGENT (RUN INFERENCE)"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: AUDITABLE AGENT EXECUTION TRACE */}
+          {activeTab === "trace" && (
+            <div className="space-y-4">
+              {trace ? (
+                <div className="space-y-3">
+                  {/* Trace Header / Status Card */}
+                  <div className="tactical-glass-subtle p-3.5 rounded-lg border border-[var(--color-line)] flex items-center justify-between">
+                    <div>
+                      <div className="tactical text-[11px] text-[var(--color-mute)]">RUN IDENTIFIER</div>
+                      <div className="tactical text-sm font-bold text-[var(--color-ice)]">{trace.run_id}</div>
+                    </div>
+
+                    <div className="flex items-center gap-4 tactical text-xs">
+                      <div>
+                        <span className="text-[var(--color-mute)] text-[10px] block">TASK FAMILY</span>
+                        <span className="text-white font-bold uppercase">{trace.task ?? "VALIDATION"}</span>
+                      </div>
+                      <div>
+                        <span className="text-[var(--color-mute)] text-[10px] block">LATENCY</span>
+                        <span className="text-[var(--color-verd)]">{trace.total_ms} ms</span>
+                      </div>
+                      <div>
+                        <span className="text-[var(--color-mute)] text-[10px] block">CONFIDENCE</span>
+                        <span className="text-white">
+                          {trace.confidence ? `${(trace.confidence * 100).toFixed(1)}%` : "N/A"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Primary Agent Answer Box */}
+                  <div className="p-4 rounded-lg bg-black/60 border border-[var(--color-verd)]/40 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+                    <div className="tactical text-[10px] tracking-widest text-[var(--color-verd)] uppercase flex items-center gap-1.5 mb-2">
+                      <Sparkles className="w-3.5 h-3.5" /> Synthesized Agent Answer (Auditable)
+                    </div>
+                    <div className="text-xs text-white leading-relaxed font-sans">{trace.answer}</div>
+                  </div>
+
+                  {/* 7-Stage State Transitions / Checkpoints */}
+                  <div className="space-y-1.5">
+                    <div className="tactical text-[10.5px] text-[var(--color-mute)] tracking-wider uppercase">
+                      Execution Checkpoints ({trace.steps.length} Nodes)
+                    </div>
+                    <div className="space-y-1 max-h-[280px] overflow-y-auto pr-1">
+                      {trace.steps.map((s, idx) => (
+                        <div
+                          key={idx}
+                          className="p-2.5 rounded bg-black/40 border border-white/5 tactical text-[11px] flex items-center justify-between"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-[var(--color-ice)] font-bold">{s.node}</span>
+                            <span className="text-white">{s.outcome}</span>
+                          </div>
+                          <span className="text-[var(--color-mute)] text-[10px]">{s.latency_ms} ms</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Download Report Button */}
+                  {trace.run_id && (
