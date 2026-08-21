@@ -265,3 +265,92 @@ export function MissionTerminal({
                         className="bg-black/60 border border-[var(--color-line)] rounded px-2 py-1 text-[11px] text-white"
                       />
                     </div>
+                  )}
+                </div>
+
+                {/* Scan Action */}
+                <button
+                  onClick={onFetchAoi}
+                  disabled={busy !== null || !bbox}
+                  className={`w-full py-2.5 rounded-lg tactical text-xs font-bold tracking-wider flex items-center justify-center gap-2 border transition ${
+                    busy === "fetch"
+                      ? "bg-[var(--color-signal)]/20 border-[var(--color-signal)] text-[var(--color-signal)] cursor-wait"
+                      : bbox
+                      ? "bg-[var(--color-ice)]/20 border-[var(--color-ice)] text-[var(--color-ice)] hover:bg-[var(--color-ice)]/30 hover:shadow-[0_0_15px_rgba(0,243,255,0.3)] cursor-pointer"
+                      : "bg-white/5 border-white/10 text-[var(--color-mute)] cursor-not-allowed"
+                  }`}
+                >
+                  <Radio className={`w-4 h-4 ${busy === "fetch" ? "animate-spin" : ""}`} />
+                  {busy === "fetch"
+                    ? "COMMUNICATING WITH COPERNICUS STAC..."
+                    : "EXECUTE LIVE SATELLITE ACQUISITION (AOI SCAN)"}
+                </button>
+              </div>
+
+              {/* Acquired Imagery Cards */}
+              {images.length > 0 && (
+                <div className="p-3.5 rounded-lg bg-black/40 border border-[var(--color-line)] space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="tactical text-[11px] font-bold text-[var(--color-verd)] flex items-center gap-1.5 uppercase">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Acquired Satellite Imagery ({images.length} Scenes)
+                    </span>
+                    <span className="text-[10px] tactical text-[var(--color-mute)]">CO-REGISTERED</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {images.map((img) => (
+                      <div
+                        key={img.path}
+                        className="tactical-glass-subtle p-2.5 rounded border border-white/10 flex items-center gap-3"
+                      >
+                        {img.preview ? (
+                          <img
+                            src={img.preview}
+                            alt="Satellite Preview"
+                            className="w-14 h-14 object-cover rounded border border-white/20 shrink-0"
+                          />
+                        ) : (
+                          <div className="w-14 h-14 bg-blue-950/40 rounded border border-blue-500/20 flex items-center justify-center shrink-0">
+                            <Radio className="w-6 h-6 text-blue-400" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1 tactical text-[10.5px]">
+                          <div className="font-bold text-white uppercase truncate">
+                            {img.modality ?? "OPTICAL"} SATELLITE
+                          </div>
+                          <div className="text-[var(--color-mute)] text-[9.5px] truncate">
+                            DATE: {img.date ?? "RECENT PASS"}
+                          </div>
+                          <div className="text-[var(--color-ice)] text-[9px] truncate">{img.path}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2: Natural Language Reconnaissance Query */}
+              <div className="p-3.5 rounded-lg bg-black/40 border border-[var(--color-line)] space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="tactical text-[11px] font-bold text-[var(--color-ice)] flex items-center gap-1.5 uppercase">
+                    <Cpu className="w-3.5 h-3.5" /> 02. Agentic Vision-Language Query
+                  </span>
+                  <span className="text-[10px] tactical text-[var(--color-mute)]">M1–M7 SPECIALISTS</span>
+                </div>
+
+                <div className="relative">
+                  <textarea
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    rows={2}
+                    placeholder="Ask a question about the acquired satellite imagery..."
+                    className="w-full bg-black/70 border border-[var(--color-line)] rounded-lg p-3 text-xs tactical text-white focus:border-[var(--color-ice)] outline-none resize-none"
+                  />
+                </div>
+
+                {/* Preset Prompt Buttons */}
+                <div className="flex flex-wrap gap-1.5">
+                  {EXAMPLE_QUERIES.map((eq) => (
+                    <button
+                      key={eq.label}
+                      onClick={() => setQuery(eq.text)}
