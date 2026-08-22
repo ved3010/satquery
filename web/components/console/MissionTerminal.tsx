@@ -443,3 +443,92 @@ export function MissionTerminal({
 
                   {/* Download Report Button */}
                   {trace.run_id && (
+                    <a
+                      href={api.reportUrl(trace.run_id)}
+                      download={`satquery-${trace.run_id}.md`}
+                      className="w-full py-2 rounded bg-white/5 hover:bg-white/10 border border-white/15 text-xs tactical text-white flex items-center justify-center gap-2 transition"
+                    >
+                      <Download className="w-3.5 h-3.5 text-[var(--color-ice)]" />
+                      DOWNLOAD AUDITABLE REPORT NOTE (.MD)
+                    </a>
+                  )}
+                </div>
+              ) : (
+                <div className="p-8 text-center tactical text-xs text-[var(--color-mute)]">
+                  No execution trace available yet. Lock an AOI and run an agent query to inspect real-time model dispatch and checkpoints.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 3: SPECTRAL CALCULUS (LAND COVER PERCENTAGES) */}
+          {activeTab === "spectral" && (
+            <div className="space-y-4">
+              {trace?.analysis?.available ? (
+                <div className="space-y-3">
+                  <div className="tactical text-[11px] text-[var(--color-ice)] font-bold uppercase">
+                    Pixel-Derived Land Cover (NDVI / MNDWI / NDBI)
+                  </div>
+
+                  {/* Key Indicator Cards */}
+                  <div className="grid grid-cols-3 gap-2">
+                    {trace.analysis.mode === "single" ? (
+                      <>
+                        <div className="p-2.5 rounded bg-black/50 border border-emerald-500/30">
+                          <div className="text-[9px] tactical text-emerald-400">VEGETATION</div>
+                          <div className="text-base font-bold text-white mt-1">
+                            {trace.analysis.scene?.cover.vegetation.pct.toFixed(2)}%
+                          </div>
+                        </div>
+                        <div className="p-2.5 rounded bg-black/50 border border-amber-500/30">
+                          <div className="text-[9px] tactical text-amber-400">BUILT-UP</div>
+                          <div className="text-base font-bold text-white mt-1">
+                            {trace.analysis.scene?.cover["built-up"].pct.toFixed(2)}%
+                          </div>
+                        </div>
+                        <div className="p-2.5 rounded bg-black/50 border border-cyan-500/30">
+                          <div className="text-[9px] tactical text-cyan-400">WATER</div>
+                          <div className="text-base font-bold text-white mt-1">
+                            {trace.analysis.scene?.cover.water.pct.toFixed(2)}%
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="p-2.5 rounded bg-black/50 border border-emerald-500/30">
+                          <div className="text-[9px] tactical text-emerald-400">Δ VEGETATION</div>
+                          <div className="text-base font-bold text-white mt-1">
+                            {n2(trace.analysis.change?.classes.vegetation.delta_pp ?? 0)} pp
+                          </div>
+                        </div>
+                        <div className="p-2.5 rounded bg-black/50 border border-amber-500/30">
+                          <div className="text-[9px] tactical text-amber-400">Δ URBANISATION</div>
+                          <div className="text-base font-bold text-white mt-1">
+                            {n2(trace.analysis.change?.classes["built-up"].delta_pp ?? 0)} pp
+                          </div>
+                        </div>
+                        <div className="p-2.5 rounded bg-black/50 border border-cyan-500/30">
+                          <div className="text-[9px] tactical text-cyan-400">Δ WATER</div>
+                          <div className="text-base font-bold text-white mt-1">
+                            {n2(trace.analysis.change?.classes.water.delta_pp ?? 0)} pp
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Spectral Percentage Table */}
+                  <div className="overflow-x-auto rounded border border-[var(--color-line)]">
+                    <table className="w-full text-left tactical text-[10.5px]">
+                      <thead>
+                        <tr className="border-b border-[var(--color-line)] bg-white/5">
+                          <th className="p-2 text-[var(--color-mute)]">CLASS</th>
+                          {trace.analysis.mode === "single" ? (
+                            <>
+                              <th className="p-2 text-right text-[var(--color-mute)]">COVER %</th>
+                              <th className="p-2 text-right text-[var(--color-mute)]">KM²</th>
+                            </>
+                          ) : (
+                            <>
+                              <th className="p-2 text-right text-[var(--color-mute)]">T1 %</th>
+                              <th className="p-2 text-right text-[var(--color-mute)]">T2 %</th>
