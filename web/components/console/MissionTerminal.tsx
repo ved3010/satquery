@@ -532,3 +532,63 @@ export function MissionTerminal({
                             <>
                               <th className="p-2 text-right text-[var(--color-mute)]">T1 %</th>
                               <th className="p-2 text-right text-[var(--color-mute)]">T2 %</th>
+                              <th className="p-2 text-right text-[var(--color-mute)]">Δ PP</th>
+                              <th className="p-2 text-right text-[var(--color-mute)]">Δ REL</th>
+                            </>
+                          )}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {CLASS_ORDER.map((c) => {
+                          const single = trace.analysis?.mode === "single";
+                          const cov = single ? trace.analysis?.scene?.cover[c] : null;
+                          const ch = single ? null : trace.analysis?.change?.classes[c];
+                          return (
+                            <tr key={c} className="border-b border-white/5">
+                              <td className="p-2 font-semibold" style={{ color: TONE[c] }}>
+                                {c.toUpperCase()}
+                              </td>
+                              {single ? (
+                                <>
+                                  <td className="p-2 text-right text-white tabular-nums">
+                                    {cov?.pct.toFixed(2)}%
+                                  </td>
+                                  <td className="p-2 text-right text-[var(--color-mute)] tabular-nums">
+                                    {cov?.km2.toFixed(3)}
+                                  </td>
+                                </>
+                              ) : (
+                                <>
+                                  <td className="p-2 text-right text-[var(--color-mute)] tabular-nums">
+                                    {ch?.t1_pct.toFixed(2)}%
+                                  </td>
+                                  <td className="p-2 text-right text-white tabular-nums">
+                                    {ch?.t2_pct.toFixed(2)}%
+                                  </td>
+                                  <td className="p-2 text-right text-white font-bold tabular-nums">
+                                    {n2(ch?.delta_pp ?? 0)}
+                                  </td>
+                                  <td className="p-2 text-right text-[var(--color-mute)] tabular-nums">
+                                    {ch?.relative_pct ? `${n2(ch.relative_pct)}%` : "N/A"}
+                                  </td>
+                                </>
+                              )}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-8 text-center tactical text-xs text-[var(--color-mute)]">
+                  Spectral land-cover indices are computed directly from Sentinel-2 surface reflectance bands (NIR, Red, Green, SWIR) upon running an AOI query.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
