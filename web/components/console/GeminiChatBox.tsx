@@ -174,3 +174,92 @@ export function GeminiChatBox({
           )}
 
           {/* Minimize / Maximize Chatbox */}
+          <button
+            onClick={() => setIsMinimized(!isMinimized)}
+            title={isMinimized ? "Expand Chat" : "Minimize Chat to View Earth"}
+            className="p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-all"
+          >
+            {isMinimized ? <Maximize2 className="w-3.5 h-3.5" /> : <Minimize2 className="w-3.5 h-3.5" />}
+          </button>
+        </div>
+      </div>
+
+      {/* Chat Messages Feed (Visible when not minimized) */}
+      {!isMinimized && (
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4 scrollbar-thin scrollbar-thumb-white/20 bg-transparent min-h-[220px]">
+          {messages.length === 0 ? (
+            /* Empty Minimal Welcome State - Fully See-Through to Earth */
+            <div className="h-full flex flex-col justify-center items-center text-center px-4 py-8 space-y-2.5">
+              <div className="w-11 h-11 rounded-2xl bg-white/[0.06] border border-white/20 backdrop-blur-md flex items-center justify-center shadow-lg">
+                <Sparkles className="w-5 h-5 text-cyan-300" />
+              </div>
+
+              <div className="max-w-[400px] space-y-1">
+                <h3 className="text-[15px] font-semibold text-white tracking-tight drop-shadow-md">
+                  SatQuery AI Vision
+                </h3>
+                <p className="text-[12.5px] text-white/70 leading-relaxed drop-shadow-sm">
+                  Ask any question about this satellite scene, or tap anywhere on the globe behind to inspect coordinates.
+                </p>
+              </div>
+            </div>
+          ) : (
+            /* Conversation Thread */
+            messages.map((msg) => (
+              <div key={msg.id} className="space-y-2.5">
+                {msg.role === "user" ? (
+                  /* User Message */
+                  <div className="flex flex-col items-end space-y-1.5">
+                    {/* Attached Satellite Image Card (if present) */}
+                    {msg.attachedImages && msg.attachedImages.length > 0 && (
+                      <div className="flex flex-wrap gap-2 justify-end">
+                        {msg.attachedImages.map((img, idx) => {
+                          const previewUrl = getPreviewUrl(img, "rgb");
+                          return (
+                            <div
+                              key={idx}
+                              onClick={() => previewUrl && setEnlargedImage(previewUrl)}
+                              className="flex items-center gap-2.5 p-1.5 pr-3 rounded-xl bg-black/40 backdrop-blur-md border border-white/20 cursor-pointer hover:border-cyan-400/50 transition-all shadow-md group"
+                            >
+                              <div className="w-11 h-11 rounded-lg overflow-hidden bg-black/60 shrink-0 border border-white/20 relative">
+                                {previewUrl ? (
+                                  <img
+                                    src={previewUrl}
+                                    alt="Attached satellite scene"
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-white/50">
+                                    <Satellite className="w-5 h-5" />
+                                  </div>
+                                )}
+                                <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors" />
+                              </div>
+                              <div className="text-left">
+                                <p className="text-[11.5px] font-medium text-white line-clamp-1 drop-shadow-xs">
+                                  {msg.locationName || img.role || "Attached Scene"}
+                                </p>
+                                <div className="flex items-center gap-1.5 text-[10px] text-white/60">
+                                  <span className="uppercase">{img.modality}</span>
+                                  {img.date && <span>· {img.date}</span>}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Message Bubble */}
+                    <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-black/40 backdrop-blur-md border border-white/20 px-4 py-2.5 text-[13.5px] text-white shadow-md">
+                      <p className="whitespace-pre-wrap leading-relaxed drop-shadow-sm">{msg.text}</p>
+                      <div className="text-right mt-1">
+                        <span className="text-[9.5px] text-white/50 font-mono">{msg.timestamp}</span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Gemini / Assistant Message */
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-blue-500 via-indigo-500 to-cyan-400 p-[1px] shrink-0 mt-0.5 shadow-md shadow-cyan-500/20">
+                      <div className="w-full h-full bg-black/80 rounded-[6px] flex items-center justify-center">
