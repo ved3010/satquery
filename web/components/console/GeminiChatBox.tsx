@@ -263,3 +263,91 @@ export function GeminiChatBox({
                   <div className="flex items-start gap-2.5">
                     <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-blue-500 via-indigo-500 to-cyan-400 p-[1px] shrink-0 mt-0.5 shadow-md shadow-cyan-500/20">
                       <div className="w-full h-full bg-black/80 rounded-[6px] flex items-center justify-center">
+                        <Sparkles className="w-3 h-3 text-cyan-300" />
+                      </div>
+                    </div>
+
+                    <div className="flex-1 space-y-2.5 max-w-[92%]">
+                      {/* Error Box */}
+                      {msg.isError ? (
+                        <div className="p-3.5 rounded-xl bg-red-950/60 backdrop-blur-md border border-red-500/30 text-red-200 text-[13px] leading-relaxed">
+                          {msg.text}
+                        </div>
+                      ) : (
+                        /* Rich AI Response in Frosted Glass */
+                        <div className="p-4 rounded-2xl rounded-tl-sm bg-black/35 backdrop-blur-md border border-white/15 shadow-xl space-y-3">
+                          {/* Main Markdown Text */}
+                          <div className="text-[13.5px] text-white/95 leading-relaxed whitespace-pre-wrap drop-shadow-xs">
+                            {msg.text}
+                          </div>
+
+                          {/* Land Cover Metric Badges (if available in trace) */}
+                          {msg.trace?.analysis?.available && msg.trace.analysis.scene?.cover && (
+                            <div className="pt-2 border-t border-white/10">
+                              <p className="text-[10.5px] font-mono tracking-wider text-white/60 uppercase mb-2">
+                                Measured Spectral Cover
+                              </p>
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                {Object.entries(msg.trace.analysis.scene.cover).map(([key, data]) => {
+                                  let color = "text-emerald-300 border-emerald-500/30 bg-emerald-500/10";
+                                  if (key.includes("built")) color = "text-amber-300 border-amber-500/30 bg-amber-500/10";
+                                  if (key.includes("water")) color = "text-cyan-300 border-cyan-500/30 bg-cyan-500/10";
+                                  if (key.includes("bare")) color = "text-stone-300 border-stone-500/30 bg-stone-500/10";
+
+                                  return (
+                                    <div key={key} className={`px-2.5 py-1.5 rounded-lg border backdrop-blur-xs text-center ${color}`}>
+                                      <p className="text-[9.5px] uppercase font-mono tracking-wider opacity-90">
+                                        {key}
+                                      </p>
+                                      <p className="text-[14px] font-bold mt-0.5">{data.pct.toFixed(1)}%</p>
+                                      <p className="text-[9px] opacity-70">{data.km2.toFixed(2)} km²</p>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Satellite Models & Reasoning Dropdown */}
+                          {msg.trace && (
+                            <div className="pt-0.5">
+                              <button
+                                onClick={() => toggleReasoning(msg.id)}
+                                className="flex items-center gap-1.5 text-[11px] text-cyan-300 hover:text-cyan-200 font-mono transition-colors drop-shadow-xs"
+                              >
+                                <span>
+                                  {expandedReasoning[msg.id] ? "Hide" : "Show"} reasoning & pipeline (
+                                  {msg.trace.models_invoked.length} models · {msg.trace.total_ms}ms)
+                                </span>
+                                {expandedReasoning[msg.id] ? (
+                                  <ChevronUp className="w-3 h-3" />
+                                ) : (
+                                  <ChevronDown className="w-3 h-3" />
+                                )}
+                              </button>
+
+                              {expandedReasoning[msg.id] && (
+                                <div className="mt-2 p-3 rounded-xl bg-black/60 backdrop-blur-md border border-white/15 space-y-2 text-[11.5px] font-mono text-neutral-300 animate-slide-up">
+                                  <div className="flex flex-wrap items-center gap-2 text-[10px]">
+                                    <span className="text-white/50">MODELS:</span>
+                                    {msg.trace.models_invoked.map((m) => (
+                                      <span
+                                        key={m}
+                                        className="px-1.5 py-0.5 rounded bg-white/10 text-cyan-300 border border-white/15"
+                                      >
+                                        {m}
+                                      </span>
+                                    ))}
+                                    {msg.trace.confidence && (
+                                      <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                        {(msg.trace.confidence * 100).toFixed(0)}% CONFIDENCE
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {msg.trace.steps && msg.trace.steps.length > 0 && (
+                                    <div className="space-y-1 pt-1 border-t border-white/10">
+                                      {msg.trace.steps.map((step, sIdx) => (
+                                        <div key={sIdx} className="flex items-start justify-between text-[10.5px]">
+                                          <span className="text-white/70">
+                                            {sIdx + 1}. {step.node} ({step.model_id || "rule"})
