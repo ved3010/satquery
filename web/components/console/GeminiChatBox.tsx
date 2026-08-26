@@ -351,3 +351,91 @@ export function GeminiChatBox({
                                         <div key={sIdx} className="flex items-start justify-between text-[10.5px]">
                                           <span className="text-white/70">
                                             {sIdx + 1}. {step.node} ({step.model_id || "rule"})
+                                          </span>
+                                          <span className="text-white/50">{step.latency_ms}ms</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Footer Controls: Copy, Timestamp */}
+                          <div className="flex items-center justify-between pt-0.5 text-[10.5px] text-white/50">
+                            <span className="font-mono">{msg.timestamp}</span>
+                            <button
+                              onClick={() => handleCopy(msg.id, msg.text)}
+                              className="flex items-center gap-1 hover:text-white transition-colors"
+                            >
+                              {copiedId === msg.id ? (
+                                <>
+                                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                  <span className="text-emerald-400">Copied</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3.5 h-3.5" />
+                                  <span>Copy</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+
+          {/* Querying / Thinking State */}
+          {isQuerying && (
+            <div className="flex items-start gap-2.5 animate-pulse">
+              <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-blue-500 via-indigo-500 to-cyan-400 p-[1px] shrink-0 mt-0.5">
+                <div className="w-full h-full bg-black/80 rounded-[6px] flex items-center justify-center">
+                  <Sparkles className="w-3 h-3 text-cyan-300 animate-spin" />
+                </div>
+              </div>
+              <div className="p-3.5 rounded-2xl rounded-tl-sm bg-black/40 backdrop-blur-md border border-white/20 shadow-lg space-y-2 max-w-[80%]">
+                <div className="flex items-center gap-2 text-cyan-300 text-[12.5px] font-medium">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400" />
+                  <span>Interrogating satellite neural models...</span>
+                </div>
+                <div className="h-1.5 w-44 bg-white/10 rounded-full overflow-hidden">
+                  <div className="h-full w-full bg-gradient-to-r from-blue-500 via-cyan-400 to-indigo-500 animate-[pulse_1s_ease-in-out_infinite]" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div ref={chatBottomRef} />
+        </div>
+      )}
+
+      {/* Floating Image Attachment Dock + Input Box in Clear Glassmorphism */}
+      <div className="relative z-20 p-2.5 sm:p-3.5 border-t border-white/10 bg-black/30 backdrop-blur-md space-y-2">
+        {/* Attached Satellite Image Dock */}
+        {currentImage ? (
+          <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-black/40 backdrop-blur-md border border-white/20 shadow-md animate-slide-up">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div
+                onClick={() => {
+                  const url = getPreviewUrl(currentImage, bandMode);
+                  if (url) setEnlargedImage(url);
+                }}
+                className="w-9 h-9 rounded-lg overflow-hidden bg-black shrink-0 border border-white/20 relative cursor-pointer group"
+                title="Click to expand"
+              >
+                <img
+                  src={getPreviewUrl(currentImage, bandMode)}
+                  alt="Attached scene"
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                />
+                <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors flex items-center justify-center">
+                  <Maximize2 className="w-3 h-3 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </div>
+
