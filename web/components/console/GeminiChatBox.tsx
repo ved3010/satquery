@@ -528,3 +528,62 @@ export function GeminiChatBox({
                 ref={fileInputRef}
                 onChange={handleFileChange}
                 accept=".tif,.tiff,.png,.jpg,.jpeg"
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                title="Upload custom satellite image (.tif, .png, .jpg)"
+                className="p-1 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-all flex items-center gap-1 text-[11px]"
+              >
+                <Paperclip className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Upload Image</span>
+              </button>
+
+              {currentImage && (
+                <span className="hidden md:inline text-[10px] text-white/50 font-mono">
+                  Press Enter to send
+                </span>
+              )}
+            </div>
+
+            {/* Send Button */}
+            <button
+              onClick={handleSubmit}
+              disabled={!queryInput.trim() || isQuerying}
+              className={`p-1.5 rounded-xl flex items-center justify-center transition-all ${
+                queryInput.trim() && !isQuerying
+                  ? "bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.3)] hover:bg-neutral-200 active:scale-95"
+                  : "bg-white/10 text-white/30 cursor-not-allowed"
+              }`}
+            >
+              <Send className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Fullscreen Image Preview Modal */}
+      {enlargedImage && (
+        <div
+          onClick={() => setEnlargedImage(null)}
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-6 animate-fade-in"
+        >
+          <div className="relative max-w-4xl max-h-[85vh] rounded-2xl overflow-hidden border border-white/20 shadow-2xl bg-black">
+            <button
+              onClick={() => setEnlargedImage(null)}
+              className="absolute top-3 right-3 z-10 p-2 rounded-full bg-neutral-900 text-white hover:bg-neutral-800 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <img
+              src={enlargedImage}
+              alt="Enlarged satellite inspection"
+              className="w-full h-full object-contain"
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
