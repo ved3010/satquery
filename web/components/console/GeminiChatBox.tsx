@@ -439,3 +439,92 @@ export function GeminiChatBox({
                 </div>
               </div>
 
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-[12px] font-semibold text-white truncate drop-shadow-xs">
+                    {selectedLocationName || currentImage.role || "Orbital Satellite Scene"}
+                  </p>
+                  <span className="px-1.5 py-0.2 rounded text-[9px] font-mono uppercase bg-white/10 text-cyan-300 border border-white/15">
+                    {currentImage.modality}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-[10px] text-white/60">
+                  <span>{currentImage.date || "Acquired"}</span>
+                  {availableImages.length > 1 && (
+                    <span className="text-cyan-300">· {availableImages.length} scenes</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Band Switcher + Live CCTV + Detach */}
+            <div className="flex items-center gap-1.5">
+              {hasCctvFeed && onOpenDualCockpit && (
+                <button
+                  type="button"
+                  onClick={onOpenDualCockpit}
+                  className="px-2.5 py-1 rounded-lg bg-red-600/30 hover:bg-red-600/50 border border-red-500/40 text-red-200 text-[10px] font-mono flex items-center gap-1.5 transition-all shadow-[0_0_12px_rgba(239,68,68,0.25)]"
+                  title="View live street CCTV camera footage side-by-side with satellite imagery"
+                >
+                  <Video className="w-3.5 h-3.5 text-red-400 animate-pulse" />
+                  <span className="font-semibold">Live CCTV</span>
+                </button>
+              )}
+
+              <div className="hidden sm:flex items-center bg-black/50 backdrop-blur-xs rounded-lg p-0.5 border border-white/15 text-[9.5px] font-mono">
+                {(["rgb", "cir", "ndvi"] as const).map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => setBandMode(m)}
+                    className={`px-1.5 py-0.5 rounded uppercase transition-colors ${
+                      bandMode === m ? "bg-white text-black font-bold" : "text-white/60 hover:text-white"
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={onClearAttachedImage}
+                title="Detach image"
+                className="p-1 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        ) : isFetchingImage ? (
+          /* Pulsing Image Acquisition Status */
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/40 backdrop-blur-md border border-white/15 text-cyan-300 text-[11.5px] animate-pulse">
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400" />
+            <span>Acquiring orbital imagery...</span>
+          </div>
+        ) : null}
+
+        {/* Input Composer Box with Clear Frosted Glass */}
+        <div className="relative rounded-2xl bg-black/35 backdrop-blur-md border border-white/20 focus-within:border-white/40 focus-within:ring-1 focus-within:ring-white/20 transition-all shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)]">
+          <textarea
+            ref={textareaRef}
+            rows={1}
+            value={queryInput}
+            onChange={(e) => setQueryInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={
+              currentImage
+                ? "Ask anything about this satellite scene (e.g. land cover, water bodies)..."
+                : "Select a location on the globe or type your question..."
+            }
+            className="w-full resize-none bg-transparent px-3.5 pt-3 pb-9 text-[13.5px] text-white placeholder-white/50 focus:outline-none scrollbar-none drop-shadow-xs"
+            style={{ minHeight: "50px", maxHeight: "120px" }}
+          />
+
+          {/* Bottom Action Bar inside Composer */}
+          <div className="absolute left-2.5 right-2.5 bottom-1.5 flex items-center justify-between">
+            {/* Attachment Button */}
+            <div className="flex items-center gap-2">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept=".tif,.tiff,.png,.jpg,.jpeg"
