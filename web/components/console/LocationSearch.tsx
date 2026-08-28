@@ -68,3 +68,74 @@ export function LocationSearch({
         console.warn("Geocoding lookup error:", err);
       } finally {
         if (active) setLoading(false);
+      }
+    }, 100);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [query]);
+
+  // Click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handlePick = (loc: LocationBriefing) => {
+    onSelectLocation(loc);
+    setIsOpen(false);
+    setQuery(loc.name);
+  };
+
+  const handleExecuteSearch = async (targetQuery?: string) => {
+    const q = (targetQuery ?? query).trim();
+    if (!q) return;
+
+    setLoading(true);
+    try {
+      const found = await searchAnyLocation(q);
+      if (found && found.length > 0) {
+        setResults(found);
+        handlePick(found[0]);
+      } else {
+        setResults([]);
+        setIsOpen(true);
+      }
+    } catch (err) {
+      console.warn("Execute search notice:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setIsOpen(true);
+      setHighlightedIndex((prev) => Math.min(prev + 1, results.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlightedIndex((prev) => Math.max(prev - 1, 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (results.length > 0 && highlightedIndex > 0 && highlightedIndex < results.length) {
+        handlePick(results[highlightedIndex]);
+      } else {
+        void handleExecuteSearch(query);
+      }
+    } else if (e.key === "Escape") {
+      setIsOpen(false);
+    }
+  };
+
+  // Quick primary Indian hubs for one-click instant selection
+  const quickHubs = [
+    { label: "Pune Swargate", query: "Pune Swargate" },
+    { label: "Mumbai BKC", query: "Mumbai" },
