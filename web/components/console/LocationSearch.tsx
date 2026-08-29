@@ -210,3 +210,74 @@ export function LocationSearch({
             const isMatch = selectedLocation?.name.toLowerCase().includes(hub.query.toLowerCase());
             return (
               <button
+                key={hub.label}
+                onClick={async () => {
+                  const match = await searchAnyLocation(hub.query);
+                  if (match && match.length > 0) {
+                    handlePick(match[0]);
+                  }
+                }}
+                className={`px-2.5 py-1 rounded-full border text-[11px] transition shrink-0 flex items-center gap-1 ${
+                  isMatch
+                    ? "bg-[var(--color-brand)]/20 border-[var(--color-brand)] text-white font-medium shadow-[0_0_12px_rgba(47,123,240,0.3)]"
+                    : "border-[var(--color-line)] bg-black/50 text-[var(--color-mute)] hover:text-white hover:bg-white/10 hover:border-white/20"
+                }`}
+              >
+                <MapPin className="w-3 h-3 text-[var(--color-brand-soft)]" />
+                <span>{hub.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Dropdown Results Menu */}
+        {isOpen && (
+          <div className="absolute left-0 right-0 top-full mt-2 z-50 rounded-xl border border-[var(--color-line)] bg-black/95 backdrop-blur-2xl shadow-2xl overflow-hidden animate-slide-up">
+            <div className="p-2.5 border-b border-[var(--color-line)] flex items-center justify-between">
+              <span className="mono text-[10px] tracking-[0.16em] text-[var(--color-mute)] uppercase px-2">
+                Pan-India City & Hotspot Database ({results.length} Found)
+              </span>
+              <span className="mono text-[9.5px] text-[var(--color-mute)]">INSTANT RESOLUTION</span>
+            </div>
+
+            <div className="max-h-[300px] overflow-y-auto divide-y divide-[var(--color-line)]">
+              {results.length > 0 ? (
+                results.map((loc, idx) => (
+                  <div
+                    key={`${loc.name}-${loc.coords.join(",")}`}
+                    onClick={() => handlePick(loc)}
+                    onMouseEnter={() => setHighlightedIndex(idx)}
+                    className={`p-3 px-4 cursor-pointer transition flex items-center justify-between group ${
+                      idx === highlightedIndex
+                        ? "bg-[var(--color-brand)]/20 border-l-2 border-[var(--color-brand)] text-white"
+                        : "hover:bg-white/10 text-white/90"
+                    }`}
+                  >
+                    <div className="space-y-0.5 min-w-0 flex-1 pr-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[13.5px] font-medium text-white group-hover:text-[var(--color-brand-soft)] transition truncate">
+                          {loc.name}
+                        </span>
+                        <span className="mono text-[9.5px] px-1.5 py-0.5 rounded border border-[var(--color-line)] text-[var(--color-mute)] bg-white/5">
+                          {loc.state}
+                        </span>
+                      </div>
+                      <div className="mono text-[10.5px] text-[var(--color-mute)] truncate">
+                        {loc.coords[1].toFixed(3)}°N, {loc.coords[0].toFixed(3)}°E · {loc.type}
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-[var(--color-mute)] group-hover:text-white group-hover:translate-x-0.5 transition shrink-0" />
+                  </div>
+                ))
+              ) : (
+                <div className="p-4 text-center text-[var(--color-mute)] mono text-[12px]">
+                  No exact match. Try city name or GPS coordinates (e.g. 18.52, 73.85).
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
