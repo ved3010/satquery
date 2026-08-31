@@ -127,3 +127,46 @@ export function AoiMap({
         (m as any).__draw = draw;
         setReady(true);
       })
+      .catch((e) => setError(e.message));
+
+    return () => {
+      dead = true;
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+    };
+  }, []);
+
+  /** Centre on a preset region and drop a ~4 km box on it. */
+  const goto = (lat: number, lon: number) => {
+    const L = window.L;
+    const m = map.current;
+    if (!L || !m) return;
+    const d = 0.02; // ~4.4 km at this latitude — comfortably inside the fetch cap
+    const b = L.latLngBounds([lat - d, lon - d], [lat + d, lon + d]);
+    m.setView([lat, lon], 13);
+    (m as any).__draw(b);
+    cb.current([+(lon - d).toFixed(5), +(lat - d).toFixed(5), +(lon + d).toFixed(5), +(lat + d).toFixed(5)]);
+  };
+
+  return (
+    <div>
+      <div className="relative overflow-hidden rounded-lg border border-[var(--color-line)]">
+        <div ref={holder} className="h-[300px] w-full bg-[#0b0e13]" />
+        {!ready && !error && (
+          <div className="absolute inset-0 grid place-items-center bg-[#0b0e13]">
+            <span className="mono text-[11px] tracking-[0.14em] text-[var(--color-mute)]">
+              LOADING MAP…
+            </span>
+          </div>
+        )}
+        {error && (
+          <div className="absolute inset-0 grid place-items-center bg-[#0b0e13] px-6 text-center">
+            <span className="text-[12.5px] text-[var(--color-signal)]">
+              Map unavailable ({error}). Type a bounding box below instead.
+            </span>
+          </div>
+        )}
+        <div className="pointer-events-none absolute bottom-2 left-2 z-[400] rounded bg-black/70 px-2.5 py-1">
+          <span className="mono text-[10px] tracking-[0.1em] text-[var(--color-mute)]">
