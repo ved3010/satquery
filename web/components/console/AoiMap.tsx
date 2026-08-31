@@ -41,3 +41,46 @@ function loadLeaflet(): Promise<any> {
     if (existing) {
       existing.addEventListener("load", () => resolve(window.L));
       existing.addEventListener("error", () => reject(new Error("leaflet failed to load")));
+      return;
+    }
+    const s = document.createElement("script");
+    s.src = `${CDN}/leaflet.min.js`;
+    s.setAttribute("data-leaflet", "1");
+    s.onload = () => resolve(window.L);
+    s.onerror = () => reject(new Error("leaflet failed to load"));
+    document.head.appendChild(s);
+  });
+}
+
+export function AoiMap({
+  bbox,
+  onChange,
+}: {
+  bbox: number[] | null;
+  onChange: (b: number[]) => void;
+}) {
+  const holder = useRef<HTMLDivElement>(null);
+  const map = useRef<any>(null);
+  const box = useRef<any>(null);
+  const ghost = useRef<any>(null);
+  const start = useRef<LatLng | null>(null);
+  const [ready, setReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const cb = useRef(onChange);
+  cb.current = onChange;
+
+  useEffect(() => {
+    let dead = false;
+
+    loadLeaflet()
+      .then((L) => {
+        if (dead || !holder.current || map.current) return;
+        const m = L.map(holder.current, { zoomControl: true, attributionControl: false })
+          .setView([23.03, 72.58], 11);
+        L.tileLayer(
+          "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+          { maxZoom: 18 },
+        ).addTo(m);
+        map.current = m;
+
+        const draw = (b: any) => {
