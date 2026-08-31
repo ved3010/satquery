@@ -84,3 +84,46 @@ export function AoiMap({
         map.current = m;
 
         const draw = (b: any) => {
+          if (box.current) m.removeLayer(box.current);
+          box.current = L.rectangle(b, {
+            color: "#2f7bf0",
+            weight: 2,
+            fillOpacity: 0.12,
+          }).addTo(m);
+        };
+
+        m.on("mousedown", (e: any) => {
+          if (!e.originalEvent.shiftKey) return;
+          m.dragging.disable();
+          start.current = e.latlng;
+        });
+        m.on("mousemove", (e: any) => {
+          if (!start.current) return;
+          const b = L.latLngBounds(start.current, e.latlng);
+          if (ghost.current) ghost.current.setBounds(b);
+          else
+            ghost.current = L.rectangle(b, {
+              color: "#7fb2ff",
+              weight: 1,
+              dashArray: "4",
+              fillOpacity: 0.06,
+            }).addTo(m);
+        });
+        m.on("mouseup", (e: any) => {
+          if (!start.current) return;
+          const b = L.latLngBounds(start.current, e.latlng);
+          start.current = null;
+          m.dragging.enable();
+          if (ghost.current) {
+            m.removeLayer(ghost.current);
+            ghost.current = null;
+          }
+          draw(b);
+          const sw = b.getSouthWest();
+          const ne = b.getNorthEast();
+          cb.current([+sw.lng.toFixed(5), +sw.lat.toFixed(5), +ne.lng.toFixed(5), +ne.lat.toFixed(5)]);
+        });
+
+        (m as any).__draw = draw;
+        setReady(true);
+      })
