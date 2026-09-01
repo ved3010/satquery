@@ -54,3 +54,59 @@ function Measured({ a }: { a: Analysis }) {
         <p className="mono text-[10.5px] tracking-[0.14em] text-[var(--color-signal)]">
           NOT COMPUTABLE
         </p>
+        <p className="mt-2 text-[13px] leading-[1.7] text-[var(--color-mute)]">{a.reason}</p>
+      </div>
+    );
+  }
+
+  const single = a.mode === "single";
+  const cover = single ? a.scene!.cover : null;
+  const ch = a.change;
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-[var(--color-line)]">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-line)] px-5 py-3">
+        <span className="mono text-[10.5px] tracking-[0.14em] text-[var(--color-mute)]">
+          MEASURED LAND COVER — NDVI / MNDWI / NDBI
+        </span>
+        <span className="mono text-[10.5px] text-[var(--color-mute)]">
+          {(single ? a.scene?.area_km2 : ch?.area_km2)?.toFixed(3)} km² · {a.gsd_m} m GSD
+        </span>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[520px] border-collapse">
+          <thead>
+            <tr className="border-b border-[var(--color-line)]">
+              {(single
+                ? ["class", "cover %", "area km²"]
+                : ["class", `${a.dates?.[0] ?? "t1"} %`, `${a.dates?.[1] ?? "t2"} %`, "Δ pp", "Δ relative"]
+              ).map((h, i) => (
+                <th
+                  key={h}
+                  className={`mono px-5 py-2.5 text-[10px] font-normal tracking-[0.12em] text-[var(--color-mute)] ${
+                    i === 0 ? "text-left" : "text-right"
+                  }`}
+                >
+                  {h.toUpperCase()}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {CLASS_ORDER.map((c) => {
+              const row = single ? cover![c] : null;
+              const cr = single ? null : ch!.classes[c];
+              return (
+                <tr key={c} className="border-b border-[var(--color-line)] last:border-0">
+                  <td className="px-5 py-2.5 text-[13px] text-[var(--color-dim)]">
+                    <span
+                      className="mr-2 inline-block h-2 w-2 rounded-full align-middle"
+                      style={{ background: TONE[c] }}
+                    />
+                    {c}
+                  </td>
+                  {single ? (
+                    <>
+                      <td className="px-5 py-2.5 text-right text-[13px] tabular-nums text-white">
+                        {row!.pct.toFixed(2)}%
