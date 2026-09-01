@@ -170,3 +170,47 @@ export function AoiMap({
         )}
         <div className="pointer-events-none absolute bottom-2 left-2 z-[400] rounded bg-black/70 px-2.5 py-1">
           <span className="mono text-[10px] tracking-[0.1em] text-[var(--color-mute)]">
+            SHIFT + DRAG TO DRAW AN AOI
+          </span>
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {REGIONS.map((r) => (
+          <button
+            key={r.key}
+            type="button"
+            onClick={() => goto(r.lat, r.lon)}
+            title={`${r.state} · ${r.zone}`}
+            className="mono rounded-full border border-[var(--color-line)] px-2.5 py-1 text-[10.5px] tracking-[0.08em] text-[var(--color-mute)] transition-colors hover:border-white/25 hover:text-white"
+          >
+            {r.name.toUpperCase()}
+          </button>
+        ))}
+      </div>
+
+      <label className="mt-3 block">
+        <span className="mono text-[10px] tracking-[0.14em] text-[var(--color-mute)]">
+          BBOX — WEST, SOUTH, EAST, NORTH
+        </span>
+        <input
+          value={bbox ? bbox.join(", ") : ""}
+          onChange={(e) => {
+            const v = e.target.value.split(",").map((x) => Number(x.trim()));
+            if (v.length === 4 && v.every((n) => Number.isFinite(n))) {
+              onChange(v);
+              const L = window.L;
+              if (L && map.current) {
+                const b = L.latLngBounds([v[1], v[0]], [v[3], v[2]]);
+                (map.current as any).__draw(b);
+                map.current.fitBounds(b);
+              }
+            }
+          }}
+          placeholder="72.56, 23.01, 72.60, 23.05"
+          className="mono mt-1.5 w-full rounded-md border border-[var(--color-line)] bg-white/[0.03] px-3 py-2 text-[12px] text-white outline-none placeholder:text-white/25 focus:border-[var(--color-brand)]"
+        />
+      </label>
+    </div>
+  );
+}
