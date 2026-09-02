@@ -110,3 +110,60 @@ function Measured({ a }: { a: Analysis }) {
                     <>
                       <td className="px-5 py-2.5 text-right text-[13px] tabular-nums text-white">
                         {row!.pct.toFixed(2)}%
+                      </td>
+                      <td className="mono px-5 py-2.5 text-right text-[12px] tabular-nums text-[var(--color-mute)]">
+                        {row!.km2.toFixed(3)}
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="mono px-5 py-2.5 text-right text-[12px] tabular-nums text-[var(--color-mute)]">
+                        {cr!.t1_pct.toFixed(2)}%
+                      </td>
+                      <td className="px-5 py-2.5 text-right text-[13px] tabular-nums text-white">
+                        {cr!.t2_pct.toFixed(2)}%
+                      </td>
+                      <td
+                        className="mono px-5 py-2.5 text-right text-[12px] tabular-nums"
+                        style={{ color: cr!.delta_pp === 0 ? "var(--color-mute)" : TONE[c] }}
+                      >
+                        {n2(cr!.delta_pp)}
+                      </td>
+                      <td className="mono px-5 py-2.5 text-right text-[12px] tabular-nums text-[var(--color-mute)]">
+                        {cr!.relative_pct === null ? "—" : `${cr!.relative_pct > 0 ? "+" : ""}${cr!.relative_pct.toFixed(1)}%`}
+                      </td>
+                    </>
+                  )}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {ch && (
+        <div className="space-y-2 border-t border-[var(--color-line)] px-5 py-4 text-[12.5px] leading-[1.7] text-[var(--color-mute)]">
+          <p>
+            <span className="text-[var(--color-dim)]">Vegetation.</span> Mean ΔNDVI{" "}
+            {n2(ch.vegetation_index_change.mean_dndvi)}. {ch.vegetation_index_change.gain_pct.toFixed(2)}% of
+            the area gained vegetation and {ch.vegetation_index_change.loss_pct.toFixed(2)}% lost it.
+          </p>
+          <p>
+            <span className="text-[var(--color-dim)]">Urbanisation.</span> {ch.new_built_up.km2.toFixed(3)} km²
+            became built-up that was not before ({ch.new_built_up.pct_of_scene.toFixed(2)}% of the scene)
+            {Object.keys(ch.new_built_up.converted_from_pct).length > 0 &&
+              `, converted from ${Object.entries(ch.new_built_up.converted_from_pct)
+                .map(([k, v]) => `${k} ${v.toFixed(1)}%`)
+                .join(", ")}`}
+            .
+          </p>
+          <p>
+            <span className="text-[var(--color-dim)]">Water.</span> Mean ΔMNDWI{" "}
+            {n2(ch.water_index_change.mean_dmndwi)}; {ch.water_index_change.gain_pct.toFixed(2)}% wetted and{" "}
+            {ch.water_index_change.loss_pct.toFixed(2)}% dried. {ch.transitioned_pct.toFixed(2)}% of pixels
+            changed class.
+          </p>
+        </div>
+      )}
+    </div>
+  );
