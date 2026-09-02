@@ -223,3 +223,60 @@ export function Results({ trace }: { trace: Trace }) {
     return (
       <div className="space-y-5">
         <div className="rounded-lg border border-[var(--color-signal)]/35 bg-[var(--color-signal)]/[0.06] p-6">
+          <p className="mono text-[10.5px] tracking-[0.16em] text-[var(--color-signal)]">REFUSED</p>
+          <p className="mt-3 text-[15px] leading-[1.65] text-white">{trace.rejected}</p>
+          <p className="mt-3 text-[13px] leading-[1.7] text-[var(--color-mute)]">
+            Refusing is the correct outcome here, and it is recorded in the trace like any other. PS 26167
+            asks for input compatibility checking — returning a confident answer from imagery that cannot
+            support one would fail that requirement, not satisfy it.
+          </p>
+        </div>
+        <TraceTable t={trace} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* answer */}
+      <div className="panel rounded-lg p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="mono text-[10.5px] tracking-[0.16em] text-[var(--color-mute)]">ANSWER</span>
+          <div className="flex items-center gap-3">
+            {trace.confidence !== null && (
+              <span className="mono text-[10.5px] text-[var(--color-mute)]">
+                confidence {trace.confidence.toFixed(2)}
+              </span>
+            )}
+            <a
+              href={api.reportUrl(trace.run_id)}
+              download
+              className="mono rounded-full border border-[var(--color-line)] px-3 py-[5px] text-[10.5px] tracking-[0.1em] text-[var(--color-dim)] transition-colors hover:border-white/25 hover:text-white"
+            >
+              ↓ REPORT.MD
+            </a>
+          </div>
+        </div>
+        <div className="mt-4 space-y-3">
+          {trace.answer.split("\n\n").map((p, i) => (
+            <p
+              key={i}
+              className={`text-[14.5px] leading-[1.72] ${
+                p.startsWith("⚠") ? "text-[var(--color-signal)]" : "text-[var(--color-dim)]"
+              }`}
+            >
+              {p}
+            </p>
+          ))}
+        </div>
+        <p className="mono mt-5 border-t border-[var(--color-line)] pt-4 text-[10.5px] text-[var(--color-mute)]">
+          models invoked: {trace.models_invoked.join(" · ") || "none"} · run {trace.run_id}
+        </p>
+      </div>
+
+      <Tiles a={trace.analysis} />
+      <Measured a={trace.analysis} />
+      <TraceTable t={trace} />
+    </div>
+  );
+}
