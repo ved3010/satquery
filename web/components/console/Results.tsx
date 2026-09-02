@@ -167,3 +167,59 @@ function Measured({ a }: { a: Analysis }) {
       )}
     </div>
   );
+}
+
+/* ------------------------------------------------------- execution trace */
+function TraceTable({ t }: { t: Trace }) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-[var(--color-line)]">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-line)] px-5 py-3">
+        <span className="mono text-[10.5px] tracking-[0.14em] text-[var(--color-mute)]">
+          EXECUTION TRACE — {t.steps.length} STEPS
+        </span>
+        <span className="mono text-[10.5px] text-[var(--color-mute)]">
+          {t.total_ms} ms · {t.input_config} · task {t.task ?? "n/a"}
+        </span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[620px] border-collapse">
+          <tbody>
+            {t.steps.map((s, i) => (
+              <tr key={i} className="border-b border-[var(--color-line)] last:border-0 align-top">
+                <td className="mono px-5 py-3 text-[11px] text-[var(--color-mute)]">{i + 1}</td>
+                <td className="mono px-2 py-3 text-[12px] text-white">
+                  {s.node}
+                  {s.model_id && (
+                    <span className="ml-2 text-[var(--color-brand-soft)]">
+                      {s.model_id} {s.model_name}
+                    </span>
+                  )}
+                  {s.error && <span className="ml-2 text-[var(--color-signal)]">⚠ {s.error}</span>}
+                </td>
+                <td className="mono px-2 py-3 text-[10.5px] leading-[1.7] text-[var(--color-mute)]">
+                  {Object.entries(s.params)
+                    .map(([k, v]) => `${k}=${String(v)}`)
+                    .join(", ") || "—"}
+                  {s.outcome && <div className="mt-1 text-[var(--color-dim)]">{s.outcome}</div>}
+                </td>
+                <td className="mono px-2 py-3 text-right text-[11px] tabular-nums text-[var(--color-mute)]">
+                  {s.latency_ms} ms
+                </td>
+                <td className="mono px-5 py-3 text-right text-[11px] tabular-nums text-[var(--color-mute)]">
+                  {s.confidence === null ? "—" : s.confidence.toFixed(2)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------- panel */
+export function Results({ trace }: { trace: Trace }) {
+  if (trace.rejected) {
+    return (
+      <div className="space-y-5">
+        <div className="rounded-lg border border-[var(--color-signal)]/35 bg-[var(--color-signal)]/[0.06] p-6">
