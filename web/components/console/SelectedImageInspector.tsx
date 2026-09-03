@@ -564,3 +564,133 @@ export function SelectedImageInspector({
                       <img
                         src={getPreviewUrl(baselineImage, bandMode)}
                         alt="T0 Baseline"
+                        className="w-full h-auto object-contain block pointer-events-none"
+                      />
+                      <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/80 border border-white/20 mono text-[9.5px] text-white font-medium">
+                        BASELINE (T0) · {baselineImage.date}
+                      </div>
+                    </div>
+                    <div className="relative rounded-lg overflow-hidden border border-[var(--color-brand)] max-w-[310px] shadow-[0_0_20px_rgba(47,123,240,0.2)]">
+                      <img
+                        src={getPreviewUrl(primaryImage, bandMode)}
+                        alt="T1 Recent"
+                        className="w-full h-auto object-contain block pointer-events-none"
+                      />
+                      <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-[var(--color-brand)] mono text-[9.5px] text-white font-bold">
+                        RECENT (T1) · {primaryImage.date}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* CASE 3: Single Selected Image Mode */
+                  <div className="relative rounded-xl overflow-hidden border border-[var(--color-line)] shadow-2xl max-w-[580px]">
+                    <img
+                      key={`${activeImage.path}_${bandMode}`}
+                      src={getPreviewUrl(activeImage, bandMode)}
+                      alt="Selected Satellite Imagery"
+                      className="w-full h-auto object-contain block pointer-events-none transition-opacity duration-200"
+                    />
+
+                    {/* Image Date & Satellite Overlay Tag */}
+                    <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-black/85 border border-white/20 backdrop-blur-md mono text-[10.5px] text-white flex items-center gap-1.5 shadow-lg">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                      <span>
+                        {activeImage.role || "Optical Scene"} ·{" "}
+                        {activeImage.date || "Sentinel-2 L2A"}
+                      </span>
+                    </div>
+
+                    {/* Selected Hotspot Marker if in AOI */}
+                    {selectedFeaturePoint && (
+                      <div
+                        className="absolute w-6 h-6 -translate-x-1/2 -translate-y-1/2 border-2 border-amber-400 rounded-full flex items-center justify-center animate-pulse pointer-events-none"
+                        style={{ top: "50%", left: "50%" }}
+                        title={selectedFeaturePoint.name}
+                      >
+                        <div className="w-2 h-2 bg-amber-400 rounded-full" />
+                        <span className="absolute -bottom-5 px-1.5 py-0.5 rounded bg-black/90 text-amber-300 mono text-[8px] whitespace-nowrap border border-amber-500/40">
+                          {selectedFeaturePoint.name}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* If no scene is available */
+              <div className="relative z-10 max-w-[460px] p-6 text-center space-y-4 rounded-xl border border-[var(--color-brand)]/40 bg-black/80 backdrop-blur-md shadow-[0_0_30px_rgba(47,123,240,0.15)]">
+                <div className="w-12 h-12 rounded-full border border-[var(--color-brand)]/60 bg-[var(--color-brand)]/15 text-[var(--color-brand-soft)] flex items-center justify-center mx-auto shadow-[0_0_15px_rgba(47,123,240,0.3)]">
+                  <Satellite className={`w-6 h-6 ${isFetching ? "animate-spin" : ""}`} />
+                </div>
+                <div>
+                  <h3 className="text-[16px] font-semibold text-white">
+                    {selectedLocation?.name || "Select A Location on the Globe"}
+                  </h3>
+                  <p className="mt-1 text-[13px] text-[var(--color-mute)] leading-relaxed">
+                    {isFetching
+                      ? "Acquiring real 10m satellite imagery from orbit for this Indian location..."
+                      : "Click any point or draw a bounding box on the 3D globe above, or search any city across India to inspect satellite pixels."}
+                  </p>
+                </div>
+
+                <button
+                  onClick={onFetchAoi}
+                  disabled={isFetching || !bbox}
+                  className={`w-full py-3 rounded-xl text-[14px] font-semibold tracking-wide transition flex items-center justify-center gap-2 ${
+                    isFetching
+                      ? "bg-white/10 text-[var(--color-mute)] cursor-wait"
+                      : "bg-[var(--color-brand)] hover:bg-[#4b8ef5] text-white shadow-[0_0_20px_rgba(47,123,240,0.4)] cursor-pointer"
+                  }`}
+                >
+                  <Radio className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`} />
+                  {isFetching ? "Acquiring Satellite Imagery..." : "Acquire Satellite Imagery for This Spot"}
+                </button>
+              </div>
+            )}
+
+            {/* Live Orbit Acquisition Scanner Overlay when fetching */}
+            {isFetching && (
+              <div className="absolute inset-0 z-30 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center space-y-3">
+                <div className="relative flex items-center justify-center w-16 h-16">
+                  <div className="absolute inset-0 rounded-full border border-[var(--color-brand)]/40 animate-ping" />
+                  <div className="absolute inset-2 rounded-full border-2 border-[var(--color-brand)] animate-spin border-t-transparent" />
+                  <Satellite className="w-6 h-6 text-[var(--color-brand-soft)] animate-pulse" />
+                </div>
+                <div className="space-y-1">
+                  <div className="mono text-[10.5px] uppercase tracking-widest text-[var(--color-brand-soft)] font-bold">
+                    Target Locked · Acquiring Orbit Pass
+                  </div>
+                  <h4 className="text-[16px] font-semibold text-white">
+                    {selectedLocation?.name || "Target Coordinates"}
+                  </h4>
+                  {centerCoords && (
+                    <p className="mono text-[11px] text-[var(--color-mute)]">
+                      {centerCoords[1]}°N, {centerCoords[0]}°E · GSD 10m / px
+                    </p>
+                  )}
+                  <p className="text-[11.5px] text-[var(--color-mute)] opacity-80 pt-1">
+                    Fetching high-resolution multispectral imagery across India...
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Bottom Telemetry HUD Bar */}
+            <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between pointer-events-none">
+              <div className="px-2.5 py-1 rounded-md bg-black/80 border border-[var(--color-line)] mono text-[10px] text-[var(--color-mute)] backdrop-blur-md">
+                SPECTRAL: <span className="text-white font-medium">{bandMode.toUpperCase()}</span> · RES:{" "}
+                <span className="text-white font-medium">10M GSD</span>
+              </div>
+
+              {primaryScene && (
+                <div className="px-2.5 py-1 rounded-md bg-black/80 border border-[var(--color-line)] mono text-[10px] text-[var(--color-mute)] backdrop-blur-md hidden sm:block">
+                  SCENE: <span className="text-white">{primaryScene.id.slice(0, 22)}...</span> · CLOUD:{" "}
+                  <span className="text-white">{primaryScene.cloud}%</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right (5 Cols): "Ask Anything About This Image" Terminal */}
+        <div className="xl:col-span-5 flex flex-col p-5 sm:p-6 space-y-5 bg-black/50">
