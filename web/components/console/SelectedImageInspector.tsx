@@ -433,3 +433,134 @@ export function SelectedImageInspector({
                 </button>
                 <button
                   onClick={() => setLayoutMode("split")}
+                  className={`px-2 py-1 rounded text-[11px] mono transition flex items-center gap-1 ${
+                    layoutMode === "split"
+                      ? "bg-[var(--color-brand)] text-white"
+                      : "text-[var(--color-mute)] hover:text-white"
+                  }`}
+                  title="Split Wipe Slider"
+                >
+                  <SplitSquareVertical className="w-3.5 h-3.5" />
+                  <span>Split Slider</span>
+                </button>
+                <button
+                  onClick={() => setLayoutMode("side-by-side")}
+                  className={`px-2 py-1 rounded text-[11px] mono transition flex items-center gap-1 ${
+                    layoutMode === "side-by-side"
+                      ? "bg-[var(--color-brand)] text-white"
+                      : "text-[var(--color-mute)] hover:text-white"
+                  }`}
+                  title="Side-by-Side Comparison"
+                >
+                  <Columns className="w-3.5 h-3.5" />
+                  <span>Side-by-Side</span>
+                </button>
+              </div>
+            )}
+
+            {/* Viewport Zoom & Pan Controls */}
+            <div className="flex items-center gap-1 bg-black/80 p-1 rounded-lg border border-[var(--color-line)]">
+              <button
+                onClick={handleZoomIn}
+                className="p-1 rounded hover:bg-white/10 text-[var(--color-mute)] hover:text-white transition"
+                title="Zoom In"
+              >
+                <ZoomIn className="w-3.5 h-3.5" />
+              </button>
+              <span className="mono text-[10px] text-white px-1.5 tabular-nums">
+                {Math.round(zoom * 100)}%
+              </span>
+              <button
+                onClick={handleZoomOut}
+                className="p-1 rounded hover:bg-white/10 text-[var(--color-mute)] hover:text-white transition"
+                title="Zoom Out"
+              >
+                <ZoomOut className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={handleResetView}
+                className="p-1 rounded hover:bg-white/10 text-[var(--color-mute)] hover:text-white transition ml-0.5"
+                title="Reset View"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Interactive Viewport Area */}
+          <div
+            ref={viewportRef}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            className="relative h-[480px] sm:h-[530px] w-full overflow-hidden select-none cursor-grab active:cursor-grabbing bg-[#07090f] flex items-center justify-center"
+          >
+            {/* Grid Reticle Background */}
+            <div className="absolute inset-0 bg-[radial-gradient(#1f293d_1px,transparent_1px)] [background-size:24px_24px] opacity-40 pointer-events-none" />
+
+            {/* Corner Bracket Reticles */}
+            <div className="absolute top-3 left-3 w-4 h-4 border-t-2 border-l-2 border-[var(--color-brand)]/60 pointer-events-none" />
+            <div className="absolute top-3 right-3 w-4 h-4 border-t-2 border-r-2 border-[var(--color-brand)]/60 pointer-events-none" />
+            <div className="absolute bottom-3 left-3 w-4 h-4 border-b-2 border-l-2 border-[var(--color-brand)]/60 pointer-events-none" />
+            <div className="absolute bottom-3 right-3 w-4 h-4 border-b-2 border-r-2 border-[var(--color-brand)]/60 pointer-events-none" />
+
+            {/* Display the active selected image */}
+            {activeImage ? (
+              <div
+                className="relative transition-transform duration-75 flex items-center justify-center"
+                style={{
+                  transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                  transformOrigin: "center center",
+                }}
+              >
+                {/* CASE 1: Split Wipe Slider Mode (if bi-temporal) */}
+                {layoutMode === "split" && primaryImage && baselineImage ? (
+                  <div className="relative overflow-hidden rounded-xl shadow-2xl border border-[var(--color-line)] max-w-[620px]">
+                    {/* Background: Baseline Image (T0) */}
+                    <img
+                      src={getPreviewUrl(baselineImage, bandMode)}
+                      alt="Baseline T0"
+                      className="w-full h-auto object-contain block pointer-events-none"
+                    />
+
+                    {/* Foreground: Recent Image (T1) clipped by slider */}
+                    <div
+                      className="absolute inset-0 overflow-hidden"
+                      style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }}
+                    >
+                      <img
+                        src={getPreviewUrl(primaryImage, bandMode)}
+                        alt="Recent T1"
+                        className="w-full h-auto object-contain block pointer-events-none"
+                      />
+                    </div>
+
+                    {/* Interactive Divider Line */}
+                    <div
+                      className="absolute top-0 bottom-0 w-1 bg-white cursor-ew-resize flex items-center justify-center shadow-[0_0_12px_rgba(255,255,255,0.8)]"
+                      style={{ left: `${sliderPos}%` }}
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        isDraggingSlider.current = true;
+                      }}
+                    >
+                      <div className="w-6 h-6 rounded-full bg-black/90 border-2 border-white flex items-center justify-center text-[10px] text-white mono font-bold pointer-events-none">
+                        ↔
+                      </div>
+                    </div>
+
+                    {/* Labels */}
+                    <div className="absolute bottom-3 left-3 px-2 py-1 rounded bg-black/80 border border-white/20 mono text-[10px] text-white">
+                      T1: {primaryImage.date ?? "Recent Pass"}
+                    </div>
+                    <div className="absolute bottom-3 right-3 px-2 py-1 rounded bg-black/80 border border-white/20 mono text-[10px] text-white">
+                      T0: {baselineImage.date ?? "Past Baseline"}
+                    </div>
+                  </div>
+                ) : layoutMode === "side-by-side" && primaryImage && baselineImage ? (
+                  /* CASE 2: Side-by-Side Mode */
+                  <div className="flex items-center gap-3 p-2">
+                    <div className="relative rounded-lg overflow-hidden border border-[var(--color-line)] max-w-[310px]">
+                      <img
+                        src={getPreviewUrl(baselineImage, bandMode)}
+                        alt="T0 Baseline"
