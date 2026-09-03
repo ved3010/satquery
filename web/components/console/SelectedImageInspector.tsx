@@ -302,3 +302,134 @@ export function SelectedImageInspector({
             </div>
           )}
 
+          <div className="px-2.5 py-1 rounded-lg border border-[var(--color-line)] bg-white/5 text-[var(--color-mute)]">
+            GSD: <span className="text-white font-medium">10 m / px</span>
+          </div>
+
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            className="px-2.5 py-1 rounded-lg border border-white/20 bg-white/5 hover:bg-white/10 text-white transition flex items-center gap-1.5 mono text-[11px]"
+            title="Upload any local GeoTIFF or satellite image (.tif, .png, .jpg)"
+          >
+            <Upload className={`w-3.5 h-3.5 ${isUploading ? "animate-spin" : ""}`} />
+            <span>{isUploading ? "Uploading..." : "Upload Image"}</span>
+          </button>
+
+          <button
+            onClick={() => setIsFullscreen(!isFullscreen)}
+            className="p-1.5 rounded-lg border border-[var(--color-line)] bg-white/5 hover:bg-white/10 text-white transition"
+            title={isFullscreen ? "Exit Fullscreen" : "Fullscreen View"}
+          >
+            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          </button>
+        </div>
+      {/* Available Passes for Selected Area */}
+      {images.length > 1 && (
+        <div className="p-2.5 px-4 sm:px-6 border-b border-[var(--color-line)] bg-white/[0.01] flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="mono text-[10.5px] uppercase tracking-wider text-[var(--color-mute)] flex items-center gap-1.5">
+              <ImageIcon className="w-3.5 h-3.5 text-[var(--color-brand-soft)]" />
+              Observed Passes for Selected Area:
+            </span>
+            <div className="flex items-center gap-1.5">
+              {images.map((img, idx) => (
+                <button
+                  key={img.path}
+                  onClick={() => {
+                    setActiveImageIdx(idx);
+                    setLayoutMode("single");
+                  }}
+                  className={`px-3 py-1 rounded-lg mono text-[11px] transition flex items-center gap-1.5 border ${
+                    activeImageIdx === idx && layoutMode === "single"
+                      ? "bg-[var(--color-brand)]/20 border-[var(--color-brand)] text-white shadow-[0_0_12px_rgba(47,123,240,0.3)] font-medium"
+                      : "bg-black/50 border-[var(--color-line)] text-[var(--color-mute)] hover:text-white"
+                  }`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  <span>{img.role || (idx === 0 ? "T1 Recent Pass" : "T0 Earlier Baseline")}</span>
+                  {img.date && <span className="opacity-70">({img.date})</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mono text-[10px] text-[var(--color-mute)] hidden sm:block">
+            CLICK A PASS TO VIEW
+          </div>
+        </div>
+      )}
+      </div>
+
+      {/* Main Grid: Visual Image Viewer (Left) & Integrated Interrogation Terminal (Right) */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-0">
+        {/* Left (7 Cols): Satellite Image Viewport & Band Controls */}
+        <div className="xl:col-span-7 flex flex-col border-b xl:border-b-0 xl:border-r border-[var(--color-line)] bg-black/70">
+          {/* Subheader Toolbar: Multi-Spectral Bands & Zoom Controls */}
+          <div className="flex flex-wrap items-center justify-between p-3 px-4 border-b border-[var(--color-line)] bg-white/[0.01] gap-2">
+            {/* Spectral Band Selector */}
+            <div className="flex items-center gap-1.5 bg-black/80 p-1 rounded-lg border border-[var(--color-line)]">
+              <span className="mono text-[10px] text-[var(--color-mute)] px-1.5 font-medium uppercase">
+                Band:
+              </span>
+              <button
+                onClick={() => setBandMode("rgb")}
+                className={`px-2.5 py-1 rounded text-[11px] mono font-medium transition ${
+                  bandMode === "rgb"
+                    ? "bg-[var(--color-brand)] text-white shadow-[0_0_10px_rgba(47,123,240,0.3)]"
+                    : "text-[var(--color-mute)] hover:text-white"
+                }`}
+                title="Natural True Color (Sentinel-2 B4-B3-B2)"
+              >
+                Natural RGB
+              </button>
+              <button
+                onClick={() => setBandMode("cir")}
+                className={`px-2.5 py-1 rounded text-[11px] mono font-medium transition ${
+                  bandMode === "cir"
+                    ? "bg-rose-600 text-white shadow-[0_0_10px_rgba(225,29,72,0.3)]"
+                    : "text-[var(--color-mute)] hover:text-white"
+                }`}
+                title="Color Infrared (NIR-Red-Green: Vegetation & Chlorophyll)"
+              >
+                CIR Infrared
+              </button>
+              <button
+                onClick={() => setBandMode("swir")}
+                className={`px-2.5 py-1 rounded text-[11px] mono font-medium transition ${
+                  bandMode === "swir"
+                    ? "bg-amber-600 text-white shadow-[0_0_10px_rgba(217,119,6,0.3)]"
+                    : "text-[var(--color-mute)] hover:text-white"
+                }`}
+                title="Short-Wave Infrared (B12-B8-B4: Urban & Soil Moisture)"
+              >
+                SWIR Urban
+              </button>
+              <button
+                onClick={() => setBandMode("ndvi")}
+                className={`px-2.5 py-1 rounded text-[11px] mono font-medium transition ${
+                  bandMode === "ndvi"
+                    ? "bg-emerald-600 text-white shadow-[0_0_10px_rgba(5,150,105,0.3)]"
+                    : "text-[var(--color-mute)] hover:text-white"
+                }`}
+                title="NDVI Spectral Heatmap (Vegetation Canopy Index)"
+              >
+                NDVI Heatmap
+              </button>
+            </div>
+
+            {/* Layout Mode (Only active when 2 images available) */}
+            {isBiTemporal && (
+              <div className="flex items-center gap-1 bg-black/80 p-1 rounded-lg border border-[var(--color-line)]">
+                <button
+                  onClick={() => setLayoutMode("single")}
+                  className={`px-2 py-1 rounded text-[11px] mono transition flex items-center gap-1 ${
+                    layoutMode === "single" ? "bg-white/20 text-white" : "text-[var(--color-mute)] hover:text-white"
+                  }`}
+                  title="Single View"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>Single</span>
+                </button>
+                <button
+                  onClick={() => setLayoutMode("split")}
