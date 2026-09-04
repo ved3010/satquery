@@ -314,3 +314,144 @@ export function GodsEyeGlobe({
 
       map.addLayer({
         id: "aoi-line",
+        type: "line",
+        source: "aoi-box",
+        paint: {
+          "line-color": "#7fb2ff",
+          "line-width": 2,
+        },
+      });
+
+      map.addSource("sat-orbits", {
+        type: "geojson",
+        data: generateOrbitalPaths(),
+      });
+
+      map.addLayer({
+        id: "sat-orbit-lines",
+        type: "line",
+        source: "sat-orbits",
+        paint: {
+          "line-color": "#2f7bf0",
+          "line-width": 1.5,
+          "line-opacity": 0.35,
+          "line-dasharray": [4, 4],
+        },
+      });
+
+      if (bbox) updateAoiLayer(bbox);
+    });
+
+    // Click anywhere on globe to point, pin and inspect
+    map.on("click", (e) => {
+      if (isDraggingAoi.current) return;
+      const coords: [number, number] = [
+        Number(e.lngLat.lng.toFixed(5)),
+        Number(e.lngLat.lat.toFixed(5)),
+      ];
+
+      if (markerRef.current) {
+        markerRef.current.remove();
+      }
+
+      const el = document.createElement("div");
+      el.className = "geospatial-target-marker cursor-pointer";
+      el.innerHTML = `
+        <div style="position: relative; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px;">
+          <div style="position: absolute; inset: -4px; border-radius: 9999px; background: rgba(47, 123, 240, 0.4); animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+          <div style="position: relative; width: 22px; height: 22px; border-radius: 9999px; background: #2f7bf0; border: 2.5px solid #ffffff; box-shadow: 0 0 16px #00f3ff; display: flex; align-items: center; justify-content: center;">
+            <div style="width: 7px; height: 7px; border-radius: 9999px; background: #ffffff;"></div>
+          </div>
+        </div>
+      `;
+
+      markerRef.current = new maplibregl.Marker({ element: el })
+        .setLngLat(coords)
+        .addTo(map);
+
+      onMapClick?.(coords);
+    });
+
+    map.on("move", () => {
+      const center = map.getCenter();
+      setTelemetry((prev) => ({
+        ...prev,
+        lat: Number(center.lat.toFixed(5)),
+        lng: Number(center.lng.toFixed(5)),
+        zoom: Number(map.getZoom().toFixed(2)),
+        pitch: Number(map.getPitch().toFixed(1)),
+        bearing: Number(map.getBearing().toFixed(1)),
+      }));
+    });
+
+    map.on("mousemove", (e) => {
+      setTelemetry((prev) => ({
+        ...prev,
+        cursorLat: Number(e.lngLat.lat.toFixed(5)),
+        cursorLng: Number(e.lngLat.lng.toFixed(5)),
+      }));
+
+      if (isDraggingAoi.current && aoiStartPoint.current) {
+        const [w0, s0] = aoiStartPoint.current;
+        const w1 = e.lngLat.lng;
+        const s1 = e.lngLat.lat;
+        const west = Math.min(w0, w1);
+        const south = Math.min(s0, s1);
+        const east = Math.max(w0, w1);
+        const north = Math.max(s0, s1);
+
+        const currentBbox = [
+          Number(west.toFixed(5)),
+          Number(south.toFixed(5)),
+          Number(east.toFixed(5)),
+          Number(north.toFixed(5)),
+        ];
+
+        updateAoiLayer(currentBbox);
+      }
+    });
+
+    map.on("mousedown", (e) => {
+      if (isBoxSelectModeRef.current || e.originalEvent.shiftKey) {
+        map.dragPan.disable();
+        isDraggingAoi.current = true;
+        aoiStartPoint.current = [e.lngLat.lng, e.lngLat.lat];
+      }
+    });
+
+    map.on("mouseup", (e) => {
+      if (isDraggingAoi.current && aoiStartPoint.current) {
+        map.dragPan.enable();
+        isDraggingAoi.current = false;
+        const [w0, s0] = aoiStartPoint.current;
+        const w1 = e.lngLat.lng;
+        const s1 = e.lngLat.lat;
+        const west = Math.min(w0, w1);
+        const south = Math.min(s0, s1);
+        const east = Math.max(w0, w1);
+        const north = Math.max(s0, s1);
+
+        if (Math.abs(east - west) > 0.003 && Math.abs(north - south) > 0.003) {
+          const finalBbox = [
+            Number(west.toFixed(5)),
+            Number(south.toFixed(5)),
+            Number(east.toFixed(5)),
+            Number(north.toFixed(5)),
+          ];
+          onBboxChange(finalBbox);
+          updateAoiLayer(finalBbox);
+        }
+        aoiStartPoint.current = null;
+        if (isBoxSelectModeRef.current) {
+          setIsBoxSelectMode(false);
+        }
+      }
+    });
+
+    return () => {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      map.remove();
+      mapRef.current = null;
+    };
+  }, []);
+
