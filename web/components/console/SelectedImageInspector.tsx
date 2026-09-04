@@ -781,3 +781,91 @@ export function SelectedImageInspector({
               <div className="flex items-center justify-between border-b border-[var(--color-line)] pb-2.5">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-[var(--color-brand-soft)] animate-pulse" />
+                  <span className="mono text-[11px] font-semibold text-[var(--color-brand-soft)] uppercase tracking-wider">
+                    Agent Answer
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={copyAnswer}
+                    className="p-1 rounded hover:bg-white/10 text-[var(--color-mute)] hover:text-white transition flex items-center gap-1 mono text-[10px]"
+                    title="Copy Answer"
+                  >
+                    {copiedAnswer ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-emerald-400">Copied</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copy</span>
+                      </>
+                    )}
+                  </button>
+
+                  {trace.run_id && (
+                    <a
+                      href={api.reportUrl(trace.run_id)}
+                      download={`satquery-${trace.run_id}.md`}
+                      className="p-1 rounded hover:bg-white/10 text-[var(--color-brand-soft)] hover:underline transition flex items-center gap-1 mono text-[10px]"
+                      title="Download Full Markdown Audit"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Report</span>
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {/* Synthesized Answer Body */}
+              <p className="text-[14px] leading-[1.65] text-white/95">{trace.answer}</p>
+
+              {/* Quick Spectral Metrics Bar if available */}
+              {trace.analysis?.available && trace.analysis.scene?.cover && (
+                <div className="pt-2 border-t border-[var(--color-line)] space-y-1.5">
+                  <span className="mono text-[10px] text-[var(--color-mute)] uppercase tracking-wider block">
+                    Calculated Land-Cover Fractions:
+                  </span>
+                  <div className="grid grid-cols-4 gap-1.5 mono text-[10.5px]">
+                    <div className="p-1.5 rounded bg-white/5 border border-[var(--color-line)] text-center">
+                      <div className="text-[var(--color-verd)] font-semibold">
+                        {trace.analysis.scene.cover.vegetation?.pct.toFixed(1)}%
+                      </div>
+                      <div className="text-[9px] text-[var(--color-mute)]">Vegetation</div>
+                    </div>
+                    <div className="p-1.5 rounded bg-white/5 border border-[var(--color-line)] text-center">
+                      <div className="text-[var(--color-signal)] font-semibold">
+                        {trace.analysis.scene.cover["built-up"]?.pct.toFixed(1)}%
+                      </div>
+                      <div className="text-[9px] text-[var(--color-mute)]">Built-Up</div>
+                    </div>
+                    <div className="p-1.5 rounded bg-white/5 border border-[var(--color-line)] text-center">
+                      <div className="text-[var(--color-ice)] font-semibold">
+                        {trace.analysis.scene.cover.water?.pct.toFixed(1)}%
+                      </div>
+                      <div className="text-[9px] text-[var(--color-mute)]">Water</div>
+                    </div>
+                    <div className="p-1.5 rounded bg-white/5 border border-[var(--color-line)] text-center">
+                      <div className="text-white/70 font-semibold">
+                        {trace.analysis.scene.cover["bare/other"]?.pct.toFixed(1)}%
+                      </div>
+                      <div className="text-[9px] text-[var(--color-mute)]">Bare / Other</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Model Specialist Attribution */}
+              <div className="flex items-center justify-between pt-1 mono text-[10px] text-[var(--color-mute)]">
+                <span>MODELS: {trace.models_invoked.join(", ") || "M1–M7 ENSEMBLE"}</span>
+                <span>{trace.total_ms} ms</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
