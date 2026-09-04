@@ -455,3 +455,143 @@ export function GodsEyeGlobe({
     };
   }, []);
 
+  const updateAoiLayer = (b: number[]) => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+
+    const source = map.getSource("aoi-box") as GeoJSONSource;
+    if (!source) return;
+
+    const [west, south, east, north] = b;
+    const polygon = {
+      type: "FeatureCollection" as const,
+      features: [
+        {
+          type: "Feature" as const,
+          properties: {},
+          geometry: {
+            type: "Polygon" as const,
+            coordinates: [
+              [
+                [west, south],
+                [east, south],
+                [east, north],
+                [west, north],
+                [west, south],
+              ],
+            ],
+          },
+        },
+      ],
+    };
+    source.setData(polygon);
+  };
+
+  useEffect(() => {
+    if (bbox) updateAoiLayer(bbox);
+  }, [bbox]);
+
+  // Render on-map detected feature points (hotspots, developments, alerts)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    // Clear existing feature markers
+    featureMarkersRef.current.forEach((m) => m.remove());
+    featureMarkersRef.current = [];
+
+    if (!showFeaturesLayer || detectedFeatures.length === 0) return;
+
+    detectedFeatures.forEach((feat) => {
+      const el = document.createElement("div");
+      el.className = "detected-spatial-feature-marker cursor-pointer group";
+
+      let color = "#f59e0b"; // amber for built-up
+      let badge = "DEV";
+      if (feat.category === "vegetation_loss") {
+        color = "#ef4444";
+        badge = "ALERT";
+      } else if (feat.category === "vegetation_gain") {
+        color = "#10b981";
+        badge = "VEG";
+      } else if (feat.category === "water") {
+        color = "#00f3ff";
+        badge = "H2O";
+      } else if (feat.category === "farmland") {
+        color = "#eab308";
+        badge = "AGRI";
+      }
+
+      el.innerHTML = `
+        <div style="position: relative; display: flex; flex-direction: column; align-items: center;">
+          <div style="background: rgba(0,0,0,0.85); color: #fff; font-family: monospace; font-size: 9px; padding: 2px 6px; border-radius: 4px; border: 1px solid ${color}; white-space: nowrap; margin-bottom: 2px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+            <strong style="color: ${color}">${badge}</strong> ${feat.name.split(" ")[0]}
+          </div>
+          <div style="position: relative; width: 18px; height: 18px; border-radius: 9999px; background: ${color}; border: 2px solid #fff; box-shadow: 0 0 12px ${color}; display: flex; align-items: center; justify-content: center;">
+            <div style="width: 5px; height: 5px; border-radius: 9999px; background: #fff;"></div>
+          </div>
+        </div>
+      `;
+
+      el.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        onSelectFeaturePoint?.(feat);
+      });
+
+      const marker = new maplibregl.Marker({ element: el })
+        .setLngLat(feat.coords)
+        .addTo(map);
+
+      featureMarkersRef.current.push(marker);
+    });
+  }, [detectedFeatures, showFeaturesLayer]);
+
+  // Sync flyToTarget
+  useEffect(() => {
+    if (!flyToTarget) return;
+    const map = mapRef.current;
+    if (map) {
+      if (markerRef.current) {
+        markerRef.current.remove();
+        markerRef.current = null;
+      }
+
+      const el = document.createElement("div");
+      el.className = "geospatial-target-marker cursor-pointer";
+      el.innerHTML = `
+        <div style="position: relative; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px;">
+          <div style="position: absolute; inset: -4px; border-radius: 9999px; background: rgba(47, 123, 240, 0.4); animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+          <div style="position: relative; width: 22px; height: 22px; border-radius: 9999px; background: #2f7bf0; border: 2.5px solid #ffffff; box-shadow: 0 0 16px #00f3ff; display: flex; align-items: center; justify-content: center;">
+            <div style="width: 7px; height: 7px; border-radius: 9999px; background: #ffffff;"></div>
+          </div>
+        </div>
+      `;
+
+      const marker = new maplibregl.Marker({ element: el })
+        .setLngLat(flyToTarget)
+        .addTo(map);
+
+      markerRef.current = marker;
+
+      map.flyTo({
+        center: flyToTarget,
+        zoom: 12.2,
+        pitch: 52,
+        bearing: Math.floor(Math.random() * 30) - 15,
+        speed: 1.3,
+        curve: 1.3,
+        essential: true,
+      });
+    }
+  }, [flyToTarget]);
+
+  // Switch sensor layers
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+
+    const config = LAYER_CONFIGS[activeLayer];
+    const source = map.getSource("satellite-tiles") as any;
+
+    if (source && source.setTiles) {
+      source.setTiles([config.url]);
