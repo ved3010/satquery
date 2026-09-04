@@ -694,3 +694,90 @@ export function SelectedImageInspector({
 
         {/* Right (5 Cols): "Ask Anything About This Image" Terminal */}
         <div className="xl:col-span-5 flex flex-col p-5 sm:p-6 space-y-5 bg-black/50">
+          <div className="space-y-1.5 border-b border-[var(--color-line)] pb-4">
+            <div className="flex items-center justify-between">
+              <h3 className="mono text-[11.5px] font-semibold tracking-[0.14em] text-white uppercase flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-[var(--color-brand-soft)]" />
+                Ask Anything About This Image
+              </h3>
+              <span className="mono text-[10px] text-[var(--color-mute)]">MULTIMODAL AGENT</span>
+            </div>
+            <p className="text-[13px] text-[var(--color-mute)] leading-relaxed">
+              Interrogate the selected satellite pixels with specialist remote sensing vision models (M1–M7)
+              and automated spectral calculus.
+            </p>
+          </div>
+
+          {/* Question Input Form */}
+          <form onSubmit={handleQuerySubmit} className="space-y-3">
+            <div className="relative">
+              <textarea
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey || !e.shiftKey)) {
+                    e.preventDefault();
+                    if (query.trim() && !isQuerying) {
+                      const imagesToQuery = activeImage ? [activeImage] : images;
+                      void onRunQuery(query, imagesToQuery);
+                    }
+                  }
+                }}
+                rows={4}
+                placeholder="Ask any question about this selected satellite image (e.g. 'What is the proportion of urban built-up area?', 'Detect new construction or vegetation loss', 'What is the water surface fraction?')..."
+                className="w-full bg-black/75 border border-[var(--color-line)] focus:border-[var(--color-brand)] rounded-xl p-3.5 text-[14px] text-white outline-none resize-none leading-relaxed transition-all placeholder:text-[var(--color-mute)]/60 shadow-inner focus:shadow-[0_0_20px_rgba(47,123,240,0.2)]"
+              />
+              <div className="absolute bottom-3 right-3 mono text-[10px] text-[var(--color-mute)] pointer-events-none hidden sm:block">
+                Press Enter ↵ to Ask
+              </div>
+            </div>
+
+            {/* Quick Prompt Chips */}
+            <div className="space-y-1.5">
+              <span className="mono text-[10px] text-[var(--color-mute)] block uppercase tracking-wider">
+                Quick Satellite Inquiries:
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {quickPrompts.map((item) => (
+                  <button
+                    key={item.label}
+                    type="button"
+                    onClick={() => {
+                      setQuery(item.prompt);
+                      setTimeout(() => {
+                        const imagesToQuery = activeImage ? [activeImage] : images;
+                        void onRunQuery(item.prompt, imagesToQuery);
+                      }, 50);
+                    }}
+                    className="px-2.5 py-1 rounded-full border border-[var(--color-line)] bg-white/5 hover:bg-white/10 text-[11px] text-white/85 hover:text-white transition flex items-center gap-1.5 group cursor-pointer"
+                  >
+                    <ChevronRight className="w-3 h-3 text-[var(--color-brand-soft)] group-hover:translate-x-0.5 transition-transform" />
+                    <span>{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Dispatch Button */}
+            <button
+              type="submit"
+              disabled={isQuerying || !query.trim()}
+              className={`w-full py-3.5 rounded-xl text-[14px] font-semibold tracking-wide transition flex items-center justify-center gap-2.5 ${
+                isQuerying
+                  ? "bg-white/10 text-[var(--color-mute)] cursor-wait"
+                  : query.trim()
+                  ? "bg-[var(--color-brand)] hover:bg-[#4b8ef5] text-white shadow-[0_0_25px_rgba(47,123,240,0.35)] cursor-pointer active:scale-[0.99]"
+                  : "bg-white/5 text-[var(--color-mute)] cursor-not-allowed"
+              }`}
+            >
+              <Send className={`w-4 h-4 ${isQuerying ? "animate-spin" : ""}`} />
+              {isQuerying ? "Analyzing Multimodal Satellite Pixels..." : "Ask Agent About This Image"}
+            </button>
+          </form>
+
+          {/* Integrated Agent Answer Card (Live preview in this section!) */}
+          {trace && (
+            <div className="mt-2 rounded-xl border border-[var(--color-brand)]/50 bg-black/70 p-4 space-y-3 shadow-[0_0_30px_rgba(47,123,240,0.12)] animate-slide-up">
+              <div className="flex items-center justify-between border-b border-[var(--color-line)] pb-2.5">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-[var(--color-brand-soft)] animate-pulse" />
