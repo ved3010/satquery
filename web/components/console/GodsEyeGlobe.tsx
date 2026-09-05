@@ -595,3 +595,144 @@ export function GodsEyeGlobe({
 
     if (source && source.setTiles) {
       source.setTiles([config.url]);
+    } else if (map.getLayer("satellite-layer")) {
+      map.removeLayer("satellite-layer");
+      if (map.getSource("satellite-tiles")) map.removeSource("satellite-tiles");
+
+      map.addSource("satellite-tiles", {
+        type: "raster",
+        tiles: [config.url],
+        tileSize: 256,
+        maxzoom: config.maxZoom,
+      });
+
+      map.addLayer(
+        {
+          id: "satellite-layer",
+          type: "raster",
+          source: "satellite-tiles",
+          paint: { "raster-opacity": 1.0, "raster-fade-duration": 300 },
+        },
+        "aoi-fill"
+      );
+    }
+  }, [activeLayer]);
+
+  const handleFlyToPreset = (preset: TargetPreset) => {
+    onSelectPreset?.(preset);
+    onBboxChange(preset.bbox);
+    updateAoiLayer(preset.bbox);
+
+    const map = mapRef.current;
+    if (map) {
+      map.flyTo({
+        center: preset.coords,
+        zoom: preset.zoom,
+        pitch: preset.pitch,
+        bearing: Math.floor(Math.random() * 40) - 20,
+        speed: 1.4,
+        curve: 1.2,
+        essential: true,
+      });
+    }
+  };
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    let isRunning = autoRotate;
+
+    const rotate = () => {
+      if (!isRunning || !map) return;
+      const currentBearing = map.getBearing();
+      map.setBearing(currentBearing + 0.12);
+      animFrameRef.current = requestAnimationFrame(rotate);
+    };
+
+    if (autoRotate) {
+      rotate();
+    } else if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+    }
+
+    return () => {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    };
+  }, [autoRotate]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSatPassIndex((prev) => (prev + 1) % 4);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const SATELLITE_ORBITS = [
+    { name: "Sentinel-2A (Optical)", alt: "786 km", status: "Acquiring" },
+    { name: "Sentinel-1A (SAR Radar)", alt: "693 km", status: "Active" },
+    { name: "Sentinel-2B (Optical)", alt: "786 km", status: "Standby" },
+    { name: "ISRO Cartosat-3", alt: "505 km", status: "Pointed" },
+  ];
+
+  const currentSat = SATELLITE_ORBITS[satPassIndex];
+
+  const triggerCinematicZoomOut = () => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.flyTo({
+      center: [78.5, 21.8],
+      zoom: 4.4,
+      pitch: 45,
+      bearing: 0,
+      speed: 0.55,
+      curve: 1.8,
+      duration: 3500,
+      essential: true,
+    });
+  };
+
+  return (
+    <div className="relative w-full h-full min-h-[480px] overflow-hidden select-none bg-transparent">
+      {/* 3D WebGL Globe Container */}
+      <div ref={mapContainerRef} className="absolute inset-0 w-full h-full cursor-crosshair z-0" />
+
+      {/* Interactive Point Inspector HUD Card on the Map */}
+      {selectedFeaturePoint && (
+        <PointInspectorHud
+          point={selectedFeaturePoint}
+          onClose={() => onSelectFeaturePoint?.(null)}
+          onAskAboutPoint={onAskAboutPoint}
+        />
+      )}
+
+      {/* Scanning Indicator & Laser Sweep */}
+      {isScanning && (
+        <div className="absolute inset-0 pointer-events-none z-20 flex items-center justify-center bg-black/40 backdrop-blur-xs overflow-hidden">
+          <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-[var(--color-brand-soft)] to-transparent shadow-[0_0_15px_#2f7bf0] animate-laser-scan" />
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-12 h-12 rounded-full border-2 border-t-[var(--color-brand)] border-white/20 animate-spin" />
+            <span className="mono text-[11px] tracking-[0.18em] text-[var(--color-brand-soft)] uppercase animate-pulse">
+              Acquiring Copernicus Sentinel-1 & 2 Imagery...
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Top Overlay: Satellite Status & Telemetry */}
+      <div className="absolute top-3 inset-x-3 z-20 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[var(--color-line)] bg-black/80 backdrop-blur-md pointer-events-auto transition-all hover:border-white/20">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-brand)] opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--color-brand)]" />
+          </span>
+          <Satellite className="w-3.5 h-3.5 text-[var(--color-brand-soft)]" />
+          <span className="mono text-[10.5px] font-medium text-white">{currentSat.name}</span>
+          <span className="text-[var(--color-line)]">|</span>
+          <span className="mono text-[10px] text-[var(--color-mute)]">{currentSat.alt}</span>
+          <span className="mono text-[10px] text-[var(--color-verd)]">{currentSat.status}</span>
+        </div>
+
+        <div className="flex items-center gap-3 px-3 py-1.5 rounded-full border border-[var(--color-line)] bg-black/75 backdrop-blur-md pointer-events-auto mono text-[10.5px] text-[var(--color-mute)]">
+          <span>{telemetry.cursorLat}° N, {telemetry.cursorLng}° E</span>
+          <span className="text-[var(--color-line)]">|</span>
