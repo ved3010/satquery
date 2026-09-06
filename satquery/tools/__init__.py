@@ -9,6 +9,7 @@ from satquery.tools.change_detection import ChangeDetectionTool
 from satquery.tools.sar_radar import SARRadarTool
 from satquery.tools.zonal_stats import ZonalStatsTool
 from satquery.tools.stac_discovery import STACDiscoveryTool
+from satquery.tools.intent_verification import IntentClassificationTool, VerificationGatingTool
 
 __all__ = [
     "BaseTool",
@@ -19,5 +20,7 @@ __all__ = [
     "ChangeDetectionTool",
     "SARRadarTool",
     "ZonalStatsTool",
-    "STACDiscoveryTool"
+    "STACDiscoveryTool",
+    "IntentClassificationTool",
+    "VerificationGatingTool"
 ]
