@@ -3,253 +3,827 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SatQuery AI — Agentic Earth Observation & Geospatial Intelligence</title>
-    <meta name="description" content="Autonomous Agentic Vision-Language Geospatial Platform for Remote Sensing Analysis across India and Global AOIs.">
+    <title>SatQuery AI — Ask Earth. Get intelligence.</title>
+    <meta name="description" content="An agentic vision-language assistant for multimodal remote-sensing image analysis through natural-language queries. Single-image, optical–SAR and bi-temporal understanding, returned with visual evidence.">
+    <meta name="keywords" content="remote sensing, vision-language model, SAR, change detection, Earth observation, agentic AI, ISRO, SIH 2026">
+    <meta name="theme-color" content="#0c0c0c">
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     
-    <!-- Leaflet CSS for Map Rendering -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-    
-    <!-- Custom Design System -->
+    <!-- Design System Stylesheet -->
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
-<body class="dark-theme">
+<body class="bg-[#0c0c0c] text-white">
 
-    <!-- Top Navigation Bar -->
-    <header class="app-header">
-        <div class="header-left">
-            <div class="logo-badge">
-                <span class="satellite-icon">🛰️</span>
-                <span class="logo-title">SatQuery <span class="accent-badge">AI</span></span>
-            </div>
-            <span class="version-tag">v1.0 • Autonomous EO Agent</span>
-        </div>
+    <!-- Subtle SVG Noise Filter -->
+    <svg class="absolute w-0 h-0" aria-hidden="true" focusable="false">
+        <filter id="c3-noise">
+            <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"></feTurbulence>
+            <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.35 0"></feColorMatrix>
+            <feComposite in2="SourceGraphic" operator="in" result="noise"></feComposite>
+            <feBlend in="SourceGraphic" in2="noise" mode="multiply"></feBlend>
+        </filter>
+    </svg>
 
-        <div class="header-center">
-            <div class="pulse-indicator">
-                <span class="pulse-dot"></span>
-                <span class="pulse-label">Sentinel-2 & Sentinel-1 STAC Online</span>
-            </div>
-        </div>
+    <!-- Background Space Atmosphere & Video Grid -->
+    <div class="fixed inset-0 z-0 pointer-events-none">
+        <div class="absolute inset-0 bg-hero-pattern" aria-hidden="true"></div>
+        <div class="ambient-glow" aria-hidden="true"></div>
+    </div>
 
-        <div class="header-right">
-            <button class="nav-btn" id="btnOpenAudit">
-                <span class="icon">🛡️</span> Audit Ledger
-            </button>
-            <button class="nav-btn" id="btnOpenTools">
-                <span class="icon">⚙️</span> RS Tool Registry
-            </button>
-            <a href="https://github.com/ved3010/satquery" target="_blank" class="nav-btn git-btn">
-                <span class="icon">⭐</span> GitHub
+    <!-- Vertical Guide Lines -->
+    <div class="guide-line guide-left"></div>
+    <div class="guide-line guide-right"></div>
+
+    <!-- Primary Navigation Bar -->
+    <header class="relative z-40">
+        <nav aria-label="Primary" class="max-w-6xl mx-auto px-6 pt-6 flex items-center justify-between">
+            <a aria-label="SatQuery AI, home" href="#top" class="inline-flex items-center gap-2.5 text-white logo-group">
+                <svg viewBox="0 0 256 256" class="w-7 h-7 logo-svg" fill="none" stroke="currentColor" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M76 26H26V76"></path>
+                    <path d="M180 26h50v50"></path>
+                    <path d="M230 180v50h-50"></path>
+                    <path d="M76 230H26v-50"></path>
+                    <path d="M40 200 200 40"></path>
+                    <circle cx="128" cy="128" r="26" fill="currentColor" stroke="none"></circle>
+                </svg>
+                <span class="text-lg font-semibold tracking-tight">SatQuery</span>
             </a>
-        </div>
+
+            <div class="hidden md:flex gap-8 nav-links">
+                <a href="#capabilities" class="text-white/70 text-sm font-medium hover:text-white transition-colors">Capabilities</a>
+                <a href="#agent" class="text-white/70 text-sm font-medium hover:text-white transition-colors">How It Works</a>
+                <a href="#multimodal" class="text-white/70 text-sm font-medium hover:text-white transition-colors">Multimodal</a>
+                <a href="#temporal" class="text-white/70 text-sm font-medium hover:text-white transition-colors">Temporal</a>
+                <a href="#applications" class="text-white/70 text-sm font-medium hover:text-white transition-colors">Applications</a>
+                <a href="#demo" class="text-white/70 text-sm font-medium hover:text-white transition-colors">Demo</a>
+                <a href="#console" class="text-white/70 text-sm font-medium hover:text-white transition-colors">Console</a>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <a class="group inline-flex items-center justify-center gap-2 rounded-full bg-white text-black font-medium text-sm px-5 py-2.5 transition-all hover:bg-white/90 active:scale-[0.98]" href="#console">
+                    <svg viewBox="0 0 256 256" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M76 26H26V76"></path>
+                        <path d="M180 26h50v50"></path>
+                        <path d="M230 180v50h-50"></path>
+                        <path d="M76 230H26v-50"></path>
+                        <path d="M40 200 200 40"></path>
+                        <circle cx="128" cy="128" r="26" fill="currentColor" stroke="none"></circle>
+                    </svg>
+                    <span>Explore SatQuery</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform group-hover:translate-x-[2px]"><path d="m9 18 6-6-6-6"></path></svg>
+                </a>
+            </div>
+        </nav>
     </header>
 
-    <!-- Main Workspace Container -->
-    <main class="workspace-grid">
-        
-        <!-- Left Sidebar: Query Console & Agent DAG Stream -->
-        <aside class="left-panel">
-            
-            <!-- Query Formulation Box -->
-            <section class="card query-box">
-                <div class="card-header">
-                    <span class="card-icon">💬</span>
-                    <h3>Ask Satellite Question</h3>
+    <main id="main">
+
+        <!-- Hero Section -->
+        <section id="top" class="relative z-10 max-w-6xl mx-auto px-6 pt-16 md:pt-28 pb-20 text-center flex flex-col items-center">
+            <h1 class="text-4xl md:text-7xl font-semibold tracking-tight leading-[0.95] hero-headline">
+                <span class="block">Ask Earth.</span>
+                <span class="relative block">
+                    <span class="block text-shiny">Get intelligence</span>
+                </span>
+            </h1>
+
+            <p class="mt-8 text-white/60 max-w-md text-base leading-[1.6]">
+                SatQuery AI is an agentic vision-language assistant for satellite imagery. Ask a question in plain language — it works out the analysis, runs the right specialist models, and answers with the evidence.
+            </p>
+
+            <div class="mt-10 flex flex-col items-center gap-3">
+                <a class="group inline-flex items-center justify-center gap-2 rounded-full bg-white text-black font-medium text-sm px-6 py-3.5 transition-all hover:bg-white/90 active:scale-[0.98] shadow-lg shadow-cyan-500/10" href="#demo">
+                    <svg viewBox="0 0 256 256" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M76 26H26V76"></path>
+                        <path d="M180 26h50v50"></path>
+                        <path d="M230 180v50h-50"></path>
+                        <path d="M76 230H26v-50"></path>
+                        <path d="M40 200 200 40"></path>
+                        <circle cx="128" cy="128" r="26" fill="currentColor" stroke="none"></circle>
+                    </svg>
+                    <span>Explore SatQuery</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform group-hover:translate-x-[2px]"><path d="m9 18 6-6-6-6"></path></svg>
+                </a>
+                <span class="text-xs text-white/40">Optical · SAR · Bi-temporal · GeoTIFF</span>
+            </div>
+        </section>
+
+        <!-- macOS System Topbar -->
+        <div class="relative z-10 h-10 bg-black/40 backdrop-blur-md border-t border-b border-white/10">
+            <div class="max-w-6xl mx-auto px-6 h-full flex items-center justify-between text-xs">
+                <div class="flex items-center gap-4">
+                    <svg viewBox="0 0 256 256" class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M76 26H26V76"></path><path d="M180 26h50v50"></path><path d="M230 180v50h-50"></path><path d="M76 230H26v-50"></path><path d="M40 200 200 40"></path><circle cx="128" cy="128" r="26" fill="currentColor" stroke="none"></circle>
+                    </svg>
+                    <span class="font-bold text-white">SatQuery</span>
+                    <span class="text-white/60">File</span>
+                    <span class="text-white/60">Edit</span>
+                    <span class="text-white/60">View</span>
+                    <span class="text-white/60 hidden sm:inline">Analysis</span>
+                    <span class="text-white/60 hidden sm:inline">Window</span>
+                    <span class="text-white/60 hidden sm:inline">Help</span>
                 </div>
-                <div class="query-input-wrapper">
-                    <textarea 
-                        id="userQueryInput" 
-                        rows="3" 
-                        placeholder="e.g. What changed in Western Ghats between 2020 and 2025? (or calculate Osman Sagar lake shrinkage)"></textarea>
-                    <button id="btnExecuteQuery" class="primary-action-btn">
-                        <span class="btn-text">Run SatQuery Agent</span>
-                        <span class="btn-icon">⚡</span>
+                <div class="flex items-center gap-3 text-white/60">
+                    <span class="status-pulse-circle"></span>
+                    <span class="hidden sm:inline">ISRO SIH-2026 · Online IST</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Interactive Satellite Analysis Studio / Console -->
+        <div id="console" class="relative z-10 max-w-6xl mx-auto px-6 py-16 md:py-24 scroll-mt-24">
+            <div class="relative rounded-2xl overflow-hidden border border-white/10 bg-[#0e1014]/90 backdrop-blur-2xl studio-window">
+                
+                <!-- Window Header Bar -->
+                <div class="relative flex items-center px-4 h-10 border-b border-white/10">
+                    <div class="flex gap-2">
+                        <span class="w-3 h-3 rounded-full bg-[#ff5f57]"></span>
+                        <span class="w-3 h-3 rounded-full bg-[#febc2e]"></span>
+                        <span class="w-3 h-3 rounded-full bg-[#28c840]"></span>
+                    </div>
+                    <span class="absolute left-1/2 -translate-x-1/2 text-xs text-white/50">SatQuery — Autonomous Analysis Studio</span>
+                </div>
+
+                <!-- 3-Column Studio Grid -->
+                <div class="grid grid-cols-12 min-h-[540px]">
+                    
+                    <!-- Left Column: Navigation & Layers -->
+                    <aside class="col-span-3 border-r border-white/10 bg-black/30 p-4 hidden md:block">
+                        <button type="button" id="btnConsoleNewQuery" class="w-full rounded-lg bg-white text-black text-xs font-semibold px-3 py-2 flex items-center justify-center gap-1.5 transition-all hover:bg-white/90">
+                            <span class="text-[#00d2ff]">✨</span> New query
+                        </button>
+                        
+                        <nav class="mt-5 space-y-0.5">
+                            <div class="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs bg-white/10 text-white cursor-pointer">
+                                <span>📁</span><span class="flex-1 truncate">Scenes</span><span class="text-[0.65rem] text-white/40">12</span>
+                            </div>
+                            <div class="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs text-white/60 hover:bg-white/5 cursor-pointer">
+                                <span>⭐</span><span class="flex-1 truncate">Pinned</span><span class="text-[0.65rem] text-white/40">3</span>
+                            </div>
+                            <div class="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs text-white/60 hover:bg-white/5 cursor-pointer">
+                                <span>⚡</span><span class="flex-1 truncate">Agent Runs</span>
+                            </div>
+                            <div class="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs text-white/60 hover:bg-white/5 cursor-pointer">
+                                <span>📊</span><span class="flex-1 truncate">Reports</span><span class="text-[0.65rem] text-white/40">2</span>
+                            </div>
+                        </nav>
+
+                        <div class="mt-7">
+                            <span class="text-[0.6rem] uppercase tracking-[0.16em] text-white/35 font-bold">Layers</span>
+                            <ul class="mt-3 space-y-2">
+                                <li class="flex items-center gap-2.5 px-2.5 text-xs text-white/60"><span class="w-2 h-2 rounded-full shrink-0 bg-[#00d2ff]"></span>Optical (Sentinel-2)</li>
+                                <li class="flex items-center gap-2.5 px-2.5 text-xs text-white/60"><span class="w-2 h-2 rounded-full shrink-0 bg-[#A4F4FD]"></span>SAR Radar (Sentinel-1)</li>
+                                <li class="flex items-center gap-2.5 px-2.5 text-xs text-white/60"><span class="w-2 h-2 rounded-full shrink-0 bg-[#f59e0b]"></span>Change Mask</li>
+                                <li class="flex items-center gap-2.5 px-2.5 text-xs text-white/60"><span class="w-2 h-2 rounded-full shrink-0 bg-[#10b981]"></span>Vegetation / Water</li>
+                            </ul>
+                        </div>
+                    </aside>
+
+                    <!-- Middle Column: Query & Scene Selector -->
+                    <div class="col-span-12 md:col-span-4 border-r border-white/10 overflow-hidden flex flex-col">
+                        <div class="flex items-center gap-2 px-4 h-11 border-b border-white/10 bg-black/20">
+                            <span class="text-white/40 text-xs">🔍</span>
+                            <input type="text" id="consoleSearchInput" class="bg-transparent border-none outline-none text-xs text-white placeholder-white/40 w-full" placeholder="Ask question or search scenes...">
+                        </div>
+                        <ul class="overflow-y-auto flex-1 scene-list" id="consoleSceneList">
+                            <li class="px-4 py-3 border-b border-white/[0.06] cursor-pointer transition-colors bg-white/[0.07] active-scene" data-scene="kharagpur">
+                                <div class="flex items-baseline justify-between gap-2">
+                                    <span class="text-xs truncate text-white font-semibold">Kharagpur · T1/T2</span>
+                                    <span class="text-[0.65rem] text-white/35 shrink-0">9:41 AM</span>
+                                </div>
+                                <p class="mt-1 text-xs truncate text-white/90">Has the built-up area increased?</p>
+                                <p class="mt-1 text-[0.7rem] text-white/35 truncate">Built-up grew 55.3% — expansion along the eastern edge…</p>
+                            </li>
+                            <li class="px-4 py-3 border-b border-white/[0.06] cursor-pointer transition-colors hover:bg-white/[0.03]" data-scene="godavari">
+                                <div class="flex items-baseline justify-between gap-2">
+                                    <span class="text-xs truncate text-white font-semibold">Godavari Basin</span>
+                                    <span class="text-[0.65rem] text-white/35 shrink-0">8:12 AM</span>
+                                </div>
+                                <p class="mt-1 text-xs truncate text-white/90">Where did the water-covered region change?</p>
+                                <p class="mt-1 text-[0.7rem] text-white/35 truncate">Water extent up 145.8% — inundation south of the main channel…</p>
+                            </li>
+                            <li class="px-4 py-3 border-b border-white/[0.06] cursor-pointer transition-colors hover:bg-white/[0.03]" data-scene="cuttack">
+                                <div class="flex items-baseline justify-between gap-2">
+                                    <span class="text-xs truncate text-white/70">Cuttack Delta</span>
+                                    <span class="text-[0.65rem] text-white/35 shrink-0">Yesterday</span>
+                                </div>
+                                <p class="mt-1 text-xs truncate text-white/60">Identify built-up and water from optical + SAR</p>
+                                <p class="mt-1 text-[0.7rem] text-white/35 truncate">Cross-modal extraction resolved 8.32 km² built-up, 24.39 km² water.</p>
+                            </li>
+                            <li class="px-4 py-3 border-b border-white/[0.06] cursor-pointer transition-colors hover:bg-white/[0.03]" data-scene="nashik">
+                                <div class="flex items-baseline justify-between gap-2">
+                                    <span class="text-xs truncate text-white/70">Nashik Scene 04</span>
+                                    <span class="text-[0.65rem] text-white/35 shrink-0">Yesterday</span>
+                                </div>
+                                <p class="mt-1 text-xs truncate text-white/60">Describe the land-cover and major objects</p>
+                                <p class="mt-1 text-[0.7rem] text-white/35 truncate">Predominantly cropland with a settlement in the south-east quadrant.</p>
+                            </li>
+                            <li class="px-4 py-3 border-b border-white/[0.06] cursor-pointer transition-colors hover:bg-white/[0.03]" data-scene="sundarbans">
+                                <div class="flex items-baseline justify-between gap-2">
+                                    <span class="text-xs truncate text-white/70">Sundarbans T2</span>
+                                    <span class="text-[0.65rem] text-white/35 shrink-0">Mon</span>
+                                </div>
+                                <p class="mt-1 text-xs truncate text-white/60">Highlight the water body referred to in the query</p>
+                                <p class="mt-1 text-[0.7rem] text-white/35 truncate">Grounded region returned · surface extent 21.79 km².</p>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Right Column: Evidence & Intelligence Inspector -->
+                    <div class="col-span-12 lg:col-span-5 flex flex-col bg-black/20">
+                        <div class="flex items-center gap-1 px-4 h-11 border-b border-white/10">
+                            <span class="text-xs text-white/40 font-mono">TASK:</span>
+                            <span id="consoleTaskPill" class="text-[0.6rem] px-2 py-0.5 rounded-full border border-white/10 text-cyan-400 bg-cyan-950/30">change_vqa</span>
+                            <div class="ml-auto flex items-center gap-2">
+                                <button id="btnConsoleRunLive" class="px-3 py-1 rounded-full bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-semibold transition-all">Run Agent</button>
+                            </div>
+                        </div>
+
+                        <div class="flex-1 overflow-y-auto p-5" id="consoleDetailPane">
+                            <h3 id="consoleQuestionTitle" class="text-sm font-semibold">Has the built-up area increased?</h3>
+                            
+                            <div class="mt-3 flex items-center gap-2.5">
+                                <span class="w-7 h-7 rounded-full bg-gradient-to-br from-[#00d2ff] to-[#0B2551] flex items-center justify-center text-[0.6rem] font-bold shrink-0">SQ</span>
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-xs font-medium">SatQuery Agent</p>
+                                    <p id="consoleSubMeta" class="text-[0.65rem] text-white/40">Kharagpur T1/T2 · 9:41 AM</p>
+                                </div>
+                                <span class="text-[0.65rem] text-emerald-400 font-mono">CONF: 0.87</span>
+                            </div>
+
+                            <!-- Summary Box -->
+                            <div class="mt-4 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-[#A4F4FD]">✨</span>
+                                    <span class="text-[0.65rem] font-semibold text-white/80">Summary by SatQuery</span>
+                                </div>
+                                <p id="consoleSummaryText" class="mt-2 text-[0.72rem] leading-[1.55] text-white/70">
+                                    Built-up area increased 55.3%, from 9.71 km² to 15.08 km². Expansion concentrated on the eastern edge. Confidence 0.87. Evidence attached.
+                                </p>
+                            </div>
+
+                            <!-- Grounded Execution Narrative -->
+                            <div class="mt-4 space-y-2.5 text-[0.75rem] leading-[1.6] text-white/70" id="consoleNarrative">
+                                <p>Analysis complete.</p>
+                                <p>The two acquisitions were validated as a co-registered bi-temporal pair at 10 m ground sample distance, then routed to the change specialist and a change-VQA head.</p>
+                                <p>5.37 km² of previously vegetated and bare land was converted to built-up. 5.74 km² of vegetation was lost and the reservoir drew down by 0.98 km².</p>
+                            </div>
+
+                            <!-- Attached GeoJSON Evidence -->
+                            <div class="mt-5 inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 cursor-pointer hover:border-cyan-400 transition-colors">
+                                <span>📎</span>
+                                <span class="text-[0.7rem] text-cyan-300 font-mono">change-map-2025-09.geojson (Attached)</span>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+        <!-- The Problem Section -->
+        <section id="problem" class="relative z-10 max-w-6xl mx-auto px-6 py-20 md:py-28 border-t border-white/10 scroll-mt-24">
+            <div class="grid md:grid-cols-2 gap-10 md:gap-16 items-start">
+                <div>
+                    <div class="flex items-center gap-2.5 text-xs">
+                        <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+                        <span class="text-white/70 font-medium tracking-wide">The problem</span>
+                        <span class="px-2 py-0.5 rounded-full border border-white/10 text-white/50">Today</span>
+                    </div>
+                    <h2 class="mt-5 text-3xl md:text-5xl font-semibold tracking-tight leading-[1.02]">
+                        Satellite data is everywhere.<br/>
+                        <span class="text-white/40">Understanding it isn’t.</span>
+                    </h2>
+                    <p class="mt-6 text-white/60 text-base leading-[1.6] max-w-md">
+                        Most remote-sensing AI arrives as isolated tools, each built for one predefined task. Getting an answer means knowing which sensor you are looking at, which model fits the question, how to prepare the imagery, and how to read what comes back.
+                    </p>
+                    <p class="mt-4 text-white/60 text-base leading-[1.6] max-w-md">
+                        And many operational questions cannot be answered from a single optical image at all. The information is spread across dates and across sensors.
+                    </p>
+                </div>
+
+                <div class="liquid-glass rounded-2xl p-6 md:p-7">
+                    <p class="text-xs text-white/45">Before a single question gets answered</p>
+                    <ol class="mt-5 workflow-list">
+                        <li class="flex items-baseline gap-4 border-b border-white/10 py-3.5"><span class="w-4 text-xs text-white/25"></span><span class="w-32 text-base font-semibold">IMAGE</span><span class="text-xs text-white/45">GeoTIFF, 12 bands, unknown projection</span></li>
+                        <li class="flex items-baseline gap-4 border-b border-white/10 py-3.5"><span class="w-4 text-xs text-white/25">+</span><span class="w-32 text-base font-semibold">SENSOR</span><span class="text-xs text-white/45">Optical, multispectral or SAR</span></li>
+                        <li class="flex items-baseline gap-4 border-b border-white/10 py-3.5"><span class="w-4 text-xs text-white/25">+</span><span class="w-32 text-base font-semibold">MODEL</span><span class="text-xs text-white/45">One network per task, per modality</span></li>
+                        <li class="flex items-baseline gap-4 border-b border-white/10 py-3.5"><span class="w-4 text-xs text-white/25">+</span><span class="w-32 text-base font-semibold">WORKFLOW</span><span class="text-xs text-white/45">Resample, co-register, speckle-filter</span></li>
+                        <li class="flex items-baseline gap-4 border-b border-white/10 py-3.5"><span class="w-4 text-xs text-white/25">+</span><span class="w-32 text-base font-semibold">PARAMETERS</span><span class="text-xs text-white/45">Thresholds, band maths, GSD</span></li>
+                    </ol>
+                    <div class="mt-5 flex items-baseline gap-4"><span class="w-4 text-xs text-white/25">=</span><span class="text-2xl md:text-3xl font-semibold text-white/35">COMPLEXITY</span></div>
+                    
+                    <div class="mt-8 border-t border-white/10 pt-7">
+                        <div class="flex items-center gap-3 py-1"><span class="text-xl md:text-2xl font-semibold text-white">Natural language</span></div>
+                        <span class="block w-px h-5 ml-2 bg-gradient-to-b from-cyan-400 to-white/10"></span>
+                        <div class="flex items-center gap-3 py-1"><span class="text-xl md:text-2xl font-semibold text-cyan-400">SatQuery AI</span><span class="text-[0.65rem] px-2 py-0.5 rounded-full border border-white/10 text-white/45">agentic orchestration</span></div>
+                        <span class="block w-px h-5 ml-2 bg-gradient-to-b from-cyan-400 to-white/10"></span>
+                        <div class="flex items-center gap-3 py-1"><span class="text-xl md:text-2xl font-semibold text-white">Intelligence</span></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- How It Works & Observable Trace -->
+        <section id="agent" class="relative z-10 max-w-6xl mx-auto px-6 py-20 md:py-28 border-t border-white/10 scroll-mt-24">
+            <div class="grid md:grid-cols-2 gap-10 md:gap-16 items-start">
+                <div>
+                    <div class="flex items-center gap-2.5 text-xs">
+                        <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+                        <span class="text-white/70 font-medium tracking-wide">Architecture</span>
+                        <span class="px-2 py-0.5 rounded-full border border-white/10 text-white/50">Observable</span>
+                    </div>
+                    <h2 class="mt-5 text-3xl md:text-5xl font-semibold tracking-tight leading-[1.02]">
+                        The agent behind<br/>the answer.
+                    </h2>
+                    <p class="mt-6 text-white/60 text-base leading-[1.6] max-w-md">
+                        SatQuery identifies the task the question implies, checks that the supplied imagery can actually support it, selects the specialist models needed, executes the workflow, and returns a result you can trace back to its evidence.
+                    </p>
+
+                    <div class="mt-8 liquid-glass rounded-2xl p-5">
+                        <div class="flex items-baseline gap-3">
+                            <span class="text-xs font-mono text-cyan-400" id="stepDetailNumber">01</span>
+                            <h3 class="text-sm font-semibold tracking-wide" id="stepDetailTitle">UNDERSTAND</h3>
+                        </div>
+                        <p class="mt-3 text-sm leading-[1.6] text-white/60" id="stepDetailDesc">
+                            The question is parsed into an intent and the entities it refers to, then classified into one of five task families.
+                        </p>
+                        <p class="mt-4 font-mono text-[0.7rem] leading-relaxed text-white/40">
+                            <span class="text-white/25">trace ▸ </span><span id="stepDetailTrace">task = change_vqa</span>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Step-by-Step Interactive Timeline -->
+                <div>
+                    <ol class="space-y-2 timeline-trace-list">
+                        <li>
+                            <button type="button" class="step-trace-btn active" data-step="1" data-title="UNDERSTAND" data-desc="Interpret the query and classify the requested task into remote sensing domains." data-trace="task = change_vqa">
+                                <span class="step-num">01</span>
+                                <span class="step-text"><span class="step-heading">UNDERSTAND</span><span class="step-sub">Interpret query & classify requested task</span></span>
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" class="step-trace-btn" data-step="2" data-title="VALIDATE" data-desc="Check modality, format, metadata and coordinate co-registration." data-trace="validator = [co_registered: true, gsd: 10m]">
+                                <span class="step-num">02</span>
+                                <span class="step-text"><span class="step-heading">VALIDATE</span><span class="step-sub">Check modality, format, metadata and compatibility</span></span>
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" class="step-trace-btn" data-step="3" data-title="SELECT" data-desc="Choose specialist models and algorithms from declared registry." data-trace="models = [change_net, change_vqa_head]">
+                                <span class="step-num">03</span>
+                                <span class="step-text"><span class="step-heading">SELECT</span><span class="step-sub">Choose specialist models from a declared registry</span></span>
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" class="step-trace-btn" data-step="4" data-title="ANALYZE" data-desc="Execute the planned workflow and compute spectral differences." data-trace="engine = [pixel_delta, otsu_threshold: 0.50]">
+                                <span class="step-num">04</span>
+                                <span class="step-text"><span class="step-heading">ANALYZE</span><span class="step-sub">Execute the planned workflow</span></span>
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" class="step-trace-btn" data-step="5" data-title="FUSE" data-desc="Combine textual and spatial outputs into verified vector overlays." data-trace="fuse = [geojson_export, class_transition]">
+                                <span class="step-num">05</span>
+                                <span class="step-text"><span class="step-heading">FUSE</span><span class="step-sub">Combine textual and spatial outputs</span></span>
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" class="step-trace-btn" data-step="6" data-title="VERIFY" data-desc="Cross-check agreement and compute zero-hallucination metrics." data-trace="confidence = 0.87, hallucination_gate = PASS">
+                                <span class="step-num">06</span>
+                                <span class="step-text"><span class="step-heading">VERIFY</span><span class="step-sub">Cross-check agreement and estimate confidence</span></span>
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" class="step-trace-btn" data-step="7" data-title="EXPLAIN" data-desc="Return the answer with its evidence and execution trace." data-trace="output = [grounded_answer, evidence_mask, trace_id]">
+                                <span class="step-num">07</span>
+                                <span class="step-text"><span class="step-heading">EXPLAIN</span><span class="step-sub">Return the answer with its evidence and execution trace</span></span>
+                            </button>
+                        </li>
+                    </ol>
+                </div>
+            </div>
+        </section>
+
+        <!-- Multimodal Section: Optical + SAR -->
+        <section id="multimodal" class="relative z-10 max-w-6xl mx-auto px-6 py-20 md:py-28 border-t border-white/10 scroll-mt-24">
+            <div class="grid md:grid-cols-2 gap-10 md:gap-16 items-end">
+                <div>
+                    <div class="flex items-center gap-2.5 text-xs">
+                        <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+                        <span class="text-white/70 font-medium tracking-wide">Multimodal</span>
+                        <span class="px-2 py-0.5 rounded-full border border-white/10 text-white/50">Optical + SAR</span>
+                    </div>
+                    <h2 class="mt-5 text-3xl md:text-5xl font-semibold tracking-tight leading-[1.02]">
+                        Earth doesn’t speak<br/>in one sensor.
+                    </h2>
+                </div>
+                <p class="text-white/60 text-base leading-[1.6] max-w-md">
+                    Optical imagery carries spectrum and context. SAR carries structure, and acquires through cloud, day or night. Read together, over the same patch of ground, they answer questions neither can answer alone.
+                </p>
+            </div>
+
+            <!-- Interactive Modality Toggle Container -->
+            <div class="mt-12">
+                <div class="mb-4 flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1">
+                        <button type="button" class="modal-tab-btn active" data-modality="optical">Optical</button>
+                        <button type="button" class="modal-tab-btn" data-modality="sar">SAR</button>
+                        <button type="button" class="modal-tab-btn" data-modality="combined">Combined</button>
+                    </div>
+                    <span class="hidden md:flex items-center gap-2 text-xs text-white/45">
+                        <span class="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                        Co-registered · same extent · 10 m GSD
+                    </span>
+                </div>
+
+                <div class="liquid-glass relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden rounded-2xl preview-viewport">
+                    <!-- Canvas for synthetic or real multispectral imagery -->
+                    <canvas id="multimodalCanvas" class="w-full h-full object-cover"></canvas>
+                    
+                    <div class="absolute left-5 top-4 flex items-center gap-2">
+                        <span class="h-1.5 w-1.5 rounded-full bg-cyan-400"></span>
+                        <span id="multimodalBadgeText" class="text-xs font-semibold tracking-wide">Sentinel-2 Optical Composite</span>
+                    </div>
+
+                    <div class="absolute inset-x-0 bottom-0 p-5 md:p-7 bg-gradient-to-t from-black/90 via-black/50 to-transparent">
+                        <div class="grid gap-4 md:grid-cols-2 md:gap-10">
+                            <div>
+                                <span class="text-[0.65rem] uppercase tracking-widest text-white/40">Reads</span>
+                                <p id="modalityReadsText" class="mt-1.5 text-sm text-white">Spectral signature, land-cover context, colour</p>
+                            </div>
+                            <div>
+                                <span class="text-[0.65rem] uppercase tracking-widest text-white/40">On its own</span>
+                                <p id="modalityLimitText" class="mt-1.5 text-sm text-white/45">Blocked by cloud. Dark at night. Built-up and bare soil look alike.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="mt-10 grid md:grid-cols-2 gap-10 md:gap-16 items-start">
+                    <div>
+                        <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-2xl md:text-3xl font-semibold tracking-tight">
+                            <span class="text-white/50">Optical</span><span class="text-white/25">+</span><span class="text-white/50">SAR</span><span class="text-white/25">=</span><span class="text-cyan-400">Richer understanding</span>
+                        </div>
+                        <p class="mt-6 border-l border-white/12 pl-5 text-sm leading-[1.7] text-white/60">
+                            “Combining optical context with SAR structure improves interpretation of built-up and water-covered regions — high backscatter separates structures from the bare soil they resemble spectrally, and water’s near-zero return gives a boundary that haze cannot blur.”
+                        </p>
+                    </div>
+                    <div>
+                        <dl class="grid grid-cols-2 gap-3">
+                            <div class="liquid-glass rounded-xl p-5">
+                                <dt class="text-[0.65rem] uppercase tracking-widest text-white/40">Built-up extracted</dt>
+                                <dd class="mt-2 text-xl font-semibold text-amber-400">8.32 km²</dd>
+                            </div>
+                            <div class="liquid-glass rounded-xl p-5">
+                                <dt class="text-[0.65rem] uppercase tracking-widest text-white/40">Water extracted</dt>
+                                <dd class="mt-2 text-xl font-semibold text-cyan-400">24.39 km²</dd>
+                            </div>
+                            <div class="liquid-glass rounded-xl p-5">
+                                <dt class="text-[0.65rem] uppercase tracking-widest text-white/40">Scene built-up</dt>
+                                <dd class="mt-2 text-xl font-semibold text-white">3.7%</dd>
+                            </div>
+                            <div class="liquid-glass rounded-xl p-5">
+                                <dt class="text-[0.65rem] uppercase tracking-widest text-white/40">Scene water</dt>
+                                <dd class="mt-2 text-xl font-semibold text-white">10.8%</dd>
+                            </div>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Temporal Section: Bi-Temporal Swipe Comparison -->
+        <section id="temporal" class="relative z-10 max-w-6xl mx-auto px-6 py-20 md:py-28 border-t border-white/10 scroll-mt-24">
+            <div class="grid md:grid-cols-2 gap-10 md:gap-16 items-end">
+                <div>
+                    <div class="flex items-center gap-2.5 text-xs">
+                        <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+                        <span class="text-white/70 font-medium tracking-wide">Temporal</span>
+                        <span class="px-2 py-0.5 rounded-full border border-white/10 text-white/50">Bi-temporal</span>
+                    </div>
+                    <h2 class="mt-5 text-3xl md:text-5xl font-semibold tracking-tight leading-[1.02]">
+                        Don’t just see Earth.<br/>See how it changes.
+                    </h2>
+                </div>
+                <p class="text-white/60 text-base leading-[1.6] max-w-md">
+                    Two images of the same ground, acquired months apart, hold information neither holds alone. SatQuery reads the pair as a single question: what changed, where, and by how much.
+                </p>
+            </div>
+
+            <div class="mt-12">
+                <div class="mb-4 flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center gap-3 text-xs text-white/60">
+                        <span class="font-medium">June 2025</span><span class="text-white/25">→</span><span class="font-medium">September 2025</span>
+                    </div>
+                    <button type="button" id="btnRevealChange" class="inline-flex min-h-[38px] cursor-pointer items-center gap-2.5 rounded-full border border-white/15 px-5 text-xs font-medium text-white/70 hover:border-cyan-400 hover:text-white transition-all">
+                        <span class="h-1.5 w-1.5 rounded-full bg-amber-400"></span>
+                        Reveal change masks
                     </button>
                 </div>
 
-                <!-- Pan-India Preset Scenarios -->
-                <div class="presets-container">
-                    <div class="presets-title">⚡ Pan-India One-Click Scenarios:</div>
-                    <div class="preset-chips" id="presetChipsContainer">
-                        <!-- Injected dynamically -->
+                <!-- Interactive Split Viewport -->
+                <div class="liquid-glass relative aspect-[16/11] sm:aspect-[16/9] w-full overflow-hidden rounded-2xl split-container" id="temporalSplitContainer">
+                    <canvas id="temporalCanvasT2" class="w-full h-full object-cover absolute inset-0"></canvas>
+                    <div class="absolute inset-0 overflow-hidden split-clipper" id="temporalSplitClipper" style="clip-path: inset(0 50% 0 0);">
+                        <canvas id="temporalCanvasT1" class="w-full h-full object-cover absolute inset-0"></canvas>
+                        <span class="absolute left-5 top-4 text-xs font-semibold bg-black/50 backdrop-blur px-2.5 py-1 rounded">JUN 2025</span>
                     </div>
-                </div>
-            </section>
-
-            <!-- Live Agent Reasoning & DAG Execution Stream -->
-            <section class="card agent-stream-card">
-                <div class="card-header">
-                    <div class="header-title-flex">
-                        <span class="card-icon">🧠</span>
-                        <h3>Autonomous Execution DAG</h3>
+                    <span class="absolute right-5 top-4 text-xs font-semibold bg-black/50 backdrop-blur px-2.5 py-1 rounded">SEP 2025</span>
+                    
+                    <!-- Bounding Box Evidence Overlays -->
+                    <div id="temporalBoundingBoxes" class="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500">
+                        <div class="bbox-tag" style="left:60%;top:25%;width:25%;height:40%;border-color:#f59e0b">
+                            <span class="bbox-label">R01 · new built-up (+5.37 km²)</span>
+                        </div>
                     </div>
-                    <span id="agentStatusBadge" class="status-pill idle">IDLE</span>
-                </div>
 
-                <div class="dag-meta-row" id="dagMetaRow" style="display: none;">
-                    <div class="meta-item"><span class="meta-label">Domain:</span> <span id="metaDomain" class="meta-val">-</span></div>
-                    <div class="meta-item"><span class="meta-label">Sensor:</span> <span id="metaSensor" class="meta-val">-</span></div>
-                    <div class="meta-item"><span class="meta-label">Metric:</span> <span id="metaMetric" class="meta-val badge-metric">-</span></div>
-                </div>
-
-                <div class="steps-timeline" id="stepsTimeline">
-                    <div class="empty-state">
-                        <span class="empty-icon">🛰️</span>
-                        <p>Ask a question or select a preset to watch SatQuery formulate and execute the Earth Observation DAG.</p>
-                    </div>
-                </div>
-            </section>
-
-        </aside>
-
-        <!-- Center / Right Panel: Interactive Dual Map & Visual Analytics -->
-        <section class="center-panel">
-            
-            <!-- Map Control Toolbar -->
-            <div class="map-toolbar">
-                <div class="toolbar-group">
-                    <label class="toolbar-label">Layer Mode:</label>
-                    <div class="btn-toggle-group">
-                        <button class="toggle-btn active" data-layer="change">Change Mask</button>
-                        <button class="toggle-btn" data-layer="rgb">True Color (RGB)</button>
-                        <button class="toggle-btn" data-layer="cir">False Color (CIR)</button>
-                        <button class="toggle-btn" data-layer="index">Spectral Index</button>
+                    <!-- Split Handle Slider -->
+                    <div class="split-divider" id="splitDivider" style="left: 50%;">
+                        <div class="split-handle">⟷</div>
                     </div>
                 </div>
 
-                <div class="toolbar-group swipe-slider-group">
-                    <span class="slider-label" id="lblT1">Baseline (2020)</span>
-                    <input type="range" id="opacitySlider" min="0" max="100" value="100" title="Adjust Layer Opacity / Comparison">
-                    <span class="slider-label" id="lblT2">Target (2025)</span>
+                <!-- Metrics Grid -->
+                <dl class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div class="liquid-glass rounded-xl p-5">
+                        <div class="flex items-center gap-2"><span class="h-2 w-2 rounded-sm bg-amber-400"></span><dt class="text-[0.65rem] uppercase tracking-widest text-white/40">Built-up expansion</dt></div>
+                        <dd class="mt-3 text-2xl font-semibold text-amber-400">+55.3%</dd>
+                    </div>
+                    <div class="liquid-glass rounded-xl p-5">
+                        <div class="flex items-center gap-2"><span class="h-2 w-2 rounded-sm bg-amber-400"></span><dt class="text-[0.65rem] uppercase tracking-widest text-white/40">New structures</dt></div>
+                        <dd class="mt-3 text-2xl font-semibold text-amber-400">5.37 km²</dd>
+                    </div>
+                    <div class="liquid-glass rounded-xl p-5">
+                        <div class="flex items-center gap-2"><span class="h-2 w-2 rounded-sm bg-emerald-400"></span><dt class="text-[0.65rem] uppercase tracking-widest text-white/40">Vegetation loss</dt></div>
+                        <dd class="mt-3 text-2xl font-semibold text-emerald-400">5.74 km²</dd>
+                    </div>
+                    <div class="liquid-glass rounded-xl p-5">
+                        <div class="flex items-center gap-2"><span class="h-2 w-2 rounded-sm bg-cyan-400"></span><dt class="text-[0.65rem] uppercase tracking-widest text-white/40">Water change</dt></div>
+                        <dd class="mt-3 text-2xl font-semibold text-cyan-400">−0.98 km²</dd>
+                    </div>
+                </dl>
+            </div>
+        </section>
+
+        <!-- Interactive 4-Scenario Live Demo Section -->
+        <section id="demo" class="relative z-10 max-w-6xl mx-auto px-6 py-20 md:py-28 border-t border-white/10 scroll-mt-24">
+            <div class="grid md:grid-cols-2 gap-10 md:gap-16 items-end">
+                <div>
+                    <div class="flex items-center gap-2.5 text-xs">
+                        <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+                        <span class="text-white/70 font-medium tracking-wide">Demo</span>
+                        <span class="px-2 py-0.5 rounded-full border border-white/10 text-white/50">Interactive</span>
+                    </div>
+                    <h2 class="mt-5 text-3xl md:text-5xl font-semibold tracking-tight leading-[1.02]">
+                        See SatQuery<br/>in action.
+                    </h2>
+                </div>
+                <p class="text-white/60 text-base leading-[1.6] max-w-md">
+                    Choose a scenario, read the question, and run it. The workflow executes the full autonomous Earth Observation DAG with verifiable mathematical evidence.
+                </p>
+            </div>
+
+            <!-- Demo Scenario Selector Tabs -->
+            <div class="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <button type="button" class="demo-scenario-btn active" data-scenario="urban">
+                    <span class="flex items-center gap-2"><span class="h-1.5 w-1.5 rounded-full bg-cyan-400"></span><span class="text-[0.65rem] uppercase tracking-widest text-white/40">Bi-temporal · optical</span></span>
+                    <span class="mt-3 block text-base font-semibold text-white">Urban Expansion</span>
+                </button>
+                <button type="button" class="demo-scenario-btn" data-scenario="multimodal">
+                    <span class="flex items-center gap-2"><span class="h-1.5 w-1.5 rounded-full bg-white/30"></span><span class="text-[0.65rem] uppercase tracking-widest text-white/40">Cross-modal · optical + SAR</span></span>
+                    <span class="mt-3 block text-base font-semibold text-white/70">Multimodal Analysis</span>
+                </button>
+                <button type="button" class="demo-scenario-btn" data-scenario="water">
+                    <span class="flex items-center gap-2"><span class="h-1.5 w-1.5 rounded-full bg-white/30"></span><span class="text-[0.65rem] uppercase tracking-widest text-white/40">Bi-temporal · flood extent</span></span>
+                    <span class="mt-3 block text-base font-semibold text-white/70">Water Analysis</span>
+                </button>
+                <button type="button" class="demo-scenario-btn" data-scenario="forest">
+                    <span class="flex items-center gap-2"><span class="h-1.5 w-1.5 rounded-full bg-white/30"></span><span class="text-[0.65rem] uppercase tracking-widest text-white/40">Single image · grounding</span></span>
+                    <span class="mt-3 block text-base font-semibold text-white/70">Scene Understanding</span>
+                </button>
+            </div>
+
+            <!-- Interactive Demo Grid -->
+            <div class="mt-4 grid gap-4 lg:grid-cols-12">
+                <div class="liquid-glass overflow-hidden rounded-2xl lg:col-span-8">
+                    <div class="flex flex-col gap-4 border-b border-white/10 p-5 md:flex-row md:items-center md:justify-between">
+                        <div class="flex min-w-0 items-start gap-2.5">
+                            <span class="text-cyan-400 mt-0.5">✨</span>
+                            <p id="demoQuestionPrompt" class="min-w-0 text-sm md:text-base leading-snug text-white">Has the built-up area increased, decreased, or remained unchanged?</p>
+                        </div>
+                        <button type="button" id="btnRunDemoAnalysis" class="inline-flex min-h-[44px] shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full px-6 text-sm font-medium bg-white text-black hover:bg-white/90 active:scale-[0.98] transition-all">
+                            <span>Analyze</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+                        </button>
+                    </div>
+
+                    <div class="relative aspect-[16/11] sm:aspect-[16/9] w-full overflow-hidden">
+                        <canvas id="demoCanvas" class="w-full h-full object-cover"></canvas>
+                        
+                        <div class="absolute left-4 top-4 flex flex-wrap gap-1.5">
+                            <button type="button" id="btnDemoDateT1" class="date-chip active">JUNE 2025</button>
+                            <button type="button" id="btnDemoDateT2" class="date-chip">SEPTEMBER 2025</button>
+                        </div>
+
+                        <div class="absolute inset-x-0 bottom-0 flex flex-wrap items-center gap-x-5 gap-y-1 p-4 bg-gradient-to-t from-black/80 to-transparent">
+                            <span class="text-[0.68rem] font-medium text-white" id="demoFooterT1">T1 · 2025-06-14 (10m GSD)</span>
+                            <span class="text-[0.68rem] font-medium text-white" id="demoFooterT2">T2 · 2025-09-21 (10m GSD)</span>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="toolbar-actions">
-                    <button class="tool-icon-btn" id="btnResetView" title="Reset Camera">🎯 Zoom AOI</button>
+                <!-- Live Demo Execution Trace Panel -->
+                <div class="liquid-glass flex flex-col rounded-2xl lg:col-span-4">
+                    <div class="flex items-center justify-between border-b border-white/10 px-5 py-4">
+                        <span class="text-[0.65rem] uppercase tracking-widest text-white/40">Execution trace</span>
+                        <span id="demoTaskTracePill" class="font-mono text-[0.65rem] text-cyan-400">change_vqa</span>
+                    </div>
+
+                    <ol class="flex-1 px-5 py-5 space-y-4" id="demoExecutionTraceList">
+                        <li class="flex items-center gap-3 text-xs text-white/40"><span class="w-2 h-2 rounded-full border border-white/20"></span><span>01 UNDERSTAND</span></li>
+                        <li class="flex items-center gap-3 text-xs text-white/40"><span class="w-2 h-2 rounded-full border border-white/20"></span><span>02 VALIDATE</span></li>
+                        <li class="flex items-center gap-3 text-xs text-white/40"><span class="w-2 h-2 rounded-full border border-white/20"></span><span>03 SELECT</span></li>
+                        <li class="flex items-center gap-3 text-xs text-white/40"><span class="w-2 h-2 rounded-full border border-white/20"></span><span>04 ANALYZE</span></li>
+                        <li class="flex items-center gap-3 text-xs text-white/40"><span class="w-2 h-2 rounded-full border border-white/20"></span><span>05 FUSE</span></li>
+                        <li class="flex items-center gap-3 text-xs text-white/40"><span class="w-2 h-2 rounded-full border border-white/20"></span><span>06 VERIFY</span></li>
+                        <li class="flex items-center gap-3 text-xs text-white/40"><span class="w-2 h-2 rounded-full border border-white/20"></span><span>07 EXPLAIN</span></li>
+                    </ol>
+
+                    <div class="border-t border-white/10 p-4 bg-black/20">
+                        <span class="text-[0.6rem] uppercase tracking-widest text-white/35">Tools Invoked</span>
+                        <div class="mt-2 flex flex-wrap gap-1.5">
+                            <span class="px-2 py-0.5 rounded-full border border-white/10 text-[0.6rem] font-mono text-white/60">input_validator</span>
+                            <span class="px-2 py-0.5 rounded-full border border-white/10 text-[0.6rem] font-mono text-white/60">change_net</span>
+                            <span class="px-2 py-0.5 rounded-full border border-white/10 text-[0.6rem] font-mono text-white/60">zonal_stats</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Interactive Map Container -->
-            <div class="map-wrapper">
-                <div id="satMap" class="leaflet-map-canvas"></div>
-
-                <!-- Floating Map Legend -->
-                <div class="map-legend" id="mapLegend">
-                    <div class="legend-title" id="legendTitle">Change Detection Mask</div>
-                    <div class="legend-items" id="legendItems">
-                        <div class="legend-row"><span class="color-box loss"></span> Significant Loss / Depletion (-1)</div>
-                        <div class="legend-row"><span class="color-box stable"></span> Stable Unchanged (0)</div>
-                        <div class="legend-row"><span class="color-box gain"></span> New Growth / Flood (+1)</div>
+            <!-- Grounded Answer Card -->
+            <div class="mt-4 grid gap-4 lg:grid-cols-12" id="demoAnswerShelf">
+                <div class="liquid-glass rounded-2xl p-7 lg:col-span-8">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <span class="text-[0.65rem] uppercase tracking-widest text-white/40 font-bold">Answer & Grounding</span>
+                        <span class="flex items-center gap-2 text-xs">
+                            <span class="text-white/40">Confidence:</span>
+                            <span class="font-semibold text-emerald-400" id="demoConfidenceText">0.87</span>
+                        </span>
                     </div>
+                    <p class="mt-5 text-base leading-[1.68] text-white/90" id="demoAnswerText">
+                        Built-up area increased. Between the two acquisitions the built-up class grew from 9.71 km² to 15.08 km², a rise of 55.3%. The expansion is concentrated along the eastern edge of the settlement, where 5.37 km² of previously vegetated and bare land was converted.
+                    </p>
+                </div>
+
+                <dl class="grid grid-cols-2 gap-3 lg:col-span-4 lg:grid-cols-1">
+                    <div class="liquid-glass flex items-baseline justify-between p-4 rounded-xl">
+                        <dt class="text-[0.6rem] uppercase tracking-widest text-white/40 font-bold">BUILT-UP EXPANSION</dt>
+                        <dd class="text-base font-semibold text-amber-400" id="demoStat1">+55.3%</dd>
+                    </div>
+                    <div class="liquid-glass flex items-baseline justify-between p-4 rounded-xl">
+                        <dt class="text-[0.6rem] uppercase tracking-widest text-white/40 font-bold">NEW STRUCTURES</dt>
+                        <dd class="text-base font-semibold text-amber-400" id="demoStat2">5.37 km²</dd>
+                    </div>
+                    <div class="liquid-glass flex items-baseline justify-between p-4 rounded-xl">
+                        <dt class="text-[0.6rem] uppercase tracking-widest text-white/40 font-bold">VEGETATION LOSS</dt>
+                        <dd class="text-base font-semibold text-emerald-400" id="demoStat3">5.74 km²</dd>
+                    </div>
+                    <div class="liquid-glass flex items-baseline justify-between p-4 rounded-xl">
+                        <dt class="text-[0.6rem] uppercase tracking-widest text-white/40 font-bold">WATER CHANGE</dt>
+                        <dd class="text-base font-semibold text-cyan-400" id="demoStat4">−0.98 km²</dd>
+                    </div>
+                </dl>
+            </div>
+        </section>
+
+        <!-- 7 Application Domains Showcase -->
+        <section id="applications" class="relative z-10 py-20 md:py-28 border-t border-white/10 scroll-mt-24">
+            <div class="max-w-6xl mx-auto px-6">
+                <div class="flex flex-wrap items-end justify-between gap-8">
+                    <div>
+                        <div class="flex items-center gap-2.5 text-xs">
+                            <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+                            <span class="text-white/70 font-medium tracking-wide">Applications</span>
+                            <span class="px-2 py-0.5 rounded-full border border-white/10 text-white/50">Seven domains</span>
+                        </div>
+                        <h2 class="mt-5 text-3xl md:text-5xl font-semibold tracking-tight leading-[1.02]">
+                            Seven domains.<br/>One interface.
+                        </h2>
+                    </div>
+                    <p class="hidden sm:block text-xs text-white/40 max-w-[30ch]">
+                        Each of these is a real operational question asked of satellite imagery today.
+                    </p>
+                </div>
+
+                <!-- Applications Horizontal Carousel Cards -->
+                <div class="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    
+                    <article class="liquid-glass rounded-2xl overflow-hidden group">
+                        <div class="p-5">
+                            <span class="text-[0.65rem] font-semibold uppercase tracking-widest text-cyan-400">01 · Agriculture</span>
+                            <p class="mt-3 text-sm font-semibold text-white">“Which parcels show reduced crop vigour compared with last season?”</p>
+                            <p class="mt-2 text-xs text-white/45">Crop-cover and irrigation questions answered per district across Punjab, Haryana, and Maharashtra.</p>
+                        </div>
+                    </article>
+
+                    <article class="liquid-glass rounded-2xl overflow-hidden group">
+                        <div class="p-5">
+                            <span class="text-[0.65rem] font-semibold uppercase tracking-widest text-cyan-400">02 · Disaster Management</span>
+                            <p class="mt-3 text-sm font-semibold text-white">“What changed between the pre-event and post-event imagery?”</p>
+                            <p class="mt-2 text-xs text-white/45">Flood and cyclone extent through monsoon cloud cover, day or night, using Sentinel-1 SAR.</p>
+                        </div>
+                    </article>
+
+                    <article class="liquid-glass rounded-2xl overflow-hidden group">
+                        <div class="p-5">
+                            <span class="text-[0.65rem] font-semibold uppercase tracking-widest text-cyan-400">03 · Urban Planning</span>
+                            <p class="mt-3 text-sm font-semibold text-white">“Has the built-up area increased, decreased, or remained unchanged?”</p>
+                            <p class="mt-2 text-xs text-white/45">Settlement growth in Bangalore and Delhi-NCR quantified against dated baselines.</p>
+                        </div>
+                    </article>
+
+                    <article class="liquid-glass rounded-2xl overflow-hidden group">
+                        <div class="p-5">
+                            <span class="text-[0.65rem] font-semibold uppercase tracking-widest text-cyan-400">04 · Forest Monitoring</span>
+                            <p class="mt-3 text-sm font-semibold text-white">“Describe the land-cover and identify cleared areas.”</p>
+                            <p class="mt-2 text-xs text-white/45">Deforestation and illegal tree clearing in the Western Ghats tracked via bi-temporal NDVI.</p>
+                        </div>
+                    </article>
+
+                    <article class="liquid-glass rounded-2xl overflow-hidden group">
+                        <div class="p-5">
+                            <span class="text-[0.65rem] font-semibold uppercase tracking-widest text-cyan-400">05 · Water Resources</span>
+                            <p class="mt-3 text-sm font-semibold text-white">“Where has the water-covered region changed?”</p>
+                            <p class="mt-2 text-xs text-white/45">Reservoir drawdown in Osman Sagar and Kaveri Basin measured with verified hectare metrics.</p>
+                        </div>
+                    </article>
+
+                    <article class="liquid-glass rounded-2xl overflow-hidden group">
+                        <div class="p-5">
+                            <span class="text-[0.65rem] font-semibold uppercase tracking-widest text-cyan-400">06 · Environmental Analysis</span>
+                            <p class="mt-3 text-sm font-semibold text-white">“Use optical and SAR together to identify built-up and water.”</p>
+                            <p class="mt-2 text-xs text-white/45">Cross-modal fusion when single optical imagery is impaired by seasonal haze.</p>
+                        </div>
+                    </article>
+
                 </div>
             </div>
-
-            <!-- Bottom Analytics & Evidence Cards -->
-            <div class="analytics-shelf" id="analyticsShelf">
-                
-                <!-- Quantitative Metrics Summary -->
-                <div class="card metric-summary-card">
-                    <div class="card-header">
-                        <span class="card-icon">📊</span>
-                        <h3>Verified Zonal Area Metrics (Zero Hallucination)</h3>
-                    </div>
-                    <div class="metric-grid">
-                        <div class="metric-box highlight-box">
-                            <span class="metric-title" id="lblImpactTitle">Surface Loss Extent</span>
-                            <div class="metric-value-row">
-                                <span class="metric-number" id="valImpactKm">0.00</span>
-                                <span class="metric-unit">km²</span>
-                            </div>
-                            <span class="metric-sub" id="valImpactHectares">0 hectares</span>
-                        </div>
-
-                        <div class="metric-box">
-                            <span class="metric-title">Coverage Ratio</span>
-                            <div class="metric-value-row">
-                                <span class="metric-number" id="valImpactPct">0.0</span>
-                                <span class="metric-unit">%</span>
-                            </div>
-                            <span class="metric-sub">of analyzed AOI</span>
-                        </div>
-
-                        <div class="metric-box">
-                            <span class="metric-title">Total AOI Area</span>
-                            <div class="metric-value-row">
-                                <span class="metric-number" id="valTotalAoiKm">0.0</span>
-                                <span class="metric-unit">km²</span>
-                            </div>
-                            <span class="metric-sub">10m pixel grid</span>
-                        </div>
-
-                        <div class="metric-box">
-                            <span class="metric-title">Execution Latency</span>
-                            <div class="metric-value-row">
-                                <span class="metric-number" id="valLatencyMs">0</span>
-                                <span class="metric-unit">ms</span>
-                            </div>
-                            <span class="metric-sub" id="valStepCount">0 tools executed</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Grounded Natural Language Report -->
-                <div class="card report-summary-card">
-                    <div class="card-header">
-                        <span class="card-icon">📝</span>
-                        <h3 id="reportHeadline">Synthesized Geospatial Intelligence</h3>
-                    </div>
-                    <div class="report-content" id="reportContentText">
-                        <p class="placeholder-text">Run a query to generate an evidence-backed intelligence report.</p>
-                    </div>
-                </div>
-
-            </div>
-
         </section>
 
     </main>
 
-    <!-- Audit Trace Modal -->
-    <div class="modal-overlay" id="auditModal">
-        <div class="modal-card">
-            <div class="modal-header">
-                <div class="modal-title-flex">
-                    <span class="modal-icon">🛡️</span>
-                    <h3>Cryptographic & Mathematical Audit Ledger</h3>
-                </div>
-                <button class="close-modal-btn" id="btnCloseAudit">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="audit-banner">
-                    <span class="badge-verified">✓ 100% Zero-Hallucination Verified</span>
-                    <p>All quantitative statistics were calculated strictly via deterministic pixel-integral raster tools.</p>
-                </div>
-                
-                <div class="audit-details-grid">
-                    <div class="audit-prop"><span class="p-label">Audit ID:</span> <span id="audId" class="mono">-</span></div>
-                    <div class="audit-prop"><span class="p-label">Verification Hash:</span> <span id="audHash" class="mono">-</span></div>
-                    <div class="audit-prop"><span class="p-label">Calculus Proof:</span> <span id="audProof" class="mono">-</span></div>
-                    <div class="audit-prop"><span class="p-label">CLI Reproduce:</span> <span id="audCmd" class="mono code-block">-</span></div>
+    <!-- Footer with ISRO & SIH 2026 Details -->
+    <footer class="relative z-10 border-t border-white/10 bg-black/60 backdrop-blur-md">
+        <div class="max-w-6xl mx-auto px-6 py-14">
+            <div class="grid gap-10 md:grid-cols-12">
+                <div class="md:col-span-5">
+                    <svg viewBox="0 0 256 256" class="w-7 h-7 text-white" fill="none" stroke="currentColor" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M76 26H26V76"></path><path d="M180 26h50v50"></path><path d="M230 180v50h-50"></path><path d="M76 230H26v-50"></path><path d="M40 200 200 40"></path><circle cx="128" cy="128" r="26" fill="currentColor" stroke="none"></circle>
+                    </svg>
+                    <p class="mt-5 max-w-[38ch] text-sm leading-relaxed text-white/45">
+                        An agentic vision-language assistant for multimodal remote-sensing image analysis through text queries.
+                    </p>
                 </div>
 
-                <div class="json-viewer-box">
-                    <div class="json-header">Raw Tool Execution Telemetry:</div>
-                    <pre id="rawAuditJson">{}</pre>
+                <div class="md:col-span-3">
+                    <span class="text-[0.6rem] uppercase tracking-widest text-white/35 font-bold">Sections</span>
+                    <ul class="mt-5 space-y-2.5">
+                        <li><a class="text-sm text-white/50 hover:text-white transition-colors" href="#capabilities">Capabilities</a></li>
+                        <li><a class="text-sm text-white/50 hover:text-white transition-colors" href="#agent">How It Works</a></li>
+                        <li><a class="text-sm text-white/50 hover:text-white transition-colors" href="#multimodal">Multimodal</a></li>
+                        <li><a class="text-sm text-white/50 hover:text-white transition-colors" href="#temporal">Temporal</a></li>
+                        <li><a class="text-sm text-white/50 hover:text-white transition-colors" href="#demo">Demo</a></li>
+                    </ul>
                 </div>
+
+                <div class="md:col-span-4">
+                    <span class="text-[0.6rem] uppercase tracking-widest text-white/35 font-bold">Programme</span>
+                    <dl class="mt-5 space-y-2.5 text-sm">
+                        <div class="flex justify-between gap-4"><dt class="text-white/35">Problem statement</dt><dd class="text-right text-white/55">26167</dd></div>
+                        <div class="flex justify-between gap-4"><dt class="text-white/35">Organisation</dt><dd class="text-right text-white/55">ISRO · Department of Space</dd></div>
+                        <div class="flex justify-between gap-4"><dt class="text-white/35">Theme</dt><dd class="text-right text-white/55">Space Technology</dd></div>
+                        <div class="flex justify-between gap-4"><dt class="text-white/35">Category</dt><dd class="text-right text-white/55">Software</dd></div>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="mt-12 flex flex-col gap-4 border-t border-white/10 pt-7 md:flex-row md:items-start md:justify-between">
+                <p class="max-w-[70ch] text-xs leading-relaxed text-white/30">
+                    Smart India Hackathon (SIH 2026) · SatQuery AI Architecture Showcase.
+                </p>
+                <p class="shrink-0 font-mono text-xs tracking-wide text-white/40">SIH 2026 · TMS&lt;3</p>
             </div>
         </div>
-    </div>
+    </footer>
 
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    
-    <!-- Application Scripts -->
-    <script src="/static/js/map.js"></script>
-    <script src="/static/js/charts.js"></script>
+    <!-- JavaScript Scripts -->
     <script src="/static/js/app.js"></script>
 </body>
 </html>
