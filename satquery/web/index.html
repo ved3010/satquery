@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SatQuery AI — Agentic Earth Observation & Geospatial Intelligence</title>
+    <meta name="description" content="Autonomous Agentic Vision-Language Geospatial Platform for Remote Sensing Analysis across India and Global AOIs.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Leaflet CSS for Map Rendering -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    
+    <!-- Custom Design System -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="dark-theme">
+
+    <!-- Top Navigation Bar -->
+    <header class="app-header">
+        <div class="header-left">
+            <div class="logo-badge">
+                <span class="satellite-icon">🛰️</span>
+                <span class="logo-title">SatQuery <span class="accent-badge">AI</span></span>
+            </div>
+            <span class="version-tag">v1.0 • Autonomous EO Agent</span>
+        </div>
+
+        <div class="header-center">
+            <div class="pulse-indicator">
+                <span class="pulse-dot"></span>
+                <span class="pulse-label">Sentinel-2 & Sentinel-1 STAC Online</span>
+            </div>
+        </div>
+
+        <div class="header-right">
+            <button class="nav-btn" id="btnOpenAudit">
+                <span class="icon">🛡️</span> Audit Ledger
+            </button>
+            <button class="nav-btn" id="btnOpenTools">
+                <span class="icon">⚙️</span> RS Tool Registry
+            </button>
+            <a href="https://github.com/ved3010/satquery" target="_blank" class="nav-btn git-btn">
+                <span class="icon">⭐</span> GitHub
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Workspace Container -->
+    <main class="workspace-grid">
+        
+        <!-- Left Sidebar: Query Console & Agent DAG Stream -->
+        <aside class="left-panel">
+            
+            <!-- Query Formulation Box -->
+            <section class="card query-box">
+                <div class="card-header">
+                    <span class="card-icon">💬</span>
+                    <h3>Ask Satellite Question</h3>
+                </div>
+                <div class="query-input-wrapper">
+                    <textarea 
+                        id="userQueryInput" 
+                        rows="3" 
+                        placeholder="e.g. What changed in Western Ghats between 2020 and 2025? (or calculate Osman Sagar lake shrinkage)"></textarea>
+                    <button id="btnExecuteQuery" class="primary-action-btn">
+                        <span class="btn-text">Run SatQuery Agent</span>
+                        <span class="btn-icon">⚡</span>
+                    </button>
+                </div>
+
+                <!-- Pan-India Preset Scenarios -->
+                <div class="presets-container">
+                    <div class="presets-title">⚡ Pan-India One-Click Scenarios:</div>
+                    <div class="preset-chips" id="presetChipsContainer">
+                        <!-- Injected dynamically -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Live Agent Reasoning & DAG Execution Stream -->
+            <section class="card agent-stream-card">
+                <div class="card-header">
+                    <div class="header-title-flex">
+                        <span class="card-icon">🧠</span>
+                        <h3>Autonomous Execution DAG</h3>
+                    </div>
+                    <span id="agentStatusBadge" class="status-pill idle">IDLE</span>
+                </div>
+
+                <div class="dag-meta-row" id="dagMetaRow" style="display: none;">
+                    <div class="meta-item"><span class="meta-label">Domain:</span> <span id="metaDomain" class="meta-val">-</span></div>
+                    <div class="meta-item"><span class="meta-label">Sensor:</span> <span id="metaSensor" class="meta-val">-</span></div>
+                    <div class="meta-item"><span class="meta-label">Metric:</span> <span id="metaMetric" class="meta-val badge-metric">-</span></div>
+                </div>
+
+                <div class="steps-timeline" id="stepsTimeline">
+                    <div class="empty-state">
+                        <span class="empty-icon">🛰️</span>
+                        <p>Ask a question or select a preset to watch SatQuery formulate and execute the Earth Observation DAG.</p>
+                    </div>
+                </div>
+            </section>
+
+        </aside>
+
+        <!-- Center / Right Panel: Interactive Dual Map & Visual Analytics -->
+        <section class="center-panel">
+            
+            <!-- Map Control Toolbar -->
+            <div class="map-toolbar">
+                <div class="toolbar-group">
+                    <label class="toolbar-label">Layer Mode:</label>
+                    <div class="btn-toggle-group">
+                        <button class="toggle-btn active" data-layer="change">Change Mask</button>
+                        <button class="toggle-btn" data-layer="rgb">True Color (RGB)</button>
+                        <button class="toggle-btn" data-layer="cir">False Color (CIR)</button>
+                        <button class="toggle-btn" data-layer="index">Spectral Index</button>
+                    </div>
+                </div>
+
+                <div class="toolbar-group swipe-slider-group">
+                    <span class="slider-label" id="lblT1">Baseline (2020)</span>
+                    <input type="range" id="opacitySlider" min="0" max="100" value="100" title="Adjust Layer Opacity / Comparison">
+                    <span class="slider-label" id="lblT2">Target (2025)</span>
+                </div>
+
+                <div class="toolbar-actions">
+                    <button class="tool-icon-btn" id="btnResetView" title="Reset Camera">🎯 Zoom AOI</button>
+                </div>
+            </div>
+
+            <!-- Interactive Map Container -->
+            <div class="map-wrapper">
+                <div id="satMap" class="leaflet-map-canvas"></div>
+
+                <!-- Floating Map Legend -->
+                <div class="map-legend" id="mapLegend">
+                    <div class="legend-title" id="legendTitle">Change Detection Mask</div>
+                    <div class="legend-items" id="legendItems">
+                        <div class="legend-row"><span class="color-box loss"></span> Significant Loss / Depletion (-1)</div>
+                        <div class="legend-row"><span class="color-box stable"></span> Stable Unchanged (0)</div>
+                        <div class="legend-row"><span class="color-box gain"></span> New Growth / Flood (+1)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Analytics & Evidence Cards -->
+            <div class="analytics-shelf" id="analyticsShelf">
+                
+                <!-- Quantitative Metrics Summary -->
+                <div class="card metric-summary-card">
+                    <div class="card-header">
+                        <span class="card-icon">📊</span>
+                        <h3>Verified Zonal Area Metrics (Zero Hallucination)</h3>
+                    </div>
+                    <div class="metric-grid">
+                        <div class="metric-box highlight-box">
+                            <span class="metric-title" id="lblImpactTitle">Surface Loss Extent</span>
+                            <div class="metric-value-row">
+                                <span class="metric-number" id="valImpactKm">0.00</span>
+                                <span class="metric-unit">km²</span>
+                            </div>
+                            <span class="metric-sub" id="valImpactHectares">0 hectares</span>
+                        </div>
+
+                        <div class="metric-box">
+                            <span class="metric-title">Coverage Ratio</span>
+                            <div class="metric-value-row">
+                                <span class="metric-number" id="valImpactPct">0.0</span>
+                                <span class="metric-unit">%</span>
+                            </div>
+                            <span class="metric-sub">of analyzed AOI</span>
+                        </div>
+
+                        <div class="metric-box">
+                            <span class="metric-title">Total AOI Area</span>
+                            <div class="metric-value-row">
+                                <span class="metric-number" id="valTotalAoiKm">0.0</span>
+                                <span class="metric-unit">km²</span>
+                            </div>
+                            <span class="metric-sub">10m pixel grid</span>
+                        </div>
+
+                        <div class="metric-box">
+                            <span class="metric-title">Execution Latency</span>
+                            <div class="metric-value-row">
+                                <span class="metric-number" id="valLatencyMs">0</span>
+                                <span class="metric-unit">ms</span>
+                            </div>
+                            <span class="metric-sub" id="valStepCount">0 tools executed</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Grounded Natural Language Report -->
+                <div class="card report-summary-card">
+                    <div class="card-header">
+                        <span class="card-icon">📝</span>
+                        <h3 id="reportHeadline">Synthesized Geospatial Intelligence</h3>
+                    </div>
+                    <div class="report-content" id="reportContentText">
+                        <p class="placeholder-text">Run a query to generate an evidence-backed intelligence report.</p>
+                    </div>
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Audit Trace Modal -->
+    <div class="modal-overlay" id="auditModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title-flex">
+                    <span class="modal-icon">🛡️</span>
+                    <h3>Cryptographic & Mathematical Audit Ledger</h3>
+                </div>
+                <button class="close-modal-btn" id="btnCloseAudit">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="audit-banner">
+                    <span class="badge-verified">✓ 100% Zero-Hallucination Verified</span>
+                    <p>All quantitative statistics were calculated strictly via deterministic pixel-integral raster tools.</p>
+                </div>
+                
+                <div class="audit-details-grid">
+                    <div class="audit-prop"><span class="p-label">Audit ID:</span> <span id="audId" class="mono">-</span></div>
+                    <div class="audit-prop"><span class="p-label">Verification Hash:</span> <span id="audHash" class="mono">-</span></div>
+                    <div class="audit-prop"><span class="p-label">Calculus Proof:</span> <span id="audProof" class="mono">-</span></div>
+                    <div class="audit-prop"><span class="p-label">CLI Reproduce:</span> <span id="audCmd" class="mono code-block">-</span></div>
+                </div>
+
+                <div class="json-viewer-box">
+                    <div class="json-header">Raw Tool Execution Telemetry:</div>
+                    <pre id="rawAuditJson">{}</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <!-- Application Scripts -->
+    <script src="/static/js/map.js"></script>
+    <script src="/static/js/charts.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
