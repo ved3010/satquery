@@ -166,13 +166,15 @@
                                     </p>
                                     
                                     <div class="mt-4 pt-3 border-t border-white/10">
-                                        <span class="text-[0.7rem] uppercase tracking-wider text-white/40 font-bold block mb-2">Try asking me:</span>
+                                        <span class="text-[0.7rem] uppercase tracking-wider text-white/40 font-bold block mb-2">Try asking me (City or Micro-Local Area):</span>
                                         <div class="flex flex-wrap gap-2">
-                                            <button class="chat-preset-btn" data-msg="What development happened in Bangalore between 2021 and 2025? Send past and present images.">🏙️ Bangalore Development (2021 vs 2025)</button>
+                                            <button class="chat-preset-btn" data-msg="Tell me the area of deforestation and tree loss in the area where I live. Send past and present images.">📍 Deforestation in My Area (GPS)</button>
+                                            <button class="chat-preset-btn" data-msg="What is the area of deforestation in Silent Valley, Kerala between 2020 and 2025? Send images.">🌲 Silent Valley Deforestation (Hectares)</button>
+                                            <button class="chat-preset-btn" data-msg="Show tree canopy loss and illegal clearing in Wayanad forest division.">🌳 Wayanad Forest Canopy Loss</button>
+                                            <button class="chat-preset-btn" data-msg="What development happened in Whitefield, Bangalore between 2021 and 2025? Send past and present images.">🏙️ Whitefield Micro-Local Development</button>
                                             <button class="chat-preset-btn" data-msg="Fetch real satellite image of Mumbai coastline and calculate water extent.">🌊 Mumbai Coastline Satellite Image</button>
                                             <button class="chat-preset-btn" data-msg="Explain how Sentinel-1 SAR penetrates monsoon clouds with mathematical formulas.">🌧️ SAR Monsoon Cloud Penetration</button>
                                             <button class="chat-preset-btn" data-msg="What is the formula for NDVI and how does SatQuery calculate forest loss?">🌱 What is NDVI & Forest Loss?</button>
-                                            <button class="chat-preset-btn" data-msg="What is the difference between ISRO Cartosat optical and RISAT radar satellites?">🇮🇳 Cartosat vs RISAT Satellites</button>
                                         </div>
                                     </div>
                                 </div>
@@ -185,12 +187,17 @@
                     <!-- ChatGPT Search / Prompt Bar -->
                     <div class="relative flex flex-col gap-2">
                         <div class="flex items-center gap-2 p-2 rounded-2xl bg-black/60 border border-white/15 focus-within:border-cyan-400 transition-all shadow-xl">
-                            <span class="pl-3 text-cyan-400 text-base">✨</span>
+                            <!-- Locate My Area GPS Button -->
+                            <button id="btnLocateMe" type="button" title="Locate My Current Area (GPS)" class="p-2.5 rounded-xl bg-white/5 hover:bg-cyan-500/20 text-cyan-400 border border-white/10 hover:border-cyan-400/50 transition-all text-xs flex items-center gap-1 shrink-0 active:scale-90">
+                                <span>📍</span>
+                                <span class="hidden sm:inline font-medium text-[0.75rem]">Locate My Area</span>
+                            </button>
+                            
                             <textarea 
                                 id="agentChatInput" 
                                 rows="1"
                                 class="w-full bg-transparent text-sm text-white placeholder-white/40 outline-none resize-none py-2 px-2"
-                                placeholder="Ask any remote sensing doubt or request satellite images (e.g. 'Show development in Delhi with past & present images')..."
+                                placeholder="Ask any question, doubt, or request satellite images (e.g. 'Tell me deforestation in my area' or 'Show development in Indiranagar')..."
                             ></textarea>
                             
                             <button id="btnSendChat" class="px-5 py-2.5 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-black font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-cyan-400/20 shrink-0 active:scale-95">
@@ -200,12 +207,13 @@
                         </div>
                         
                         <div class="flex items-center justify-between px-2 text-[0.68rem] text-white/40">
-                            <span>Press <kbd class="px-1.5 py-0.5 rounded bg-white/10 text-white font-mono text-[0.6rem]">Enter</kbd> to send · Autonomous 7-Step Verification</span>
+                            <span>Press <kbd class="px-1.5 py-0.5 rounded bg-white/10 text-white font-mono text-[0.6rem]">Enter</kbd> to send · Micro-Local Geocoding & GPS Active</span>
                             <span class="text-cyan-400 font-mono">10m GSD Optical & SAR Active</span>
                         </div>
                     </div>
 
                 </div>
+
 
                 <!-- 2. Visual Studio Layout (Preserved for Deep Dive Exploration) -->
                 <div id="visualStudioContainer" class="hidden mt-6 flex flex-col gap-6">
