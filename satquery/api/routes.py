@@ -12,8 +12,10 @@ from satquery.agent.planner import AgentPlanner
 from satquery.agent.executor import AgentExecutor
 from satquery.agent.synthesizer import EvidenceSynthesizer
 from satquery.agent.audit import AuditLedger
+from satquery.agent.chat_agent import chat_agent
 from satquery.tools.base import tool_registry
 from satquery.tools.stac_discovery import PRESET_AOIS
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/api")
 
@@ -21,6 +23,17 @@ planner = AgentPlanner()
 executor = AgentExecutor()
 synthesizer = EvidenceSynthesizer()
 audit_ledger = AuditLedger()
+
+
+class ChatRequest(BaseModel):
+    message: str
+
+
+@router.post("/chat")
+def chat_endpoint(req: ChatRequest):
+    """Conversational ChatGPT-style endpoint for answering EO doubts and on-demand satellite analysis."""
+    return chat_agent.process_message(req.message)
+
 
 
 @router.get("/examples")

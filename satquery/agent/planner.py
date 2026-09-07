@@ -92,6 +92,12 @@ class AgentPlanner:
             primary_metric = "SAR_VV"
             sensor = "Sentinel-1 SAR C-Band + Sentinel-2 MSI"
             confidence = 0.89
+        elif "western ghats" in q or "ghats" in q or "forest" in q or "deforestation" in q or "amazon" in q or "canopy" in q or "tree" in q:
+            task_family = "change_vqa"
+            intent = "Forest Canopy Loss & Deforestation Monitoring"
+            primary_metric = "NDVI"
+            sensor = "Sentinel-2 MSI (10m, Co-registered)"
+            confidence = 0.92
         elif "water" in q or "lake" in q or "reservoir" in q:
             task_family = "water_flood_vqa"
             intent = "Surface Water Contraction & Reservoir Analysis"
@@ -133,6 +139,20 @@ class AgentPlanner:
                 description=f"Acquire target present-day scene ({t2})",
                 inputs={"aoi_name_or_bbox": aoi, "year": t2}
             ),
+        ]
+
+        if "sar" in q or task_family == "optical_sar_fusion":
+            nodes.append(
+                DAGNode(
+                    id="analyze_sar_step",
+                    tool="analyze_sar_radar",
+                    description="Process Sentinel-1 C-band SAR backscatter (VV/VH polarimetry)",
+                    inputs={"aoi": aoi, "polarization": "VV"},
+                    dependencies=["step_02_validate"]
+                )
+            )
+
+        nodes.extend([
             # 03 SELECT
             DAGNode(
                 id="step_03_select",
@@ -163,6 +183,7 @@ class AgentPlanner:
                 inputs={"index_type": primary_metric, "bands_ref": "cloud_mask_t2.cleaned_bands"},
                 dependencies=["cloud_mask_t2"]
             ),
+
             DAGNode(
                 id="detect_change",
                 tool="detect_bitemporal_change",
@@ -195,7 +216,7 @@ class AgentPlanner:
                 inputs={"confidence": confidence, "task_family": task_family},
                 dependencies=["step_05_fuse"]
             )
-        ]
+        ])
 
         return ExecutionPlan(
             query=query,

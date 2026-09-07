@@ -126,152 +126,223 @@
             </div>
         </section>
 
-        <!-- Dynamic Live Query Console (Use Case: Past vs Present Development) -->
+        <!-- ChatGPT-Style AI Agent Studio Section -->
         <section id="query-studio" class="relative z-10 max-w-6xl mx-auto px-6 py-8 scroll-mt-24">
             <div class="liquid-glass rounded-2xl p-6 md:p-8 border-cyan-500/30 shadow-2xl shadow-cyan-950/20">
+                
+                <!-- Studio Header & Mode Selector -->
                 <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-6 border-b border-white/10">
                     <div>
                         <div class="flex items-center gap-2">
                             <span class="h-2 w-2 rounded-full bg-cyan-400 animate-pulse"></span>
-                            <span class="text-xs uppercase tracking-widest text-cyan-400 font-bold">Ask SatQuery AI · Area Development & Imagery</span>
+                            <span class="text-xs uppercase tracking-widest text-cyan-400 font-bold">SatQuery AI Agent · Earth Observation & Multimodal VLM</span>
                         </div>
-                        <h2 class="text-xl md:text-2xl font-semibold mt-1">Get Past & Present Satellite Images of Any Area</h2>
+                        <h2 class="text-xl md:text-2xl font-semibold mt-1">Ask Earth Anything · ChatGPT for Satellite Imagery</h2>
                     </div>
-                    <div class="flex gap-2">
-                        <span class="text-[0.65rem] px-3 py-1 rounded-full border border-white/10 text-white/60 bg-white/5 font-mono">Pan-India STAC</span>
-                        <span class="text-[0.65rem] px-3 py-1 rounded-full border border-white/10 text-cyan-400 bg-cyan-950/40 font-mono">Sentinel-2 & Sentinel-1</span>
-                    </div>
-                </div>
-
-                <!-- Query Input Bar -->
-                <div class="mt-6 flex flex-col md:flex-row gap-3">
-                    <div class="relative flex-1">
-                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 text-sm">💬</span>
-                        <input 
-                            type="text" 
-                            id="liveQueryInput" 
-                            class="w-full bg-black/50 border border-white/15 focus:border-cyan-400 rounded-xl py-3.5 pl-11 pr-4 text-sm text-white placeholder-white/40 outline-none transition-all shadow-inner"
-                            placeholder="e.g. What development happened in Bangalore between 2021 and 2025? Send past and present images."
-                            value="What development happened in Kharagpur between 2021 and 2025? Send me both past and present images."
-                        >
-                    </div>
-                    <button id="btnRunLiveQuery" class="px-7 py-3.5 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-black font-semibold text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-cyan-400/20 shrink-0 active:scale-95">
-                        <span>Run Agent Analysis</span>
-                        <span>⚡</span>
-                    </button>
-                </div>
-
-                <!-- Quick Location / Scenario Chips -->
-                <div class="mt-4 flex flex-wrap items-center gap-2">
-                    <span class="text-xs text-white/40 font-medium mr-1">Quick Scenarios:</span>
-                    <button class="quick-chip active" data-q="What development happened in Kharagpur between 2021 and 2025? Send me both past and present images.">Kharagpur Development (2021 vs 2025)</button>
-                    <button class="quick-chip" data-q="Show urban development in Whitefield, Bangalore between 2020 and 2025 with past and present images.">Bangalore Urban Sprawl (2020 vs 2025)</button>
-                    <button class="quick-chip" data-q="What changed in Osman Sagar lake surface water between 2021 and 2024? Send past and present images.">Osman Sagar Lake Depletion (2021 vs 2024)</button>
-                    <button class="quick-chip" data-q="Map monsoon flood inundation in Godavari Basin using Sentinel-1 SAR radar.">Godavari Monsoon Floods (SAR)</button>
-                    <button class="quick-chip" data-q="Assess forest canopy change and illegal clearing in Western Ghats between 2020 and 2025.">Western Ghats Deforestation</button>
-                </div>
-
-                <!-- Dual Past vs Present Visual Viewport & Evidence Deck -->
-                <div class="mt-8 grid gap-6 lg:grid-cols-12">
                     
-                    <!-- Left: Imagery Viewport (Past vs Present Toggle / Split) -->
-                    <div class="lg:col-span-8 flex flex-col gap-3">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center gap-1 bg-white/5 p-1 rounded-full border border-white/10">
-                                <button id="btnViewDual" class="img-mode-btn active">Dual Side-by-Side</button>
-                                <button id="btnViewPast" class="img-mode-btn">Past Image (T1)</button>
-                                <button id="btnViewPresent" class="img-mode-btn">Present Image (T2)</button>
-                                <button id="btnViewChange" class="img-mode-btn">Change Mask (Δ)</button>
-                            </div>
-                            <span id="gsdBadge" class="text-xs text-white/40 font-mono hidden sm:inline">10 m GSD · Co-registered</span>
-                        </div>
-
-                        <!-- Canvas Viewport for High-Fidelity Satellite Render -->
-                        <div class="relative aspect-[16/9] w-full rounded-2xl overflow-hidden border border-white/10 bg-black/60 shadow-2xl">
-                            <canvas id="liveViewportCanvas" class="w-full h-full object-cover"></canvas>
-                            
-                            <!-- Bounding Box Overlays -->
-                            <div id="liveBBoxes" class="pointer-events-none absolute inset-0">
-                                <div class="bbox-tag" style="left:58%;top:28%;width:28%;height:44%;border-color:#f59e0b">
-                                    <span class="bbox-label">R01 · New Development (+5.37 km²)</span>
-                                </div>
-                                <div class="bbox-tag" style="left:38%;top:55%;width:14%;height:18%;border-color:#f59e0b">
-                                    <span class="bbox-label">R02 · Infill (+0.84 km²)</span>
-                                </div>
-                            </div>
-
-                            <!-- Floating Date Tags -->
-                            <div class="absolute left-4 top-4 flex gap-2">
-                                <span id="tagDateT1" class="px-3 py-1 rounded-full text-xs font-semibold bg-black/70 backdrop-blur border border-white/20 text-white">PAST: JUNE 2021 (T1)</span>
-                                <span id="tagDateT2" class="px-3 py-1 rounded-full text-xs font-semibold bg-cyan-950/80 backdrop-blur border border-cyan-400/40 text-cyan-300">PRESENT: SEPTEMBER 2025 (T2)</span>
-                            </div>
-
-                            <div class="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex items-center justify-between">
-                                <span id="viewportLocationTitle" class="text-xs font-semibold text-white">Kharagpur Development Corridor · Optical (Sentinel-2 L2A)</span>
-                                <div class="flex gap-2">
-                                    <button id="btnDownloadPast" class="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[0.7rem] text-white transition-all">Download Past Image</button>
-                                    <button id="btnDownloadPresent" class="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[0.7rem] text-white transition-all">Download Present Image</button>
-                                </div>
-                            </div>
-                        </div>
+                    <!-- View Mode Tabs (ChatGPT Agent Chat vs Live Split Studio) -->
+                    <div class="flex items-center gap-1 bg-white/5 p-1 rounded-full border border-white/10">
+                        <button id="tabModeChat" class="px-4 py-1.5 rounded-full text-xs font-semibold bg-cyan-400 text-black shadow transition-all">🤖 AI Agent Chat</button>
+                        <button id="tabModeVisual" class="px-4 py-1.5 rounded-full text-xs font-medium text-white/70 hover:text-white transition-all">🛰️ Visual Studio</button>
                     </div>
+                </div>
 
-                    <!-- Right: Observable 7-Step Trace & Grounded Metrics -->
-                    <div class="lg:col-span-4 flex flex-col justify-between gap-4">
+                <!-- 1. ChatGPT-Style Agent Chat Interface -->
+                <div id="agentChatContainer" class="mt-6 flex flex-col gap-4">
+                    
+                    <!-- Chat Conversation Thread (Scrollable Obsidian View) -->
+                    <div id="chatMessagesStream" class="h-[520px] overflow-y-auto pr-2 space-y-5 rounded-2xl bg-black/50 border border-white/10 p-5 scrollbar-thin scrollbar-thumb-white/20">
                         
-                        <!-- 7-Step Trace -->
-                        <div class="liquid-glass rounded-2xl p-4 flex-1 flex flex-col">
-                            <div class="flex items-center justify-between pb-3 border-b border-white/10">
-                                <span class="text-xs font-bold uppercase tracking-widest text-white/50">Observable Agent Trace</span>
-                                <span id="liveStatusBadge" class="text-[0.65rem] px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-500/30">COMPLETE (0.87 CONF)</span>
+                        <!-- Welcome AI Message -->
+                        <div class="flex items-start gap-3.5">
+                            <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-black font-extrabold text-xs shadow-md shrink-0">
+                                SQ
                             </div>
-
-                            <ol class="mt-3 space-y-2 flex-1 text-xs" id="liveTraceList">
-                                <li class="flex items-center gap-2 text-cyan-400"><span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span><span class="font-semibold">01 UNDERSTAND</span><span class="text-white/40 text-[0.65rem] ml-auto">change_vqa</span></li>
-                                <li class="flex items-center gap-2 text-cyan-400"><span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span><span class="font-semibold">02 VALIDATE</span><span class="text-white/40 text-[0.65rem] ml-auto">co-registered 10m</span></li>
-                                <li class="flex items-center gap-2 text-cyan-400"><span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span><span class="font-semibold">03 SELECT</span><span class="text-white/40 text-[0.65rem] ml-auto">change_net</span></li>
-                                <li class="flex items-center gap-2 text-cyan-400"><span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span><span class="font-semibold">04 ANALYZE</span><span class="text-white/40 text-[0.65rem] ml-auto">pixel_delta</span></li>
-                                <li class="flex items-center gap-2 text-cyan-400"><span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span><span class="font-semibold">05 FUSE</span><span class="text-white/40 text-[0.65rem] ml-auto">zonal_stats</span></li>
-                                <li class="flex items-center gap-2 text-cyan-400"><span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span><span class="font-semibold">06 VERIFY</span><span class="text-white/40 text-[0.65rem] ml-auto">gate PASS</span></li>
-                                <li class="flex items-center gap-2 text-cyan-400"><span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span><span class="font-semibold">07 EXPLAIN</span><span class="text-white/40 text-[0.65rem] ml-auto">grounded</span></li>
-                            </ol>
-                        </div>
-
-                        <!-- Quantified Metrics Shelf -->
-                        <div class="grid grid-cols-2 gap-2.5">
-                            <div class="liquid-glass p-3.5 rounded-xl">
-                                <span class="text-[0.6rem] uppercase tracking-wider text-white/40 font-bold block">Development Growth</span>
-                                <span id="metricGrowth" class="text-xl font-bold text-amber-400">+55.3%</span>
-                            </div>
-                            <div class="liquid-glass p-3.5 rounded-xl">
-                                <span class="text-[0.6rem] uppercase tracking-wider text-white/40 font-bold block">New Built Area</span>
-                                <span id="metricNewArea" class="text-xl font-bold text-amber-400">5.37 km²</span>
-                            </div>
-                            <div class="liquid-glass p-3.5 rounded-xl">
-                                <span class="text-[0.6rem] uppercase tracking-wider text-white/40 font-bold block">Green Cover Shift</span>
-                                <span id="metricGreenShift" class="text-xl font-bold text-emerald-400">−5.74 km²</span>
-                            </div>
-                            <div class="liquid-glass p-3.5 rounded-xl">
-                                <span class="text-[0.6rem] uppercase tracking-wider text-white/40 font-bold block">Surface Water Shift</span>
-                                <span id="metricWaterShift" class="text-xl font-bold text-cyan-400">−0.98 km²</span>
+                            <div class="flex-1 space-y-3">
+                                <div class="p-4 rounded-2xl rounded-tl-sm bg-white/[0.05] border border-white/10 text-sm leading-relaxed text-white/90 shadow-sm">
+                                    <p class="font-semibold text-cyan-400 mb-1">Hello! I am SatQuery AI Agent 🛰️</p>
+                                    <p class="text-white/80">
+                                        I can answer any remote sensing doubt, explain spectral indices & SAR physics, fetch <strong>real photographic satellite imagery</strong> for any city/area worldwide, and quantify bi-temporal development between past and present acquisitions.
+                                    </p>
+                                    
+                                    <div class="mt-4 pt-3 border-t border-white/10">
+                                        <span class="text-[0.7rem] uppercase tracking-wider text-white/40 font-bold block mb-2">Try asking me:</span>
+                                        <div class="flex flex-wrap gap-2">
+                                            <button class="chat-preset-btn" data-msg="What development happened in Bangalore between 2021 and 2025? Send past and present images.">🏙️ Bangalore Development (2021 vs 2025)</button>
+                                            <button class="chat-preset-btn" data-msg="Fetch real satellite image of Mumbai coastline and calculate water extent.">🌊 Mumbai Coastline Satellite Image</button>
+                                            <button class="chat-preset-btn" data-msg="Explain how Sentinel-1 SAR penetrates monsoon clouds with mathematical formulas.">🌧️ SAR Monsoon Cloud Penetration</button>
+                                            <button class="chat-preset-btn" data-msg="What is the formula for NDVI and how does SatQuery calculate forest loss?">🌱 What is NDVI & Forest Loss?</button>
+                                            <button class="chat-preset-btn" data-msg="What is the difference between ISRO Cartosat optical and RISAT radar satellites?">🇮🇳 Cartosat vs RISAT Satellites</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <span class="text-[0.65rem] text-white/30 ml-2">SatQuery Autonomous Agent · Ready</span>
                             </div>
                         </div>
 
                     </div>
+
+                    <!-- ChatGPT Search / Prompt Bar -->
+                    <div class="relative flex flex-col gap-2">
+                        <div class="flex items-center gap-2 p-2 rounded-2xl bg-black/60 border border-white/15 focus-within:border-cyan-400 transition-all shadow-xl">
+                            <span class="pl-3 text-cyan-400 text-base">✨</span>
+                            <textarea 
+                                id="agentChatInput" 
+                                rows="1"
+                                class="w-full bg-transparent text-sm text-white placeholder-white/40 outline-none resize-none py-2 px-2"
+                                placeholder="Ask any remote sensing doubt or request satellite images (e.g. 'Show development in Delhi with past & present images')..."
+                            ></textarea>
+                            
+                            <button id="btnSendChat" class="px-5 py-2.5 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-black font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-cyan-400/20 shrink-0 active:scale-95">
+                                <span>Ask</span>
+                                <span>➤</span>
+                            </button>
+                        </div>
+                        
+                        <div class="flex items-center justify-between px-2 text-[0.68rem] text-white/40">
+                            <span>Press <kbd class="px-1.5 py-0.5 rounded bg-white/10 text-white font-mono text-[0.6rem]">Enter</kbd> to send · Autonomous 7-Step Verification</span>
+                            <span class="text-cyan-400 font-mono">10m GSD Optical & SAR Active</span>
+                        </div>
+                    </div>
+
                 </div>
 
-                <!-- Grounded Natural Language Narrative Response -->
-                <div class="mt-6 p-5 rounded-xl bg-black/40 border border-white/10">
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="text-cyan-400">✨</span>
-                        <span class="text-xs font-semibold text-white/90">Grounded Intelligence Summary by SatQuery</span>
+                <!-- 2. Visual Studio Layout (Preserved for Deep Dive Exploration) -->
+                <div id="visualStudioContainer" class="hidden mt-6 flex flex-col gap-6">
+                    
+                    <!-- Query Input Bar -->
+                    <div class="flex flex-col md:flex-row gap-3">
+                        <div class="relative flex-1">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 text-sm">💬</span>
+                            <input 
+                                type="text" 
+                                id="liveQueryInput" 
+                                class="w-full bg-black/50 border border-white/15 focus:border-cyan-400 rounded-xl py-3.5 pl-11 pr-4 text-sm text-white placeholder-white/40 outline-none transition-all shadow-inner"
+                                placeholder="e.g. What development happened in Bangalore between 2021 and 2025? Send past and present images."
+                                value="What development happened in Kharagpur between 2021 and 2025? Send me both past and present images."
+                            >
+                        </div>
+                        <button id="btnRunLiveQuery" class="px-7 py-3.5 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-black font-semibold text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-cyan-400/20 shrink-0 active:scale-95">
+                            <span>Run Agent Analysis</span>
+                            <span>⚡</span>
+                        </button>
                     </div>
-                    <p id="liveNarrativeText" class="text-sm leading-relaxed text-white/70">
-                        Between the <strong>June 2021 (Past)</strong> and <strong>September 2025 (Present)</strong> acquisitions, the built-up area expanded by <strong>+55.3%</strong>, growing from 9.71 km² to 15.08 km². The development is heavily concentrated along the eastern corridor (Region R01, 5.37 km² of new structures) with additional infill construction (Region R02). Vegetation declined by 5.74 km².
-                    </p>
+
+                    <!-- Quick Location / Scenario Chips -->
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-xs text-white/40 font-medium mr-1">Quick Scenarios:</span>
+                        <button class="quick-chip active" data-q="What development happened in Kharagpur between 2021 and 2025? Send me both past and present images.">Kharagpur Development (2021 vs 2025)</button>
+                        <button class="quick-chip" data-q="Show urban development in Whitefield, Bangalore between 2020 and 2025 with past and present images.">Bangalore Urban Sprawl (2020 vs 2025)</button>
+                        <button class="quick-chip" data-q="What changed in Osman Sagar lake surface water between 2021 and 2024? Send past and present images.">Osman Sagar Lake Depletion (2021 vs 2024)</button>
+                        <button class="quick-chip" data-q="Map monsoon flood inundation in Godavari Basin using Sentinel-1 SAR radar.">Godavari Monsoon Floods (SAR)</button>
+                        <button class="quick-chip" data-q="Assess forest canopy change and illegal clearing in Western Ghats between 2020 and 2025.">Western Ghats Deforestation</button>
+                    </div>
+
+                    <!-- Dual Past vs Present Visual Viewport & Evidence Deck -->
+                    <div class="grid gap-6 lg:grid-cols-12">
+                        
+                        <!-- Left: Imagery Viewport (Past vs Present Toggle / Split) -->
+                        <div class="lg:col-span-8 flex flex-col gap-3">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-1 bg-white/5 p-1 rounded-full border border-white/10">
+                                    <button id="btnViewDual" class="img-mode-btn active">Dual Side-by-Side</button>
+                                    <button id="btnViewPast" class="img-mode-btn">Past Image (T1)</button>
+                                    <button id="btnViewPresent" class="img-mode-btn">Present Image (T2)</button>
+                                    <button id="btnViewChange" class="img-mode-btn">Change Mask (Δ)</button>
+                                </div>
+                                <span id="gsdBadge" class="text-xs text-white/40 font-mono hidden sm:inline">10 m GSD · Co-registered</span>
+                            </div>
+
+                            <!-- Canvas Viewport for High-Fidelity Satellite Render -->
+                            <div class="relative aspect-[16/9] w-full rounded-2xl overflow-hidden border border-white/10 bg-black/60 shadow-2xl">
+                                <canvas id="liveViewportCanvas" class="w-full h-full object-cover"></canvas>
+                                
+                                <!-- Bounding Box Overlays -->
+                                <div id="liveBBoxes" class="pointer-events-none absolute inset-0">
+                                    <div class="bbox-tag" style="left:58%;top:28%;width:28%;height:44%;border-color:#f59e0b">
+                                        <span class="bbox-label">R01 · New Development (+5.37 km²)</span>
+                                    </div>
+                                    <div class="bbox-tag" style="left:38%;top:55%;width:14%;height:18%;border-color:#f59e0b">
+                                        <span class="bbox-label">R02 · Infill (+0.84 km²)</span>
+                                    </div>
+                                </div>
+
+                                <!-- Floating Date Tags -->
+                                <div class="absolute left-4 top-4 flex gap-2">
+                                    <span id="tagDateT1" class="px-3 py-1 rounded-full text-xs font-semibold bg-black/70 backdrop-blur border border-white/20 text-white">PAST: JUNE 2021 (T1)</span>
+                                    <span id="tagDateT2" class="px-3 py-1 rounded-full text-xs font-semibold bg-cyan-950/80 backdrop-blur border border-cyan-400/40 text-cyan-300">PRESENT: SEPTEMBER 2025 (T2)</span>
+                                </div>
+
+                                <div class="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex items-center justify-between">
+                                    <span id="viewportLocationTitle" class="text-xs font-semibold text-white">Kharagpur Development Corridor · Optical (Sentinel-2 L2A)</span>
+                                    <div class="flex gap-2">
+                                        <button id="btnDownloadPast" class="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[0.7rem] text-white transition-all">Download Past Image</button>
+                                        <button id="btnDownloadPresent" class="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[0.7rem] text-white transition-all">Download Present Image</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right: Observable 7-Step Trace & Grounded Metrics -->
+                        <div class="lg:col-span-4 flex flex-col justify-between gap-4">
+                            
+                            <!-- 7-Step Trace -->
+                            <div class="liquid-glass rounded-2xl p-4 flex-1 flex flex-col">
+                                <div class="flex items-center justify-between pb-3 border-b border-white/10">
+                                    <span class="text-xs font-bold uppercase tracking-widest text-white/50">Observable Agent Trace</span>
+                                    <span id="liveStatusBadge" class="text-[0.65rem] px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-500/30">COMPLETE (0.87 CONF)</span>
+                                </div>
+
+                                <ol class="mt-3 space-y-2 flex-1 text-xs" id="liveTraceList">
+                                    <li class="flex items-center gap-2 text-cyan-400"><span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span><span class="font-semibold">01 UNDERSTAND</span><span class="text-white/40 text-[0.65rem] ml-auto">change_vqa</span></li>
+                                    <li class="flex items-center gap-2 text-cyan-400"><span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span><span class="font-semibold">02 VALIDATE</span><span class="text-white/40 text-[0.65rem] ml-auto">co-registered 10m</span></li>
+                                    <li class="flex items-center gap-2 text-cyan-400"><span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span><span class="font-semibold">03 SELECT</span><span class="text-white/40 text-[0.65rem] ml-auto">change_net</span></li>
+                                    <li class="flex items-center gap-2 text-cyan-400"><span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span><span class="font-semibold">04 ANALYZE</span><span class="text-white/40 text-[0.65rem] ml-auto">pixel_delta</span></li>
+                                    <li class="flex items-center gap-2 text-cyan-400"><span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span><span class="font-semibold">05 FUSE</span><span class="text-white/40 text-[0.65rem] ml-auto">zonal_stats</span></li>
+                                    <li class="flex items-center gap-2 text-cyan-400"><span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span><span class="font-semibold">06 VERIFY</span><span class="text-white/40 text-[0.65rem] ml-auto">gate PASS</span></li>
+                                    <li class="flex items-center gap-2 text-cyan-400"><span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span><span class="font-semibold">07 EXPLAIN</span><span class="text-white/40 text-[0.65rem] ml-auto">grounded</span></li>
+                                </ol>
+                            </div>
+
+                            <!-- Quantified Metrics Shelf -->
+                            <div class="grid grid-cols-2 gap-2.5">
+                                <div class="liquid-glass p-3.5 rounded-xl">
+                                    <span class="text-[0.6rem] uppercase tracking-wider text-white/40 font-bold block">Development Growth</span>
+                                    <span id="metricGrowth" class="text-xl font-bold text-amber-400">+55.3%</span>
+                                </div>
+                                <div class="liquid-glass p-3.5 rounded-xl">
+                                    <span class="text-[0.6rem] uppercase tracking-wider text-white/40 font-bold block">New Built Area</span>
+                                    <span id="metricNewArea" class="text-xl font-bold text-amber-400">5.37 km²</span>
+                                </div>
+                                <div class="liquid-glass p-3.5 rounded-xl">
+                                    <span class="text-[0.6rem] uppercase tracking-wider text-white/40 font-bold block">Green Cover Shift</span>
+                                    <span id="metricGreenShift" class="text-xl font-bold text-emerald-400">−5.74 km²</span>
+                                </div>
+                                <div class="liquid-glass p-3.5 rounded-xl">
+                                    <span class="text-[0.6rem] uppercase tracking-wider text-white/40 font-bold block">Surface Water Shift</span>
+                                    <span id="metricWaterShift" class="text-xl font-bold text-cyan-400">−0.98 km²</span>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- Grounded Natural Language Narrative Response -->
+                    <div class="p-5 rounded-xl bg-black/40 border border-white/10">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-cyan-400">✨</span>
+                            <span class="text-xs font-semibold text-white/90">Grounded Intelligence Summary by SatQuery</span>
+                        </div>
+                        <p id="liveNarrativeText" class="text-sm leading-relaxed text-white/70">
+                            Between the <strong>June 2021 (Past)</strong> and <strong>September 2025 (Present)</strong> acquisitions, the built-up area expanded by <strong>+55.3%</strong>, growing from 9.71 km² to 15.08 km². The development is heavily concentrated along the eastern corridor (Region R01, 5.37 km² of new structures) with additional infill construction (Region R02). Vegetation declined by 5.74 km².
+                        </p>
+                    </div>
+
                 </div>
+
             </div>
         </section>
+
 
         <!-- macOS System Topbar -->
         <div class="relative z-10 h-10 bg-black/40 backdrop-blur-md border-t border-b border-white/10 mt-16">
