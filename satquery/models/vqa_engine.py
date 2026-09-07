@@ -244,7 +244,7 @@ class RSVQAEngine:
                 f"- **Total Surface Water Delineated:** **{water_ha} hectares** (**{round(water_ha/100.0, 3)} km²**)\n"
                 f"- **Water Body Coverage:** **{round(stats.get('water_surface_ratio', 0.08)*100, 1)}%** of scene footprint\n"
                 f"- **Sensor Modality:** `Sentinel-1 SAR C-Band + Sentinel-2 NDWI`\n\n"
-                f"SAR microwave backscatter confirms sharp specular water delineation ($<-18\\text{ dB}$) unobstructed by cloud layers."
+                f"SAR microwave backscatter confirms sharp specular water delineation ($<-18\\text{{ dB}}$) unobstructed by cloud layers."
             )
             bboxes = [
                 {"id": "R01", "label": f"Primary Water Body ({water_ha} ha)", "bbox": [20, 35, 60, 30], "color": "#06b6d4"}
