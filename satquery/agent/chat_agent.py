@@ -296,26 +296,33 @@ class ChatAgent:
         }
 
     def _is_conceptual_query(self, lower: str) -> bool:
-        # Check if question is scientific/conceptual without requesting a specific place's imagery
-        keywords = [
-            "what is ndvi", "what is ndwi", "what is ndbi", "what is nbr", "what is savi", "what is mndwi",
-            "formula", "how does sar", "how does radar", "how do satellites", "difference between",
-            "spectral index", "spectral indices", "band math", "polarization", "what is risat", "what is cartosat",
-            "why do we use sar", "why are infrared", "why is false color", "explain sar", "explain ndvi",
-            "explain ndwi", "what is gsd", "ground sample distance", "spatial resolution", "isro satellite",
-            "bhuvan", "sentinel-2 bands", "how to measure deforestation", "atmospheric correction",
-            "what are active sensors", "what are passive sensors", "how does change detection work"
+        # Check if question is asking why/what/how/explain/define/difference without requesting image of a location
+        question_triggers = [
+            "what is", "what are", "why is", "why are", "how does", "how do", "how to", "how can",
+            "explain", "difference between", "define", "tell me about ndvi", "tell me how",
+            "can satellites", "what does", "formula", "band math", "polarization", "physics of",
+            "principles of", "atmospheric correction", "spectral index", "spectral indices"
         ]
-        return any(k in lower for k in keywords)
+        explicit_location_phrases = ["where is", "located in", "location of", "which state is", "which city is"]
+        explicit_image_commands = ["show image", "show satellite", "fetch image", "give image", "get image", "send image", "images of", "image of", "photos of", "photo of", "pictures of", "picture of"]
+
+        is_concept_q = any(t in lower for t in question_triggers)
+        is_loc_q = any(t in lower for t in explicit_location_phrases)
+        is_img_cmd = any(t in lower for t in explicit_image_commands)
+
+        return is_concept_q and not is_loc_q and not is_img_cmd
 
     def _is_imagery_request(self, lower: str) -> bool:
         has_img_word = any(w in lower for w in [
-            "image", "images", "photo", "photos", "pic", "pics", "picture", "pictures",
-            "satellite photo", "satellite view", "give image", "show satellite", "fetch image",
-            "multiple images", "different images", "different views", "satellite imagery",
-            "satellite picture", "view of", "fetch pictures", "send images"
+            "image of", "images of", "photo of", "photos of", "pic of", "pics of",
+            "picture of", "pictures of", "satellite photo", "satellite view", "give image",
+            "show satellite", "fetch image", "multiple images", "different images",
+            "different views", "satellite imagery", "satellite picture", "view of",
+            "fetch pictures", "send images", "show image", "show images"
         ])
-        has_temporal_math = any(w in lower for w in ["calculate", "reduction", "loss rate", "between 20", "vs 20", "delta", "growth rate", "how many hectares", "how much changed"])
+        has_temporal_math = any(w in lower for w in [
+            "calculate", "reduction", "loss rate", "between 20", "vs 20", "delta", "growth rate", "how many hectares", "how much changed"
+        ])
         return has_img_word and not has_temporal_math
 
     def _is_location_inquiry(self, lower: str) -> bool:
