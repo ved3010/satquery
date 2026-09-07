@@ -8,10 +8,16 @@ satellite imagery, and running quantitative Earth Observation pipelines.
 import re
 import io
 import base64
+import math
 from typing import Dict, Any, List, Optional
 from PIL import Image
 
-from satquery.tools.real_imagery import fetch_real_satellite_image, geocode_location, GEOCODE_REGISTRY
+from satquery.tools.real_imagery import (
+    fetch_real_satellite_image,
+    geocode_location,
+    get_location_metadata,
+    GEOCODE_REGISTRY
+)
 from satquery.agent.planner import AgentPlanner
 from satquery.agent.executor import AgentExecutor
 from satquery.agent.synthesizer import EvidenceSynthesizer
@@ -316,15 +322,28 @@ class ChatAgent:
                 f"- *Request satellite imagery:* `\"Show satellite imagery of {info['title'].split('(')[0].strip()}\"`"
             )
         else:
-            # Fallback dynamic geocoder for unlisted locations
-            lat, lon, zoom, loc_name = geocode_location(query)
+            # Fallback dynamic geocoder for unlisted locations worldwide
+            meta = get_location_metadata(query)
+            lat = meta["lat"]
+            lon = meta["lon"]
+            zoom = meta["zoom"]
+            loc_name = meta["name"]
+            country = meta.get("country", "Global")
+            state = meta.get("state", "")
+            district = meta.get("district", "")
+            place_type = meta.get("type", "Geographical AOI")
+            disp = meta.get("display_name", f"{loc_name}, {country}")
+
             answer = (
-                f"### 📍 **Geographical Location: {loc_name}**\n\n"
-                f"- **Center Coordinates:** `{lat:.4f}° N, {lon:.4f}° E`\n"
-                f"- **Ground Sample Distance (GSD):** `~{round(156543.03392 * 0.9 / (2 ** zoom), 2)}m per pixel` at Zoom `{zoom}`\n"
-                f"- **Coverage:** Full multispectral optical (Sentinel-2 MSI) and all-weather radar (Sentinel-1 SAR) available.\n\n"
-                f"💡 *Would you like to analyze land-use change or fetch high-resolution satellite imagery for {loc_name}?*\n"
-                f"- Try: `\"Show satellite view of {loc_name}\"` or `\"Analyze vegetation change in {loc_name} between 2021 and 2025\"`."
+                f"### 📍 **{loc_name}**\n\n"
+                f"- **Administrative Location:** {disp}\n"
+                f"- **Coordinates:** `{lat:.4f}° N, {lon:.4f}° E`\n"
+                f"- **Category:** `{place_type}`\n"
+                f"- **Satellite GSD:** `~{round(156543.03392 * math.cos(math.radians(lat)) / (2 ** zoom), 2)}m per pixel` (Zoom `{zoom}`)\n"
+                f"- **Sensors Available:** `Sentinel-2 Optical (10m)` + `Sentinel-1 SAR Radar (All-Weather)`\n\n"
+                f"💡 **Suggested Next Steps:**\n"
+                f"- *View satellite scene:* `\"Show satellite imagery of {loc_name}\"`\n"
+                f"- *Analyze multi-year changes:* `\"What changed in {loc_name} between 2021 and 2025?\"`"
             )
 
         return {
