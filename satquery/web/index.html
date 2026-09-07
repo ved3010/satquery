@@ -13,6 +13,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     
+    <!-- Leaflet CSS & JS for Interactive Zoomable Satellite Map Viewports -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <!-- Tailwind CSS CDN for instantaneous high-fidelity styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -32,6 +36,20 @@
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body class="bg-[#0c0c0c] text-white">
+
+    <!-- Fullscreen Satellite Image Zoom Lightbox Modal -->
+    <div id="satelliteLightboxModal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden flex-col items-center justify-center p-4">
+        <div class="relative max-w-5xl w-full h-[85vh] bg-black rounded-2xl border border-white/20 overflow-hidden flex flex-col shadow-2xl">
+            <div class="p-4 bg-white/5 border-b border-white/10 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                    <span id="lightboxTitle" class="text-sm font-semibold text-white">🛰️ High-Resolution Satellite Viewport (Interactive Pan & Zoom)</span>
+                </div>
+                <button id="btnCloseLightbox" class="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition-all">✕ Close</button>
+            </div>
+            <div id="lightboxMapContainer" class="flex-1 w-full h-full relative bg-[#0a0d14]"></div>
+        </div>
+    </div>
 
     <!-- Subtle SVG Noise Filter -->
     <svg class="absolute w-0 h-0" aria-hidden="true" focusable="false">
@@ -69,12 +87,11 @@
             </a>
 
             <div class="hidden md:flex gap-8 nav-links">
-                <a href="#query-studio" class="text-cyan-400 text-sm font-semibold hover:text-white transition-colors">✨ Ask Your Area</a>
+                <a href="#query-studio" class="text-cyan-400 text-sm font-semibold hover:text-white transition-colors">🤖 AI Agent Chat</a>
                 <a href="#capabilities" class="text-white/70 text-sm font-medium hover:text-white transition-colors">Capabilities</a>
                 <a href="#agent" class="text-white/70 text-sm font-medium hover:text-white transition-colors">How It Works</a>
                 <a href="#multimodal" class="text-white/70 text-sm font-medium hover:text-white transition-colors">Multimodal</a>
                 <a href="#temporal" class="text-white/70 text-sm font-medium hover:text-white transition-colors">Temporal</a>
-                <a href="#demo" class="text-white/70 text-sm font-medium hover:text-white transition-colors">Demo</a>
             </div>
 
             <div class="flex items-center gap-3">
@@ -87,7 +104,7 @@
                         <path d="M40 200 200 40"></path>
                         <circle cx="128" cy="128" r="26" fill="currentColor" stroke="none"></circle>
                     </svg>
-                    <span>Ask SatQuery</span>
+                    <span>Ask SatQuery AI</span>
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform group-hover:translate-x-[2px]"><path d="m9 18 6-6-6-6"></path></svg>
                 </a>
             </div>
@@ -96,108 +113,102 @@
 
     <main id="main">
 
-        <!-- Hero Section -->
-        <section id="top" class="relative z-10 max-w-6xl mx-auto px-6 pt-16 md:pt-28 pb-16 text-center flex flex-col items-center">
-            <h1 class="text-4xl md:text-7xl font-semibold tracking-tight leading-[0.95] hero-headline">
-                <span class="block">Ask Earth.</span>
-                <span class="relative block">
-                    <span class="block text-shiny">Get intelligence</span>
-                </span>
-            </h1>
-
-            <p class="mt-8 text-white/60 max-w-md text-base leading-[1.6]">
-                SatQuery AI is an agentic vision-language assistant for satellite imagery. Ask a question about any area — it fetches past & present acquisitions, calculates the development, and answers with visual proof.
-            </p>
-
-            <div class="mt-10 flex flex-col items-center gap-3">
-                <a class="group inline-flex items-center justify-center gap-2 rounded-full bg-white text-black font-medium text-sm px-6 py-3.5 transition-all hover:bg-white/90 active:scale-[0.98] shadow-lg shadow-cyan-500/10" href="#query-studio">
-                    <svg viewBox="0 0 256 256" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M76 26H26V76"></path>
-                        <path d="M180 26h50v50"></path>
-                        <path d="M230 180v50h-50"></path>
-                        <path d="M76 230H26v-50"></path>
-                        <path d="M40 200 200 40"></path>
-                        <circle cx="128" cy="128" r="26" fill="currentColor" stroke="none"></circle>
-                    </svg>
-                    <span>Analyze Your Area Now</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform group-hover:translate-x-[2px]"><path d="m9 18 6-6-6-6"></path></svg>
-                </a>
-                <span class="text-xs text-white/40">Past vs Present Images · Optical & SAR · Change Maps · 10m GSD</span>
-            </div>
-        </section>
-
-        <!-- ChatGPT-Style AI Agent Studio Section -->
-        <section id="query-studio" class="relative z-10 max-w-6xl mx-auto px-6 py-8 scroll-mt-24">
-            <div class="liquid-glass rounded-2xl p-6 md:p-8 border-cyan-500/30 shadow-2xl shadow-cyan-950/20">
+        <!-- Dedicated ChatGPT-Style AI Agent Section -->
+        <section id="query-studio" class="relative z-10 max-w-6xl mx-auto px-4 md:px-6 pt-10 pb-8 scroll-mt-20">
+            <div class="liquid-glass rounded-2xl border-cyan-500/30 shadow-2xl shadow-cyan-950/20 overflow-hidden flex flex-col md:flex-row h-[740px]">
                 
-                <!-- Studio Header & Mode Selector -->
-                <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-6 border-b border-white/10">
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <span class="h-2 w-2 rounded-full bg-cyan-400 animate-pulse"></span>
-                            <span class="text-xs uppercase tracking-widest text-cyan-400 font-bold">SatQuery AI Agent · Earth Observation & Multimodal VLM</span>
+                <!-- 1. Left Sidebar: ChatGPT Sessions & Quick Navigation -->
+                <aside class="w-full md:w-64 bg-black/60 border-b md:border-b-0 md:border-r border-white/10 p-4 flex flex-col justify-between shrink-0">
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between pb-3 border-b border-white/10">
+                            <span class="text-xs font-bold uppercase tracking-widest text-cyan-400">SatQuery Agent</span>
+                            <span class="text-[0.65rem] px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-500/30 font-mono">VLM 2.0</span>
                         </div>
-                        <h2 class="text-xl md:text-2xl font-semibold mt-1">Ask Earth Anything · ChatGPT for Satellite Imagery</h2>
-                    </div>
-                    
-                    <!-- View Mode Tabs (ChatGPT Agent Chat vs Live Split Studio) -->
-                    <div class="flex items-center gap-1 bg-white/5 p-1 rounded-full border border-white/10">
-                        <button id="tabModeChat" class="px-4 py-1.5 rounded-full text-xs font-semibold bg-cyan-400 text-black shadow transition-all">🤖 AI Agent Chat</button>
-                        <button id="tabModeVisual" class="px-4 py-1.5 rounded-full text-xs font-medium text-white/70 hover:text-white transition-all">🛰️ Visual Studio</button>
-                    </div>
-                </div>
 
-                <!-- 1. ChatGPT-Style Agent Chat Interface -->
-                <div id="agentChatContainer" class="mt-6 flex flex-col gap-4">
+                        <!-- New Chat Button -->
+                        <button id="btnNewChat" class="w-full py-2.5 px-3.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-white border border-white/10 hover:border-cyan-400/40 transition-all flex items-center justify-between">
+                            <span class="flex items-center gap-2"><span>＋</span><span>New Analysis</span></span>
+                            <kbd class="text-[0.6rem] px-1.5 py-0.5 rounded bg-white/10 font-mono text-white/40">Alt+N</kbd>
+                        </button>
+
+                        <!-- Recent Analysis History -->
+                        <div>
+                            <span class="text-[0.65rem] uppercase tracking-wider text-white/40 font-bold block mb-2 px-1">Recent Sessions</span>
+                            <div id="chatHistoryList" class="space-y-1.5 overflow-y-auto max-h-[360px] pr-1">
+                                <button class="history-item active" data-query="What development happened in Bangalore between 2021 and 2025?">
+                                    <span class="truncate">🏙️ Bangalore Urban Corridor</span>
+                                </button>
+                                <button class="history-item" data-query="Tell me the area of deforestation in Silent Valley Kerala between 2020 and 2025">
+                                    <span class="truncate">🌲 Silent Valley Canopy Loss</span>
+                                </button>
+                                <button class="history-item" data-query="Fetch real satellite image of Mumbai coastline and calculate water extent">
+                                    <span class="truncate">🌊 Mumbai Coastline Analysis</span>
+                                </button>
+                                <button class="history-item" data-query="Explain how Sentinel-1 SAR penetrates monsoon clouds with mathematical formulas">
+                                    <span class="truncate">🌧️ SAR Monsoon Physics</span>
+                                </button>
+                                <button class="history-item" data-query="What is the formula for NDVI and how is it used in SatQuery?">
+                                    <span class="truncate">📐 NDVI Spectral Math</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sidebar Footer: ISRO SIH Badge & Clear -->
+                    <div class="pt-3 border-t border-white/10 flex items-center justify-between text-[0.7rem] text-white/40">
+                        <span>ISRO SIH-2026 Active</span>
+                        <button id="btnClearChat" class="hover:text-rose-400 transition-colors">Clear</button>
+                    </div>
+                </aside>
+
+                <!-- 2. Main Chat Conversation Canvas -->
+                <div class="flex-1 flex flex-col justify-between h-full bg-black/40">
                     
-                    <!-- Chat Conversation Thread (Scrollable Obsidian View) -->
-                    <div id="chatMessagesStream" class="h-[520px] overflow-y-auto pr-2 space-y-5 rounded-2xl bg-black/50 border border-white/10 p-5 scrollbar-thin scrollbar-thumb-white/20">
+                    <!-- Chat Header Bar -->
+                    <div class="p-3.5 px-6 bg-white/[0.02] border-b border-white/10 flex items-center justify-between">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                            <span class="text-xs font-semibold text-white">SatQuery Vision-Language Assistant</span>
+                            <span class="text-[0.65rem] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/50 hidden sm:inline">10m GSD Optical & SAR Active</span>
+                        </div>
+                        <span class="text-[0.65rem] text-cyan-400 font-mono">Zero-Hallucination Verified</span>
+                    </div>
+
+                    <!-- Scrollable Chat Stream -->
+                    <div id="chatMessagesStream" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-5 scrollbar-thin scrollbar-thumb-white/20">
                         
                         <!-- Welcome AI Message -->
                         <div class="flex items-start gap-3.5">
                             <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-black font-extrabold text-xs shadow-md shrink-0">
                                 SQ
                             </div>
-                            <div class="flex-1 space-y-3">
+                            <div class="flex-1 space-y-2 max-w-[90%]">
                                 <div class="p-4 rounded-2xl rounded-tl-sm bg-white/[0.05] border border-white/10 text-sm leading-relaxed text-white/90 shadow-sm">
-                                    <p class="font-semibold text-cyan-400 mb-1">Hello! I am SatQuery AI Agent 🛰️</p>
+                                    <p class="font-semibold text-cyan-400 mb-1">Welcome to SatQuery AI 🛰️</p>
                                     <p class="text-white/80">
-                                        I can answer any remote sensing doubt, explain spectral indices & SAR physics, fetch <strong>real photographic satellite imagery</strong> for any city/area worldwide, and quantify bi-temporal development between past and present acquisitions.
+                                        Ask me any remote sensing question, theoretical doubt, or request <strong>real high-resolution satellite imagery</strong> for any city, neighborhood, or forest area worldwide.
                                     </p>
-                                    
-                                    <div class="mt-4 pt-3 border-t border-white/10">
-                                        <span class="text-[0.7rem] uppercase tracking-wider text-white/40 font-bold block mb-2">Try asking me (City or Micro-Local Area):</span>
-                                        <div class="flex flex-wrap gap-2">
-                                            <button class="chat-preset-btn" data-msg="Tell me the area of deforestation and tree loss in the area where I live. Send past and present images.">📍 Deforestation in My Area (GPS)</button>
-                                            <button class="chat-preset-btn" data-msg="What is the area of deforestation in Silent Valley, Kerala between 2020 and 2025? Send images.">🌲 Silent Valley Deforestation (Hectares)</button>
-                                            <button class="chat-preset-btn" data-msg="Show tree canopy loss and illegal clearing in Wayanad forest division.">🌳 Wayanad Forest Canopy Loss</button>
-                                            <button class="chat-preset-btn" data-msg="What development happened in Whitefield, Bangalore between 2021 and 2025? Send past and present images.">🏙️ Whitefield Micro-Local Development</button>
-                                            <button class="chat-preset-btn" data-msg="Fetch real satellite image of Mumbai coastline and calculate water extent.">🌊 Mumbai Coastline Satellite Image</button>
-                                            <button class="chat-preset-btn" data-msg="Explain how Sentinel-1 SAR penetrates monsoon clouds with mathematical formulas.">🌧️ SAR Monsoon Cloud Penetration</button>
-                                            <button class="chat-preset-btn" data-msg="What is the formula for NDVI and how does SatQuery calculate forest loss?">🌱 What is NDVI & Forest Loss?</button>
-                                        </div>
-                                    </div>
                                 </div>
-                                <span class="text-[0.65rem] text-white/30 ml-2">SatQuery Autonomous Agent · Ready</span>
+                                <span class="text-[0.65rem] text-white/30 ml-2">Autonomous Vision-Language Assistant · Ready</span>
                             </div>
                         </div>
 
                     </div>
 
                     <!-- ChatGPT Search / Prompt Bar -->
-                    <div class="relative flex flex-col gap-2">
-                        <div class="flex items-center gap-2 p-2 rounded-2xl bg-black/60 border border-white/15 focus-within:border-cyan-400 transition-all shadow-xl">
+                    <div class="p-4 border-t border-white/10 bg-black/60">
+                        <div class="flex items-center gap-2 p-2 rounded-2xl bg-black/80 border border-white/15 focus-within:border-cyan-400 transition-all shadow-xl">
                             <!-- Locate My Area GPS Button -->
                             <button id="btnLocateMe" type="button" title="Locate My Current Area (GPS)" class="p-2.5 rounded-xl bg-white/5 hover:bg-cyan-500/20 text-cyan-400 border border-white/10 hover:border-cyan-400/50 transition-all text-xs flex items-center gap-1 shrink-0 active:scale-90">
                                 <span>📍</span>
-                                <span class="hidden sm:inline font-medium text-[0.75rem]">Locate My Area</span>
+                                <span class="hidden sm:inline font-medium text-[0.75rem]">Locate Me</span>
                             </button>
                             
                             <textarea 
                                 id="agentChatInput" 
                                 rows="1"
                                 class="w-full bg-transparent text-sm text-white placeholder-white/40 outline-none resize-none py-2 px-2"
-                                placeholder="Ask any question, doubt, or request satellite images (e.g. 'Tell me deforestation in my area' or 'Show development in Indiranagar')..."
+                                placeholder="Ask any doubt or request satellite imagery (e.g. 'Show deforestation in Silent Valley' or 'What is NDVI?')..."
                             ></textarea>
                             
                             <button id="btnSendChat" class="px-5 py-2.5 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-black font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-cyan-400/20 shrink-0 active:scale-95">
@@ -206,13 +217,17 @@
                             </button>
                         </div>
                         
-                        <div class="flex items-center justify-between px-2 text-[0.68rem] text-white/40">
-                            <span>Press <kbd class="px-1.5 py-0.5 rounded bg-white/10 text-white font-mono text-[0.6rem]">Enter</kbd> to send · Micro-Local Geocoding & GPS Active</span>
-                            <span class="text-cyan-400 font-mono">10m GSD Optical & SAR Active</span>
+                        <div class="flex items-center justify-between px-2 pt-2 text-[0.68rem] text-white/40">
+                            <span>Press <kbd class="px-1.5 py-0.5 rounded bg-white/10 text-white font-mono text-[0.6rem]">Enter</kbd> to send · Interactive Zoomable Satellite Viewports</span>
+                            <span class="text-cyan-400 font-mono">Pan-India & Global Coverage</span>
                         </div>
                     </div>
 
                 </div>
+
+            </div>
+        </section>
+
 
 
                 <!-- 2. Visual Studio Layout (Preserved for Deep Dive Exploration) -->
