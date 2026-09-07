@@ -503,7 +503,12 @@ function initTemporalSplitSlider() {
         btnReveal.addEventListener('click', () => {
             revealed = !revealed;
             if (bboxes) bboxes.style.opacity = revealed ? '1' : '0';
-            btnReveal.style.borderColor = revealed ? '#00d2ff' : 'rgba(255,255,255,0.15)'/* --------------------------------------------------------------------------
+            btnReveal.style.borderColor = revealed ? '#00d2ff' : 'rgba(255,255,255,0.15)';
+        });
+    }
+}
+
+/* --------------------------------------------------------------------------
    5. ChatGPT-Style Conversational AI Agent Studio Engine
    -------------------------------------------------------------------------- */
 function initAgentChat() {
