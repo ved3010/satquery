@@ -389,3 +389,134 @@ export function SelectedImageInspector({
                   bandMode === "cir"
                     ? "bg-rose-600 text-white shadow-[0_0_10px_rgba(225,29,72,0.3)]"
                     : "text-[var(--color-mute)] hover:text-white"
+                }`}
+                title="Color Infrared (NIR-Red-Green: Vegetation & Chlorophyll)"
+              >
+                CIR Infrared
+              </button>
+              <button
+                onClick={() => setBandMode("swir")}
+                className={`px-2.5 py-1 rounded text-[11px] mono font-medium transition ${
+                  bandMode === "swir"
+                    ? "bg-amber-600 text-white shadow-[0_0_10px_rgba(217,119,6,0.3)]"
+                    : "text-[var(--color-mute)] hover:text-white"
+                }`}
+                title="Short-Wave Infrared (B12-B8-B4: Urban & Soil Moisture)"
+              >
+                SWIR Urban
+              </button>
+              <button
+                onClick={() => setBandMode("ndvi")}
+                className={`px-2.5 py-1 rounded text-[11px] mono font-medium transition ${
+                  bandMode === "ndvi"
+                    ? "bg-emerald-600 text-white shadow-[0_0_10px_rgba(5,150,105,0.3)]"
+                    : "text-[var(--color-mute)] hover:text-white"
+                }`}
+                title="NDVI Spectral Heatmap (Vegetation Canopy Index)"
+              >
+                NDVI Heatmap
+              </button>
+            </div>
+
+            {/* Layout Mode (Only active when 2 images available) */}
+            {isBiTemporal && (
+              <div className="flex items-center gap-1 bg-black/80 p-1 rounded-lg border border-[var(--color-line)]">
+                <button
+                  onClick={() => setLayoutMode("single")}
+                  className={`px-2 py-1 rounded text-[11px] mono transition flex items-center gap-1 ${
+                    layoutMode === "single" ? "bg-white/20 text-white" : "text-[var(--color-mute)] hover:text-white"
+                  }`}
+                  title="Single View"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>Single</span>
+                </button>
+                <button
+                  onClick={() => setLayoutMode("split")}
+                  className={`px-2 py-1 rounded text-[11px] mono transition flex items-center gap-1 ${
+                    layoutMode === "split"
+                      ? "bg-[var(--color-brand)] text-white"
+                      : "text-[var(--color-mute)] hover:text-white"
+                  }`}
+                  title="Split Wipe Slider"
+                >
+                  <SplitSquareVertical className="w-3.5 h-3.5" />
+                  <span>Split Slider</span>
+                </button>
+                <button
+                  onClick={() => setLayoutMode("side-by-side")}
+                  className={`px-2 py-1 rounded text-[11px] mono transition flex items-center gap-1 ${
+                    layoutMode === "side-by-side"
+                      ? "bg-[var(--color-brand)] text-white"
+                      : "text-[var(--color-mute)] hover:text-white"
+                  }`}
+                  title="Side-by-Side Comparison"
+                >
+                  <Columns className="w-3.5 h-3.5" />
+                  <span>Side-by-Side</span>
+                </button>
+              </div>
+            )}
+
+            {/* Viewport Zoom & Pan Controls */}
+            <div className="flex items-center gap-1 bg-black/80 p-1 rounded-lg border border-[var(--color-line)]">
+              <button
+                onClick={handleZoomIn}
+                className="p-1 rounded hover:bg-white/10 text-[var(--color-mute)] hover:text-white transition"
+                title="Zoom In"
+              >
+                <ZoomIn className="w-3.5 h-3.5" />
+              </button>
+              <span className="mono text-[10px] text-white px-1.5 tabular-nums">
+                {Math.round(zoom * 100)}%
+              </span>
+              <button
+                onClick={handleZoomOut}
+                className="p-1 rounded hover:bg-white/10 text-[var(--color-mute)] hover:text-white transition"
+                title="Zoom Out"
+              >
+                <ZoomOut className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={handleResetView}
+                className="p-1 rounded hover:bg-white/10 text-[var(--color-mute)] hover:text-white transition ml-0.5"
+                title="Reset View"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Interactive Viewport Area */}
+          <div
+            ref={viewportRef}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            className="relative h-[480px] sm:h-[530px] w-full overflow-hidden select-none cursor-grab active:cursor-grabbing bg-[#07090f] flex items-center justify-center"
+          >
+            {/* Grid Reticle Background */}
+            <div className="absolute inset-0 bg-[radial-gradient(#1f293d_1px,transparent_1px)] [background-size:24px_24px] opacity-40 pointer-events-none" />
+
+            {/* Corner Bracket Reticles */}
+            <div className="absolute top-3 left-3 w-4 h-4 border-t-2 border-l-2 border-[var(--color-brand)]/60 pointer-events-none" />
+            <div className="absolute top-3 right-3 w-4 h-4 border-t-2 border-r-2 border-[var(--color-brand)]/60 pointer-events-none" />
+            <div className="absolute bottom-3 left-3 w-4 h-4 border-b-2 border-l-2 border-[var(--color-brand)]/60 pointer-events-none" />
+            <div className="absolute bottom-3 right-3 w-4 h-4 border-b-2 border-r-2 border-[var(--color-brand)]/60 pointer-events-none" />
+
+            {/* Display the active selected image */}
+            {activeImage ? (
+              <div
+                className="relative transition-transform duration-75 flex items-center justify-center"
+                style={{
+                  transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                  transformOrigin: "center center",
+                }}
+              >
+                {/* CASE 1: Split Wipe Slider Mode (if bi-temporal) */}
+                {layoutMode === "split" && primaryImage && baselineImage ? (
+                  <div className="relative overflow-hidden rounded-xl shadow-2xl border border-[var(--color-line)] max-w-[620px]">
+                    {/* Background: Baseline Image (T0) */}
+                    <img
+                      src={getPreviewUrl(baselineImage, bandMode)}
+                      alt="Baseline T0"
