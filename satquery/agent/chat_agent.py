@@ -278,28 +278,34 @@ class ChatAgent:
         msg = user_message.strip()
         lower = msg.lower()
 
-        # 1. Greetings & System Assistance
-        if self._is_greeting(lower):
-            return self._answer_greeting()
+        try:
+            # 1. Greetings & System Assistance
+            if self._is_greeting(lower):
+                return self._answer_greeting()
 
-        # 2. Pure Remote Sensing, Physics, Sensor, or Mathematical Knowledge Query
-        if self._is_conceptual_query(lower):
-            return self._answer_knowledge_query(msg)
+            # 2. Pure Remote Sensing, Physics, Sensor, or Mathematical Knowledge Query
+            if self._is_conceptual_query(lower):
+                return self._answer_knowledge_query(msg)
 
-        # 3. Explicit Satellite Imagery Request for any location
-        if self._is_imagery_request(lower):
+            # 3. Explicit Satellite Imagery Request for any location
+            if self._is_imagery_request(lower):
+                return self._fetch_imagery_response(msg)
+
+            # 4. Location & Geographic Inquiry for any location
+            if self._is_location_inquiry(lower):
+                return self._answer_location_inquiry(msg)
+
+            # 5. Bi-Temporal Change Detection & Area Calculation (When temporal change keywords or years are present)
+            if self._is_temporal_change_request(lower):
+                return self._execute_full_analysis(msg)
+
+            # 6. General Intelligent Fallback (Understands arbitrary questions without picking random map locations)
+            return self._handle_general_query(msg)
+        except Exception as err:
+            import traceback
+            traceback.print_exc()
+            # Failsafe: return reliable satellite overview
             return self._fetch_imagery_response(msg)
-
-        # 4. Location & Geographic Inquiry for any location
-        if self._is_location_inquiry(lower):
-            return self._answer_location_inquiry(msg)
-
-        # 5. Bi-Temporal Change Detection & Area Calculation (When temporal change keywords or years are present)
-        if self._is_temporal_change_request(lower):
-            return self._execute_full_analysis(msg)
-
-        # 6. General Intelligent Fallback (Understands arbitrary questions without picking random map locations)
-        return self._handle_general_query(msg)
 
     def _is_greeting(self, lower: str) -> bool:
         tokens = lower.split()

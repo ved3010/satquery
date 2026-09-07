@@ -543,6 +543,17 @@ function initAgentChat() {
         });
     }
 
+    // Quick Topic Pills Listener
+    document.querySelectorAll('.topic-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+            const query = pill.getAttribute('data-query');
+            if (query) {
+                input.value = query;
+                handleSend();
+            }
+        });
+    });
+
     // New Analysis Session
     if (btnNewChat) {
         btnNewChat.addEventListener('click', () => {
@@ -674,15 +685,15 @@ function initAgentChat() {
 
     function appendUserMessage(text) {
         const msgDiv = document.createElement('div');
-        msgDiv.className = "flex items-start justify-end gap-3.5";
+        msgDiv.className = "max-w-4xl mx-auto w-full flex items-start justify-end gap-3.5";
         msgDiv.innerHTML = `
             <div class="flex flex-col items-end max-w-[85%]">
-                <div class="p-3.5 rounded-2xl rounded-tr-sm bg-cyan-950/70 border border-cyan-400/30 text-sm text-cyan-50 shadow-md">
+                <div class="p-4 px-5 rounded-3xl rounded-tr-sm bg-gradient-to-r from-cyan-600/30 via-cyan-500/20 to-blue-600/30 border border-cyan-400/40 text-sm text-cyan-50 shadow-xl shadow-cyan-950/30 backdrop-blur-md leading-relaxed">
                     ${escapeHtml(text)}
                 </div>
-                <span class="text-[0.65rem] text-white/30 mr-1 mt-1">You</span>
+                <span class="text-[0.65rem] text-cyan-400/50 mr-2 mt-1 font-mono">You</span>
             </div>
-            <div class="w-8 h-8 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-white/80 font-bold text-xs shrink-0">
+            <div class="w-8 h-8 rounded-xl bg-cyan-400/10 border border-cyan-400/30 flex items-center justify-center text-cyan-300 font-bold text-xs shrink-0 shadow-md">
                 👤
             </div>
         `;
@@ -692,15 +703,15 @@ function initAgentChat() {
     function appendLoadingMessage(id) {
         const msgDiv = document.createElement('div');
         msgDiv.id = id;
-        msgDiv.className = "flex items-start gap-3.5 animate-pulse";
+        msgDiv.className = "max-w-4xl mx-auto w-full flex items-start gap-4 animate-pulse";
         msgDiv.innerHTML = `
-            <div class="w-8 h-8 rounded-xl bg-cyan-400 flex items-center justify-center text-black font-extrabold text-xs shadow-md shrink-0">
+            <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-600 flex items-center justify-center text-black font-extrabold text-xs shadow-lg shadow-cyan-500/25 shrink-0">
                 SQ
             </div>
-            <div class="p-4 rounded-2xl rounded-tl-sm bg-white/[0.05] border border-white/10 text-sm text-white/70">
-                <div class="flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
-                    <span class="text-xs font-mono text-cyan-300">Executing RS-VQA & fetching real satellite tiles...</span>
+            <div class="p-4 px-5 rounded-3xl rounded-tl-sm bg-[#0d1424]/90 border border-cyan-500/30 text-sm text-white/80 shadow-xl backdrop-blur-xl">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping"></span>
+                    <span class="text-xs font-mono text-cyan-300">Synthesizing multimodal geospatial intelligence & retrieving tiles...</span>
                 </div>
             </div>
         `;
@@ -714,12 +725,12 @@ function initAgentChat() {
 
     function appendErrorMessage(errorText) {
         const msgDiv = document.createElement('div');
-        msgDiv.className = "flex items-start gap-3.5";
+        msgDiv.className = "max-w-4xl mx-auto w-full flex items-start gap-4";
         msgDiv.innerHTML = `
-            <div class="w-8 h-8 rounded-xl bg-rose-500 flex items-center justify-center text-white font-extrabold text-xs shrink-0">
+            <div class="w-8 h-8 rounded-xl bg-rose-500 flex items-center justify-center text-white font-extrabold text-xs shrink-0 shadow-lg shadow-rose-500/30">
                 !
             </div>
-            <div class="p-4 rounded-2xl rounded-tl-sm bg-rose-950/40 border border-rose-500/30 text-sm text-rose-200">
+            <div class="p-4 px-5 rounded-3xl rounded-tl-sm bg-rose-950/60 border border-rose-500/40 text-sm text-rose-200 shadow-xl">
                 ${escapeHtml(errorText)}
             </div>
         `;
@@ -728,7 +739,7 @@ function initAgentChat() {
 
     function appendAIMessage(data) {
         const msgDiv = document.createElement('div');
-        msgDiv.className = "flex items-start gap-3.5";
+        msgDiv.className = "max-w-4xl mx-auto w-full flex items-start gap-4";
 
         let formattedText = formatMarkdown(data.message || "");
         let visualDeckHtml = "";
@@ -795,14 +806,14 @@ function initAgentChat() {
             let galleryThumbsGridHtml = "";
             if (hasGallery) {
                 galleryTabsHtml = `
-                    <div class="flex items-center gap-1.5 overflow-x-auto pb-1 px-3 pt-2 bg-white/[0.02] border-b border-white/10 custom-scrollbar" id="gallery-tabs-${mapUniqueId}">
+                    <div class="flex items-center gap-1.5 overflow-x-auto pb-1.5 px-3 pt-2.5 bg-white/[0.02] border-b border-white/10 custom-scrollbar" id="gallery-tabs-${mapUniqueId}">
                         ${gallery.map((g, idx) => `
-                            <button type="button" class="gallery-tab-btn px-2.5 py-1 rounded-lg text-[0.7rem] font-medium transition-all whitespace-nowrap ${idx === 0 ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400/40 shadow-sm' : 'bg-white/5 hover:bg-white/10 text-white/60 border border-transparent'}" data-target="${mapUniqueId}-view-${idx}">
+                            <button type="button" class="gallery-tab-btn px-3 py-1 rounded-lg text-[0.72rem] font-medium transition-all whitespace-nowrap ${idx === 0 ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400/40 shadow-sm font-bold' : 'bg-white/5 hover:bg-white/10 text-white/70 border border-white/5'}" data-target="${mapUniqueId}-view-${idx}">
                                 ${escapeHtml(g.title)}
                             </button>
                         `).join('')}
-                        <button type="button" class="gallery-tab-btn px-2.5 py-1 rounded-lg text-[0.7rem] font-medium transition-all whitespace-nowrap bg-white/5 hover:bg-white/10 text-white/60 border border-transparent" data-target="${mapUniqueId}-interactive-map">
-                            🗺️ Interactive Zoom Map
+                        <button type="button" class="gallery-tab-btn px-3 py-1 rounded-lg text-[0.72rem] font-medium transition-all whitespace-nowrap bg-white/5 hover:bg-white/10 text-white/70 border border-white/5" data-target="${mapUniqueId}-interactive-map">
+                            🗺️ Detailed Hybrid Map
                         </button>
                     </div>
                 `;
@@ -819,8 +830,8 @@ function initAgentChat() {
 
                         <!-- Bottom Info & Download -->
                         <div class="absolute inset-x-0 bottom-0 z-20 p-2.5 bg-gradient-to-t from-black/95 via-black/70 to-transparent flex items-center justify-between">
-                            <span class="text-[0.65rem] text-white/80 font-mono truncate max-w-[65%]">${escapeHtml(g.sensor)}</span>
-                            <a href="data:image/png;base64,${g.image_base64}" download="satquery-${escapeHtml(loc).replace(/\s+/g, '-')}-${g.id}-${Date.now()}.png" class="px-2.5 py-1 rounded-lg bg-cyan-400/20 hover:bg-cyan-400/30 text-cyan-300 border border-cyan-400/30 text-[0.68rem] font-medium transition-all flex items-center gap-1">
+                            <span class="text-[0.68rem] text-white/80 font-mono truncate max-w-[65%]">${escapeHtml(g.sensor)}</span>
+                            <a href="data:image/png;base64,${g.image_base64}" download="satquery-${escapeHtml(loc).replace(/\s+/g, '-')}-${g.id}-${Date.now()}.png" class="px-3 py-1 rounded-lg bg-cyan-400/20 hover:bg-cyan-400/30 text-cyan-300 border border-cyan-400/30 text-[0.7rem] font-medium transition-all flex items-center gap-1">
                                 <span>📥 Download Image</span>
                             </a>
                         </div>
@@ -830,16 +841,20 @@ function initAgentChat() {
                 galleryThumbsGridHtml = `
                     <div class="p-3 bg-black/40 border-t border-white/10">
                         <div class="flex items-center justify-between mb-2">
-                            <span class="text-[0.65rem] font-bold text-white/70 uppercase tracking-wider">📸 Multi-Spectral Satellite Image Suite (${gallery.length} Views)</span>
+                            <span class="text-[0.65rem] font-bold text-white/75 uppercase tracking-wider">📸 Multi-Spectral Satellite Image Suite (${gallery.length} Views + Detailed Map)</span>
                             <span class="text-[0.6rem] text-cyan-400 font-mono">Click thumbnail to switch view</span>
                         </div>
-                        <div class="grid grid-cols-5 gap-2">
+                        <div class="grid grid-cols-6 gap-2">
                             ${gallery.map((g, idx) => `
-                                <div class="gallery-thumb-item cursor-pointer rounded-lg overflow-hidden border ${idx === 0 ? 'border-cyan-400 ring-1 ring-cyan-400/50' : 'border-white/10 hover:border-white/30'} bg-black/60 transition-all relative aspect-[4/3] group" data-target="${mapUniqueId}-view-${idx}">
+                                <div class="gallery-thumb-item cursor-pointer rounded-lg overflow-hidden border ${idx === 0 ? 'border-2 border-cyan-400 ring-2 ring-cyan-400/60 shadow-lg shadow-cyan-500/20' : 'border border-white/10 hover:border-white/30'} bg-black/60 transition-all relative aspect-[4/3] group" data-target="${mapUniqueId}-view-${idx}">
                                     <img src="data:image/png;base64,${g.image_base64}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"/>
                                     <div class="absolute inset-x-0 bottom-0 bg-black/90 px-1 py-0.5 text-[0.58rem] text-center text-white/90 truncate font-mono font-medium">${escapeHtml(g.title.split(' ')[1] || g.title)}</div>
                                 </div>
                             `).join('')}
+                            <div class="gallery-thumb-item cursor-pointer rounded-lg overflow-hidden border border-white/10 hover:border-white/30 bg-black/60 transition-all relative aspect-[4/3] group flex flex-col items-center justify-center p-1 bg-gradient-to-br from-blue-950/80 to-slate-950/90" data-target="${mapUniqueId}-interactive-map">
+                                <span class="text-base mb-0.5 group-hover:scale-110 transition-transform">🗺️</span>
+                                <div class="text-[0.58rem] text-center text-cyan-300 truncate font-mono font-semibold">Hybrid Map</div>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -849,17 +864,17 @@ function initAgentChat() {
                 ${groundPhotosHtml}
 
                 <!-- Interactive Zoomable Satellite Evidence Deck -->
-                <div class="mt-4 rounded-xl overflow-hidden border ${isDeforest ? 'border-emerald-500/40' : 'border-cyan-500/30'} bg-black/70 shadow-2xl">
+                <div id="satellite-deck-${mapUniqueId}" class="satellite-evidence-deck mt-4 rounded-2xl overflow-hidden border ${isDeforest ? 'border-emerald-500/40' : 'border-cyan-500/30'} bg-black/70 shadow-2xl">
                     
                     <!-- Card Header with Zoom Lightbox Trigger -->
                     <div class="p-3 bg-white/[0.03] border-b border-white/10 flex items-center justify-between">
                         <div class="flex items-center gap-2">
                             <span class="w-2 h-2 rounded-full ${isDeforest ? 'bg-emerald-400' : 'bg-cyan-400'} animate-pulse"></span>
-                            <span class="text-xs font-semibold text-white">🛰️ Real Satellite Imagery Suite · ${escapeHtml(loc)}</span>
+                            <span class="text-xs font-bold text-white">🛰️ Real Satellite Imagery & Detailed Maps · ${escapeHtml(loc)}</span>
                         </div>
                         <div class="flex items-center gap-2">
-                            <button type="button" class="btn-open-lightbox text-[0.65rem] px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-medium transition-all flex items-center gap-1" data-lat="${coords.lat}" data-lon="${coords.lon}" data-zoom="${zoom}" data-loc="${escapeHtml(loc)}">
-                                <span>🔍 Fullscreen Zoom</span>
+                            <button type="button" class="btn-open-lightbox text-[0.68rem] px-3 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/40 font-semibold transition-all flex items-center gap-1 shadow-sm" data-lat="${coords.lat}" data-lon="${coords.lon}" data-zoom="${zoom}" data-loc="${escapeHtml(loc)}">
+                                <span>🔍 Fullscreen Detailed Map</span>
                             </button>
                             <span class="text-[0.65rem] px-2 py-0.5 rounded-full ${isDeforest ? 'bg-emerald-950 text-emerald-300 border-emerald-500/30' : 'bg-cyan-950 text-cyan-300 border-cyan-400/30'} border font-mono">${escapeHtml(meta.resolution || "10m GSD")}</span>
                         </div>
@@ -869,19 +884,24 @@ function initAgentChat() {
 
                     ${galleryCardsHtml}
 
-                    <!-- Interactive Zoomable Leaflet Viewport -->
+                    <!-- Interactive Zoomable Detailed Leaflet Viewport -->
                     <div id="${mapUniqueId}-interactive-map" class="gallery-view-pane ${hasGallery ? 'hidden' : ''} relative aspect-[16/9] w-full bg-black">
-                        <div id="${mapUniqueId}" class="w-full h-full relative z-10" style="min-height: 280px;"></div>
+                        <div id="${mapUniqueId}" class="w-full h-full relative z-10" style="min-height: 320px;"></div>
                         
                         <!-- Floating Date Pill -->
                         <div class="absolute left-3 top-3 z-20 flex gap-1.5 pointer-events-none">
-                            <span class="px-2.5 py-1 rounded-full text-[0.65rem] font-semibold bg-black/80 backdrop-blur border border-white/20 text-white">${t1} (Baseline)</span>
+                            <span class="px-2.5 py-1 rounded-full text-[0.65rem] font-semibold bg-black/85 backdrop-blur border border-white/20 text-white">${t1} (Baseline)</span>
                             <span class="px-2.5 py-1 rounded-full text-[0.65rem] font-semibold ${isDeforest ? 'bg-emerald-950/90 border-emerald-400/40 text-emerald-300' : 'bg-cyan-950/90 border-cyan-400/40 text-cyan-300'} backdrop-blur border">${t2} (Acquisition)</span>
+                        </div>
+
+                        <!-- Real-time Center Coordinates HUD -->
+                        <div class="absolute right-3 bottom-10 z-20 px-2.5 py-1 rounded-lg bg-black/85 backdrop-blur border border-white/20 text-[0.65rem] font-mono text-cyan-300 pointer-events-none shadow-lg">
+                            <span>📍 ${coords.lat.toFixed(4)}° N, ${coords.lon.toFixed(4)}° E</span>
                         </div>
 
                         <!-- Download & Meta Bar -->
                         <div class="absolute inset-x-0 bottom-0 z-20 p-2.5 bg-gradient-to-t from-black/95 via-black/60 to-transparent flex items-center justify-between pointer-events-auto">
-                            <span class="text-[0.68rem] text-white/70 font-mono">ArcGIS World Imagery · Pinch / Scroll to Zoom</span>
+                            <span class="text-[0.68rem] text-white/70 font-mono">Detailed Hybrid Satellite & Street Network · Scroll to Zoom</span>
                             <a href="data:image/png;base64,${imgData}" download="satquery-satellite-${escapeHtml(loc).replace(/\s+/g, '-')}-${Date.now()}.png" class="px-3 py-1 rounded-lg ${isDeforest ? 'bg-emerald-400/20 hover:bg-emerald-400/30 text-emerald-300 border-emerald-400/30' : 'bg-cyan-400/20 hover:bg-cyan-400/30 text-cyan-300 border-cyan-400/30'} text-[0.7rem] font-medium border transition-all flex items-center gap-1">
                                 <span>📥 Download Tile</span>
                             </a>
@@ -929,18 +949,21 @@ function initAgentChat() {
         }
 
         msgDiv.innerHTML = `
-            <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-black font-extrabold text-xs shadow-md shrink-0">
+            <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-600 flex items-center justify-center text-black font-extrabold text-xs shadow-lg shadow-cyan-500/25 shrink-0">
                 SQ
             </div>
-            <div class="flex-1 space-y-2 max-w-[90%]">
-                <div class="p-4 rounded-2xl rounded-tl-sm bg-white/[0.05] border border-white/10 text-sm leading-relaxed text-white/90 shadow-sm">
+            <div class="flex-1 space-y-2 max-w-[95%]">
+                <div class="p-5 md:p-6 rounded-3xl rounded-tl-sm bg-[#0c1322]/95 border border-white/10 text-sm leading-relaxed text-white/90 shadow-2xl backdrop-blur-2xl">
                     ${formattedText}
                     ${visualDeckHtml}
                 </div>
-                <div class="flex items-center gap-2 text-[0.65rem] text-white/30 ml-2">
-                    <span>SatQuery AI Agent</span>
+                <div class="flex items-center gap-2 text-[0.65rem] text-cyan-400/50 ml-2 font-mono">
+                    <span class="flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                        <span>SatQuery Autonomous VLM</span>
+                    </span>
                     <span>•</span>
-                    <span>Confidence: 0.92 (PASS)</span>
+                    <span>Grounding Gate: PASS (0.92)</span>
                 </div>
             </div>
         `;
@@ -948,56 +971,64 @@ function initAgentChat() {
         stream.appendChild(msgDiv);
 
         // Setup Tab and Thumbnail switching for Multi-Image Gallery
-        const parentDeck = msgDiv.querySelector('.rounded-xl');
-        if (parentDeck) {
-            const tabButtons = parentDeck.querySelectorAll('.gallery-tab-btn');
-            const thumbItems = parentDeck.querySelectorAll('.gallery-thumb-item');
-            const panes = parentDeck.querySelectorAll('.gallery-view-pane');
+        const deckContainer = msgDiv.querySelector(`#satellite-deck-${mapUniqueId}`) || msgDiv;
+        if (deckContainer) {
+            const tabButtons = deckContainer.querySelectorAll('.gallery-tab-btn');
+            const thumbItems = deckContainer.querySelectorAll('.gallery-thumb-item');
+            const panes = deckContainer.querySelectorAll('.gallery-view-pane');
 
             function switchView(targetId) {
                 // Update Tab styles
                 tabButtons.forEach(b => {
-                    if (b.getAttribute('data-target') === targetId) {
-                        b.className = "gallery-tab-btn px-2.5 py-1 rounded-lg text-[0.7rem] font-medium transition-all whitespace-nowrap bg-cyan-500/30 text-cyan-300 border border-cyan-400/40 shadow-sm";
-                    } else {
-                        b.className = "gallery-tab-btn px-2.5 py-1 rounded-lg text-[0.7rem] font-medium transition-all whitespace-nowrap bg-white/5 hover:bg-white/10 text-white/60 border border-transparent";
-                    }
+                    const isTarget = (b.getAttribute('data-target') === targetId);
+                    b.className = isTarget 
+                        ? "gallery-tab-btn px-3 py-1 rounded-lg text-[0.72rem] font-bold transition-all whitespace-nowrap bg-cyan-500/30 text-cyan-300 border border-cyan-400/40 shadow-sm"
+                        : "gallery-tab-btn px-3 py-1 rounded-lg text-[0.72rem] font-medium transition-all whitespace-nowrap bg-white/5 hover:bg-white/10 text-white/70 border border-white/5";
                 });
 
                 // Update Thumbnail rings
                 thumbItems.forEach(t => {
-                    if (t.getAttribute('data-target') === targetId) {
-                        t.className = "gallery-thumb-item cursor-pointer rounded-lg overflow-hidden border border-cyan-400 ring-1 ring-cyan-400/50 bg-black/60 transition-all relative aspect-[4/3] group";
-                    } else {
-                        t.className = "gallery-thumb-item cursor-pointer rounded-lg overflow-hidden border border-white/10 hover:border-white/30 bg-black/60 transition-all relative aspect-[4/3] group";
-                    }
+                    const isTarget = (t.getAttribute('data-target') === targetId);
+                    t.className = isTarget
+                        ? "gallery-thumb-item cursor-pointer rounded-lg overflow-hidden border-2 border-cyan-400 ring-2 ring-cyan-400/60 bg-black/60 transition-all relative aspect-[4/3] group shadow-lg shadow-cyan-500/20"
+                        : "gallery-thumb-item cursor-pointer rounded-lg overflow-hidden border border-white/10 hover:border-white/30 bg-black/60 transition-all relative aspect-[4/3] group";
                 });
 
                 // Show selected pane
-                panes.forEach(p => p.classList.add('hidden'));
-                const targetPane = document.getElementById(targetId);
-                if (targetPane) {
-                    targetPane.classList.remove('hidden');
-                    if (targetId.endsWith('-interactive-map') && mapInstances[mapElementId]) {
-                        mapInstances[mapElementId].invalidateSize();
+                panes.forEach(p => {
+                    if (p.id === targetId) {
+                        p.classList.remove('hidden');
+                    } else {
+                        p.classList.add('hidden');
                     }
+                });
+
+                // If interactive map is selected, recalculate map container size
+                if (targetId.endsWith('-interactive-map') && mapInstances[mapElementId]) {
+                    setTimeout(() => {
+                        mapInstances[mapElementId].invalidateSize();
+                    }, 60);
                 }
             }
 
             tabButtons.forEach(btn => {
-                btn.addEventListener('click', () => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     switchView(btn.getAttribute('data-target'));
                 });
             });
 
             thumbItems.forEach(thumb => {
-                thumb.addEventListener('click', () => {
+                thumb.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     switchView(thumb.getAttribute('data-target'));
                 });
             });
         }
 
-        // Initialize Leaflet Map Instance for this card
+        // Initialize Detailed Multi-Layer Leaflet Map Instance for this card
         if (mapElementId && typeof L !== 'undefined') {
             const meta = data.real_metadata || {};
             const coords = meta.coordinates || { lat: 12.9716, lon: 77.5946 };
@@ -1013,13 +1044,78 @@ function initAgentChat() {
                         scrollWheelZoom: true
                     });
 
-                    // Real ArcGIS World Imagery Tile Layer
-                    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                        attribution: 'Esri, Maxar, Earthstar Geographics, Sentinel-2',
-                        maxZoom: 18
-                    }).addTo(map);
+                    // 1. Esri World Imagery (High-Res True Satellite)
+                    const esriSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                        attribution: 'Esri World Imagery',
+                        maxZoom: 19
+                    });
 
-                    // Add high-contrast Bounding Box / Marker
+                    // 2. Esri Reference Overlays (Place names, streets, highways, administrative boundaries)
+                    const esriPlaces = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+                        attribution: 'Esri Reference',
+                        maxZoom: 19
+                    });
+                    const esriRoads = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', {
+                        attribution: 'Esri Roads',
+                        maxZoom: 19
+                    });
+
+                    // 3. High-Detail CartoDB Voyager Streets & POIs
+                    const cartoVoyager = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                        attribution: '&copy; OpenStreetMap &copy; CARTO',
+                        subdomains: 'abcd',
+                        maxZoom: 20
+                    });
+
+                    // 4. Standard OpenStreetMap
+                    const osmStandard = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; OpenStreetMap contributors',
+                        maxZoom: 19
+                    });
+
+                    // Combined Default Layer: Hybrid Satellite with High-Detail Street & Landmark Labels
+                    const hybridGroup = L.layerGroup([esriSat, esriRoads, esriPlaces]);
+                    hybridGroup.addTo(map);
+
+                    // Add Layer Switcher Control
+                    const baseMaps = {
+                        "🛰️ Detailed Hybrid Satellite": hybridGroup,
+                        "🗺️ High-Detail Street Map": cartoVoyager,
+                        "🛰️ Pure Optical Satellite": esriSat,
+                        "🌐 OpenStreetMap": osmStandard
+                    };
+                    L.control.layers(baseMaps, null, { position: 'topright', collapsed: false }).addTo(map);
+
+                    // Metric Scale Bar
+                    L.control.scale({ imperial: false, metric: true, position: 'bottomleft' }).addTo(map);
+
+                    // Custom Glowing Pin Marker on Exact Location
+                    const customPin = L.divIcon({
+                        className: 'custom-geo-pin',
+                        html: `
+                            <div class="relative flex items-center justify-center">
+                                <span class="absolute w-8 h-8 rounded-full bg-cyan-400/40 animate-ping"></span>
+                                <span class="relative w-5 h-5 rounded-full bg-gradient-to-tr from-cyan-400 to-blue-500 border-2 border-white shadow-xl shadow-cyan-400/60 flex items-center justify-center text-[10px]">📍</span>
+                            </div>
+                        `,
+                        iconSize: [28, 28],
+                        iconAnchor: [14, 14]
+                    });
+
+                    const marker = L.marker([coords.lat, coords.lon], { icon: customPin }).addTo(map);
+                    marker.bindPopup(`
+                        <div class="p-2 text-slate-900 font-sans min-w-[200px]">
+                            <strong class="text-sm font-bold block text-cyan-700">${escapeHtml(data.location || "Target AOI")}</strong>
+                            <span class="text-xs text-slate-600 block mt-1">📍 ${coords.lat.toFixed(4)}° N, ${coords.lon.toFixed(4)}° E</span>
+                            <span class="text-[11px] text-slate-500 block">Sensor: ${escapeHtml(meta.resolution || "10m GSD")} Sentinel-2</span>
+                            <div class="mt-2.5 pt-2 border-t border-slate-200 flex items-center gap-3">
+                                <a href="https://www.google.com/maps?q=${coords.lat},${coords.lon}" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-blue-600 hover:text-blue-800">Google Maps ↗</a>
+                                <a href="https://earth.google.com/web/@${coords.lat},${coords.lon},1000a,35d,35y,0h,0t,0r" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-cyan-600 hover:text-cyan-800">Google Earth ↗</a>
+                            </div>
+                        </div>
+                    `).openPopup();
+
+                    // Add high-contrast Bounding Box
                     const bboxes = data.bounding_boxes || [];
                     if (bboxes.length > 0) {
                         const bounds = [
@@ -1030,7 +1126,7 @@ function initAgentChat() {
                             color: data.metrics?.is_deforestation ? "#ef4444" : "#f59e0b",
                             weight: 2,
                             fillOpacity: 0.15
-                        }).addTo(map).bindPopup(`<b>${escapeHtml(data.location)}</b><br/>${escapeHtml(bboxes[0].label)}`);
+                        }).addTo(map);
                     }
 
                     mapInstances[mapElementId] = map;
@@ -1039,7 +1135,7 @@ function initAgentChat() {
         }
     }
 
-    // Handle Lightbox Open
+    // Handle Lightbox Open with Full Multi-Layer Detailed Map
     document.addEventListener('click', (e) => {
         const btn = e.target.closest('.btn-open-lightbox');
         if (btn && lightboxModal && typeof L !== 'undefined') {
@@ -1048,7 +1144,7 @@ function initAgentChat() {
             const zoom = parseInt(btn.getAttribute('data-zoom')) || 14;
             const loc = btn.getAttribute('data-loc') || 'Satellite Viewport';
 
-            if (lightboxTitle) lightboxTitle.innerText = `🛰️ High-Resolution Satellite Viewport — ${loc}`;
+            if (lightboxTitle) lightboxTitle.innerText = `🛰️ High-Resolution Detailed Map — ${loc} (${lat.toFixed(4)}° N, ${lon.toFixed(4)}° E)`;
 
             lightboxModal.classList.remove('hidden');
             lightboxModal.classList.add('flex');
@@ -1064,12 +1160,62 @@ function initAgentChat() {
                         scrollWheelZoom: true
                     });
 
-                    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    const esriSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                         attribution: 'Esri World Imagery',
                         maxZoom: 19
-                    }).addTo(activeLightboxMap);
+                    });
+                    const esriPlaces = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+                        attribution: 'Esri Reference',
+                        maxZoom: 19
+                    });
+                    const esriRoads = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', {
+                        attribution: 'Esri Roads',
+                        maxZoom: 19
+                    });
+                    const cartoVoyager = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                        attribution: '&copy; OpenStreetMap &copy; CARTO',
+                        subdomains: 'abcd',
+                        maxZoom: 20
+                    });
+                    const osmStandard = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; OpenStreetMap',
+                        maxZoom: 19
+                    });
 
-                    L.marker([lat, lon]).addTo(activeLightboxMap).bindPopup(`<b>${loc}</b>`).openPopup();
+                    const hybridGroup = L.layerGroup([esriSat, esriRoads, esriPlaces]);
+                    hybridGroup.addTo(activeLightboxMap);
+
+                    const baseMaps = {
+                        "🛰️ Detailed Hybrid Satellite": hybridGroup,
+                        "🗺️ High-Detail Street Map": cartoVoyager,
+                        "🛰️ Pure Optical Satellite": esriSat,
+                        "🌐 OpenStreetMap": osmStandard
+                    };
+                    L.control.layers(baseMaps, null, { position: 'topright', collapsed: false }).addTo(activeLightboxMap);
+                    L.control.scale({ imperial: false, metric: true, position: 'bottomleft' }).addTo(activeLightboxMap);
+
+                    const customPin = L.divIcon({
+                        className: 'custom-geo-pin',
+                        html: `
+                            <div class="relative flex items-center justify-center">
+                                <span class="absolute w-8 h-8 rounded-full bg-cyan-400/40 animate-ping"></span>
+                                <span class="relative w-5 h-5 rounded-full bg-gradient-to-tr from-cyan-400 to-blue-500 border-2 border-white shadow-xl shadow-cyan-400/60 flex items-center justify-center text-[10px]">📍</span>
+                            </div>
+                        `,
+                        iconSize: [28, 28],
+                        iconAnchor: [14, 14]
+                    });
+
+                    L.marker([lat, lon], { icon: customPin }).addTo(activeLightboxMap).bindPopup(`
+                        <div class="p-2 text-slate-900 font-sans">
+                            <strong class="text-sm font-bold block text-cyan-700">${escapeHtml(loc)}</strong>
+                            <span class="text-xs text-slate-600 block mt-1">📍 ${lat.toFixed(4)}° N, ${lon.toFixed(4)}° E</span>
+                            <div class="mt-2 pt-1 border-t border-slate-200 flex gap-3">
+                                <a href="https://www.google.com/maps?q=${lat},${lon}" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-blue-600 hover:text-blue-800">Google Maps ↗</a>
+                                <a href="https://earth.google.com/web/@${lat},${lon},1000a,35d,35y,0h,0t,0r" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-cyan-600 hover:text-cyan-800">Google Earth ↗</a>
+                            </div>
+                        </div>
+                    `).openPopup();
                 }, 150);
             }
         }

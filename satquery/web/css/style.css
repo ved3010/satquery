@@ -357,3 +357,182 @@ body {
     padding: 2px 6px;
     border-radius: 4px;
 }
+
+/* ==========================================================================
+   Ultra-Aesthetic AI Studio Chat Engine Styles
+   ========================================================================== */
+.studio-glass-shell {
+    background: linear-gradient(135deg, rgba(13, 19, 33, 0.95) 0%, rgba(8, 12, 22, 0.98) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 25px 60px -15px rgba(0, 210, 255, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+}
+
+.studio-sidebar {
+    background: linear-gradient(180deg, rgba(10, 15, 29, 0.9) 0%, rgba(6, 9, 18, 0.95) 100%);
+}
+
+.history-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid transparent;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-align: left;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    cursor: pointer;
+}
+
+.history-item:hover {
+    background: rgba(255, 255, 255, 0.07);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.12);
+    transform: translateX(2px);
+}
+
+.history-item.active {
+    background: linear-gradient(90deg, rgba(6, 182, 212, 0.15), rgba(6, 182, 212, 0.03));
+    color: #38bdf8;
+    border-color: rgba(56, 189, 248, 0.3);
+    box-shadow: 0 0 15px rgba(6, 182, 212, 0.1);
+}
+
+.topic-pill {
+    padding: 4px 10px;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.68rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.topic-pill:hover {
+    background: rgba(6, 182, 212, 0.15);
+    border-color: rgba(56, 189, 248, 0.4);
+    color: #38bdf8;
+    transform: translateY(-1px);
+}
+
+.glowing-input-capsule {
+    background: rgba(10, 15, 29, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(20px);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glowing-input-capsule:focus-within {
+    border-color: rgba(56, 189, 248, 0.6);
+    box-shadow: 0 12px 35px rgba(6, 182, 212, 0.15), 0 0 0 2px rgba(56, 189, 248, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.ground-photo-card {
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ground-photo-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(245, 158, 11, 0.15);
+    border-color: rgba(245, 158, 11, 0.4);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(56, 189, 248, 0.4);
+}
+
+/* --------------------------------------------------------------------------
+   Sleek Dark Mode Leaflet Map Controls & Custom Overlays
+   -------------------------------------------------------------------------- */
+.leaflet-control-layers {
+    background: rgba(13, 19, 33, 0.92) !important;
+    backdrop-filter: blur(16px) !important;
+    border: 1px solid rgba(56, 189, 248, 0.3) !important;
+    border-radius: 12px !important;
+    color: #e2e8f0 !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7) !important;
+    font-family: var(--font-sans) !important;
+    font-size: 0.72rem !important;
+    padding: 6px 10px !important;
+}
+
+.leaflet-control-layers-base label {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    margin-bottom: 4px !important;
+    cursor: pointer !important;
+    font-weight: 500 !important;
+    transition: color 0.15s ease !important;
+}
+
+.leaflet-control-layers-base label:hover {
+    color: #38bdf8 !important;
+}
+
+.leaflet-control-zoom a {
+    background: rgba(13, 19, 33, 0.9) !important;
+    backdrop-filter: blur(12px) !important;
+    color: #38bdf8 !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    transition: all 0.2s ease !important;
+}
+
+.leaflet-control-zoom a:hover {
+    background: #00d2ff !important;
+    color: #000000 !important;
+    border-color: #00d2ff !important;
+}
+
+.leaflet-control-scale-line {
+    background: rgba(0, 0, 0, 0.75) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    color: #38bdf8 !important;
+    font-family: var(--font-mono) !important;
+    font-size: 0.62rem !important;
+    border-top: none !important;
+    padding: 2px 6px !important;
+}
+
+.leaflet-popup-content-wrapper {
+    background: rgba(10, 15, 29, 0.95) !important;
+    backdrop-filter: blur(16px) !important;
+    border: 1px solid rgba(56, 189, 248, 0.4) !important;
+    border-radius: 14px !important;
+    color: #ffffff !important;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.8) !important;
+}
+
+.leaflet-popup-tip {
+    background: rgba(10, 15, 29, 0.95) !important;
+    border: 1px solid rgba(56, 189, 248, 0.4) !important;
+}
+
+.custom-geo-pin {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+

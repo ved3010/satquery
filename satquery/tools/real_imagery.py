@@ -18,6 +18,12 @@ from PIL import Image
 from typing import Dict, Any, Tuple, Optional, List
 
 
+# Internal in-memory cache for ultra-fast response
+_PHOTOS_CACHE: Dict[str, List[Dict[str, Any]]] = {}
+_PROFILE_CACHE: Dict[str, Dict[str, Any]] = {}
+_SATELLITE_CACHE: Dict[str, Dict[str, Any]] = {}
+
+
 # Extended Pan-India & Global Geocoding Registry
 GEOCODE_REGISTRY = {
     "swargate": (18.5018, 73.8580, 16),
@@ -105,6 +111,8 @@ GEOCODE_REGISTRY = {
 
 def clean_place_name(text: str) -> str:
     """Strips conversational noise, verbs, and image-request phrasing to isolate pure location names."""
+    if not text:
+        return ""
     q = text.lower().strip()
     q = re.sub(r'[\?!\.,\*\";:]', ' ', q)
     
@@ -143,12 +151,16 @@ def clean_place_name(text: str) -> str:
 def fetch_real_ground_photos(place_name: str, limit: int = 6) -> List[Dict[str, Any]]:
     """
     Fetches real ground-level and landmark photographs for any location in India or globally
-    using Wikimedia Commons & Wikipedia Media APIs (free, fast, high-res photos).
+    using Wikimedia Commons & Wikipedia Media APIs (free, fast, high-res photos with caching).
     """
     cleaned = clean_place_name(place_name)
     target = cleaned if cleaned else place_name.strip()
     if not target or len(target) < 2:
         return []
+
+    cache_key = target.lower()
+    if cache_key in _PHOTOS_CACHE:
+        return _PHOTOS_CACHE[cache_key]
 
     images: List[Dict[str, Any]] = []
     session = requests.Session()
@@ -159,7 +171,7 @@ def fetch_real_ground_photos(place_name: str, limit: int = 6) -> List[Dict[str, 
     try:
         # 1. Search Wikipedia page for the place
         search_url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={requests.utils.quote(target)}&format=json&utf8=1"
-        resp = session.get(search_url, timeout=3.5).json()
+        resp = session.get(search_url, timeout=3.0).json()
         results = resp.get('query', {}).get('search', [])
         
         page_title = results[0]['title'] if results else target.title()
@@ -167,7 +179,7 @@ def fetch_real_ground_photos(place_name: str, limit: int = 6) -> List[Dict[str, 
         # 2. Get lead page summary & thumbnail
         try:
             summary_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{requests.utils.quote(page_title)}"
-            sum_resp = session.get(summary_url, timeout=3.5).json()
+            sum_resp = session.get(summary_url, timeout=3.0).json()
             if 'thumbnail' in sum_resp:
                 img_url = sum_resp['thumbnail']['source']
                 img_url_hd = re.sub(r'/\d+px-', '/960px-', img_url)
@@ -183,7 +195,7 @@ def fetch_real_ground_photos(place_name: str, limit: int = 6) -> List[Dict[str, 
 
         # 3. Get rich scenic & landmark images from Wikimedia Commons Search
         commons_url = f"https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch={requests.utils.quote(target)}&gsrnamespace=6&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=960&format=json&gsrlimit={limit + 3}"
-        c_resp = session.get(commons_url, timeout=3.5).json()
+        c_resp = session.get(commons_url, timeout=3.0).json()
         c_pages = c_resp.get('query', {}).get('pages', {})
         for cid, cdata in c_pages.items():
             if len(images) >= limit:
@@ -212,6 +224,7 @@ def fetch_real_ground_photos(place_name: str, limit: int = 6) -> List[Dict[str, 
     except Exception:
         pass
 
+    _PHOTOS_CACHE[cache_key] = images
     return images
 
 
@@ -490,7 +503,7 @@ def fetch_multi_perspective_satellite_images(
     # 3. Spectral NDVI Biophysical Map
     ndvi_approx = (2.0 * g - r - b) / (2.0 * g + r + b + 1e-5)
     ndvi_norm = np.clip((ndvi_approx + 0.4) / 1.4, 0.0, 1.0)
-    cmap = cm.get_cmap('turbo') if hasattr(cm, 'get_cmap') else matplotlib.colormaps['turbo']
+    cmap = matplotlib.colormaps['turbo']
     ndvi_rgba = (cmap(ndvi_norm)[:, :, :3] * 255).astype(np.uint8)
     ndvi_img = Image.fromarray(ndvi_rgba)
     ndvi_b64 = _pil_to_base64(ndvi_img)
