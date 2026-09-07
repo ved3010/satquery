@@ -1,14 +1,14 @@
 """
 SatQuery Conversational AI Agent.
-ChatGPT-style agentic assistant capable of answering any remote-sensing question,
-explaining concepts, answering location & geographical inquiries, fetching real photographic
-satellite imagery, and running quantitative Earth Observation pipelines.
+Autonomous Vision-Language Geospatial Assistant capable of answering any remote-sensing question,
+explaining scientific concepts, resolving any location worldwide with brief insights, and fetching
+crisp, multi-perspective satellite imagery galleries (Optical RGB, False Color CIR, NDVI, SAR Radar, and Macro Context).
 """
 
 import re
 import io
-import base64
 import math
+import base64
 from typing import Dict, Any, List, Optional
 from PIL import Image
 
@@ -17,6 +17,7 @@ from satquery.tools.real_imagery import (
     fetch_multi_perspective_satellite_images,
     geocode_location,
     get_location_metadata,
+    clean_place_name,
     GEOCODE_REGISTRY
 )
 from satquery.agent.planner import AgentPlanner
@@ -38,14 +39,34 @@ LOCATION_KNOWLEDGE: Dict[str, Dict[str, Any]] = {
         "surface_area": "~29 sq km (approx. 2,900 hectares at full tank level)",
         "history": (
             "Commissioned in 1920 by the 7th Nizam of Hyderabad, Mir Osman Ali Khan, "
-            "designed by the legendary engineer Sir Mokshagundam Visvesvaraya following the disastrous "
-            "Great Musi Flood of 1908. It served as Hyderabad's primary drinking water reservoir for over a century."
+            "designed by Sir M. Visvesvaraya following the Great Musi Flood of 1908. "
+            "It served as Hyderabad's primary drinking water reservoir for over a century."
         ),
         "remote_sensing_significance": (
             "Monitored via Sentinel-2 NDWI/MNDWI and Sentinel-1 SAR for seasonal surface water contraction, "
             "catchment siltation, and urban encroachment along the Gandipet and Gachibowli IT corridor fringes."
         ),
         "recommended_query": "Calculate surface water reduction in Osman Sagar Reservoir between 2021 and 2024"
+    },
+    "swargate": {
+        "title": "Swargate, Pune",
+        "type": "Major Urban Transit Hub & Commercial Center",
+        "state": "Maharashtra, India",
+        "district": "Pune City District",
+        "coordinates": "18.5018° N, 73.8580° E",
+        "context": "One of the central transportation, commercial, and metro hubs of Pune, adjacent to Sarasbaug and Parvati Hill.",
+        "remote_sensing_significance": "High-density urban built-up fabric (NDBI > 0.35) and transport network infrastructure.",
+        "recommended_query": "Show satellite imagery of Swargate Pune"
+    },
+    "pune": {
+        "title": "Pune Metropolitan Agglomeration",
+        "type": "Major Industrial & Educational Megacity",
+        "state": "Maharashtra, India",
+        "coordinates": "18.5204° N, 73.8567° E",
+        "elevation": "560 meters MSL",
+        "context": "The cultural capital of Maharashtra and major automotive, manufacturing, and IT hub (Hinjewadi, Magarpatta).",
+        "remote_sensing_significance": "Rapid peri-urban concrete sprawl into Mutha river basin and Sahyadri foothills.",
+        "recommended_query": "What is the urban expansion in Pune over the last 5 years?"
     },
     "himayat sagar": {
         "title": "Himayat Sagar Reservoir",
@@ -171,6 +192,26 @@ LOCATION_KNOWLEDGE: Dict[str, Dict[str, Any]] = {
         "remote_sensing_significance": "Coastal reclamation tracking, mangrove protection in Thane Creek, and urban thermal islands.",
         "recommended_query": "Track coastal infrastructure and urban density in Mumbai"
     },
+    "charminar": {
+        "title": "Charminar Monument & Old City",
+        "type": "Historic Monument & High-Density Urban Fabric",
+        "state": "Telangana, India",
+        "district": "Hyderabad Old City",
+        "coordinates": "17.3616° N, 78.4747° E",
+        "context": "Built in 1591 CE, the iconic centerpiece of Hyderabad surrounded by historical bazaars.",
+        "remote_sensing_significance": "Sub-meter urban texture, rooftop thermal reflectance, and heritage buffer zoning.",
+        "recommended_query": "Show satellite imagery of Charminar Hyderabad"
+    },
+    "marine drive": {
+        "title": "Marine Drive (Queen's Necklace)",
+        "type": "Coastal Promenade & Reclamation",
+        "state": "Maharashtra, India",
+        "district": "South Mumbai",
+        "coordinates": "18.9430° N, 72.8230° E",
+        "context": "3.6 km long C-shaped boulevard along the Arabian Sea coast.",
+        "remote_sensing_significance": "Coastal land-water interface delineation and urban embankment monitoring.",
+        "recommended_query": "Show satellite photo of Marine Drive Mumbai"
+    },
     "kharagpur": {
         "title": "Kharagpur Region",
         "type": "Industrial & Academic Hub (Paschim Medinipur)",
@@ -203,25 +244,28 @@ class ChatAgent:
         msg = user_message.strip()
         lower = msg.lower()
 
-        # 1. Greeting or Generic Help
+        # 1. Greetings & System Assistance
         if self._is_greeting(lower):
             return self._answer_greeting()
 
-        # 2. Conceptual Remote Sensing / Physics / ISRO Knowledge Query
+        # 2. Pure Remote Sensing, Physics, Sensor, or Mathematical Knowledge Query
         if self._is_conceptual_query(lower):
             return self._answer_knowledge_query(msg)
 
-        # 3. Location / Geographical Question ("Where is X", "What is X", "Tell me about X", etc.)
+        # 3. Explicit Satellite Imagery Request for any location
+        if self._is_imagery_request(lower):
+            return self._fetch_imagery_response(msg)
+
+        # 4. Location & Geographic Inquiry for any location
         if self._is_location_inquiry(lower):
             return self._answer_location_inquiry(msg)
 
-        # 4. Pure Satellite Imagery Request ("Show image of X", "Satellite photo of X")
-        # without temporal change math
-        if self._is_imagery_only_request(lower):
-            return self._fetch_imagery_response(msg)
+        # 5. Bi-Temporal Change Detection & Area Calculation (When temporal change keywords or years are present)
+        if self._is_temporal_change_request(lower):
+            return self._execute_full_analysis(msg)
 
-        # 5. Earth Observation Pipeline & Change Analytics
-        return self._execute_full_analysis(msg)
+        # 6. General Intelligent Fallback (Understands arbitrary questions without picking random map locations)
+        return self._handle_general_query(msg)
 
     def _is_greeting(self, lower: str) -> bool:
         tokens = lower.split()
@@ -234,15 +278,16 @@ class ChatAgent:
     def _answer_greeting(self) -> Dict[str, Any]:
         answer = (
             "### 🛰️ Welcome to SatQuery AI\n\n"
-            "I am your **Autonomous Vision-Language Geospatial Assistant**. I can answer remote sensing questions, "
-            "provide geographic details on any location, fetch real high-resolution satellite imagery, and compute "
-            "zero-hallucination bi-temporal change metrics.\n\n"
+            "I am your **Autonomous Vision-Language Geospatial Assistant**. I can answer any Earth Observation question, "
+            "provide geographic details and **clear multiple satellite images** for any location worldwide, and compute "
+            "verifiable bi-temporal change metrics.\n\n"
             "**Here are things you can ask me:**\n"
-            "- **Geographical Inquiries:** *\"Where is Osman Sagar located?\"* or *\"Tell me about Western Ghats\"*\n"
+            "- **Get Satellite Images of Any Place:** *\"Show multiple images of Swargate Pune\"* or *\"Satellite photo of Marine Drive Mumbai\"*\n"
+            "- **Location Details & Imagery:** *\"Where is Osman Sagar located?\"* or *\"Tell me about Western Ghats\"*\n"
             "- **Bi-Temporal Change Analysis:** *\"Calculate surface water reduction in Osman Sagar between 2021 and 2024\"*\n"
             "- **Urban Development:** *\"What is the concrete built-up growth in Bangalore over the last 5 years?\"*\n"
             "- **All-Weather SAR Radar:** *\"Map flood inundation along Brahmaputra River through monsoon clouds\"*\n"
-            "- **Physics & Formulas:** *\"What is NDVI formula and how does it differ from NDWI?\"*\n\n"
+            "- **Scientific Principles & Formulas:** *\"What is NDVI formula and why are infrared images red?\"*\n\n"
             "What would you like to explore today?"
         )
         return {
@@ -251,48 +296,56 @@ class ChatAgent:
         }
 
     def _is_conceptual_query(self, lower: str) -> bool:
+        # Check if question is scientific/conceptual without requesting a specific place's imagery
         keywords = [
-            "what is ndvi", "what is ndwi", "what is ndbi", "what is nbr", "what is savi",
-            "formula", "how does sar", "how does radar", "difference between", "spectral index",
-            "band math", "polarization", "what is risat", "what is cartosat", "why do we use sar",
-            "explain sar", "explain ndvi", "explain ndwi", "what is gsd", "ground sample distance",
-            "spatial resolution", "isro satellite", "bhuvan", "sentinel-2 bands"
+            "what is ndvi", "what is ndwi", "what is ndbi", "what is nbr", "what is savi", "what is mndwi",
+            "formula", "how does sar", "how does radar", "how do satellites", "difference between",
+            "spectral index", "spectral indices", "band math", "polarization", "what is risat", "what is cartosat",
+            "why do we use sar", "why are infrared", "why is false color", "explain sar", "explain ndvi",
+            "explain ndwi", "what is gsd", "ground sample distance", "spatial resolution", "isro satellite",
+            "bhuvan", "sentinel-2 bands", "how to measure deforestation", "atmospheric correction",
+            "what are active sensors", "what are passive sensors", "how does change detection work"
         ]
         return any(k in lower for k in keywords)
 
+    def _is_imagery_request(self, lower: str) -> bool:
+        has_img_word = any(w in lower for w in [
+            "image", "images", "photo", "photos", "pic", "pics", "picture", "pictures",
+            "satellite photo", "satellite view", "give image", "show satellite", "fetch image",
+            "multiple images", "different images", "different views", "satellite imagery",
+            "satellite picture", "view of", "fetch pictures", "send images"
+        ])
+        has_temporal_math = any(w in lower for w in ["calculate", "reduction", "loss rate", "between 20", "vs 20", "delta", "growth rate", "how many hectares", "how much changed"])
+        return has_img_word and not has_temporal_math
+
     def _is_location_inquiry(self, lower: str) -> bool:
-        # Check if question is asking "where is", "where is located", "tell me about", "what is [location]"
-        # but NOT asking to calculate change / compare past vs present
-        has_change_words = any(w in lower for w in ["calculate", "reduction", "loss", "deforest", "between", "2020", "2021", "2022", "2023", "2024", "2025", "difference", "sprawl", "expansion", "growth", "inundation", "stubble"])
-        if has_change_words:
+        has_temporal_math = any(w in lower for w in ["calculate", "reduction", "loss", "deforest", "between 20", "vs 20", "difference between 20", "sprawl", "growth rate", "how many hectares"])
+        if has_temporal_math:
             return False
 
         location_phrases = [
             "where is", "located", "location of", "tell me about", "what is the location",
-            "which state", "which city", "which district", "coordinates of", "where can i find",
-            "information on", "about osman sagar", "about western ghats", "about bangalore"
+            "which state", "which city", "which district", "which country", "coordinates of",
+            "where can i find", "information on", "about osman sagar", "about western ghats",
+            "about bangalore", "about pune", "about swargate"
         ]
         if any(p in lower for p in location_phrases):
             return True
 
-        # Check if the query is just a place name like "osman sagar" or "western ghats"
         for loc_key in LOCATION_KNOWLEDGE.keys():
             if lower == loc_key or lower == f"what is {loc_key}":
                 return True
 
         return False
 
-    def _is_imagery_only_request(self, lower: str) -> bool:
-        has_img_word = any(w in lower for w in [
-            "image", "images", "photo", "photos", "pic", "pics", "picture", "pictures",
-            "satellite photo", "satellite view", "give image", "show satellite", "fetch image",
-            "multiple images", "different images", "different views", "satellite imagery",
-            "satellite picture", "view of"
+    def _is_temporal_change_request(self, lower: str) -> bool:
+        has_years = bool(re.search(r'\b(19\d\d|20\d\d)\b', lower))
+        has_change_words = any(w in lower for w in [
+            "calculate", "reduction", "loss", "deforest", "between", "what changed",
+            "difference", "expansion", "growth", "inundation", "stubble burning",
+            "burn severity", "sprawl", "water depletion"
         ])
-        has_math_word = any(w in lower for w in [
-            "calculate", "reduction", "loss rate", "between 20", "vs 20", "delta", "growth rate", "how many hectares"
-        ])
-        return has_img_word and not has_math_word
+        return has_years or has_change_words
 
     def _answer_location_inquiry(self, query: str) -> Dict[str, Any]:
         lower = query.lower()
@@ -301,6 +354,13 @@ class ChatAgent:
             if loc_key in lower:
                 matched_key = loc_key
                 break
+
+        # Fetch multi-perspective satellite gallery so the user gets actual clear images of this location
+        multi_data = fetch_multi_perspective_satellite_images(query)
+        resolved_loc = multi_data["location"]
+        coords = multi_data["coordinates"]
+        zoom = multi_data["zoom"]
+        gallery = multi_data.get("gallery", [])
 
         if matched_key and matched_key in LOCATION_KNOWLEDGE:
             info = LOCATION_KNOWLEDGE[matched_key]
@@ -325,16 +385,12 @@ class ChatAgent:
 
             answer += (
                 f"\n---\n"
-                f"💡 **Suggested Analysis:**\n"
-                f"- *Run bi-temporal analysis:* `\"{info['recommended_query']}\"`\n"
-                f"- *Request satellite imagery:* `\"Show satellite imagery of {info['title'].split('(')[0].strip()}\"`"
+                f"📸 **Multi-Spectral Satellite Gallery:** Displaying **{len(gallery)} calibrated EO views** below (True Color Optical, False Color Infrared CIR, Spectral NDVI Heatmap, and SAR Radar Texture).\n"
             )
         else:
-            # Fallback dynamic geocoder for unlisted locations worldwide
             meta = get_location_metadata(query)
             lat = meta["lat"]
             lon = meta["lon"]
-            zoom = meta["zoom"]
             loc_name = meta["name"]
             country = meta.get("country", "Global")
             state = meta.get("state", "")
@@ -344,19 +400,45 @@ class ChatAgent:
 
             answer = (
                 f"### 📍 **{loc_name}**\n\n"
-                f"- **Administrative Location:** {disp}\n"
+                f"- **Administrative Location:** **{disp}**\n"
                 f"- **Coordinates:** `{lat:.4f}° N, {lon:.4f}° E`\n"
                 f"- **Category:** `{place_type}`\n"
-                f"- **Satellite GSD:** `~{round(156543.03392 * math.cos(math.radians(lat)) / (2 ** zoom), 2)}m per pixel` (Zoom `{zoom}`)\n"
-                f"- **Sensors Available:** `Sentinel-2 Optical (10m)` + `Sentinel-1 SAR Radar (All-Weather)`\n\n"
-                f"💡 **Suggested Next Steps:**\n"
-                f"- *View satellite scene:* `\"Show satellite imagery of {loc_name}\"`\n"
-                f"- *Analyze multi-year changes:* `\"What changed in {loc_name} between 2021 and 2025?\"`"
+                f"- **Ground Sample Distance (GSD):** `~{multi_data['resolution_m']}m per pixel` (Zoom `{zoom}`)\n"
+                f"- **Sensor Coverage:** `Sentinel-2 MSI Optical (10m)` + `Sentinel-1 SAR Radar (All-Weather)`\n\n"
+                f"📸 **Satellite Views Loaded:** **{len(gallery)} Multi-Spectral Views** generated below (Natural Optical, NIR Vegetation Biomass, Spectral NDVI, and Radar Texture).\n"
             )
 
+        try:
+            img_bytes = base64.b64decode(multi_data["primary_image_base64"])
+            pil_img = Image.open(io.BytesIO(img_bytes))
+        except Exception:
+            pil_img = None
+
+        vqa_result = self.vqa_engine.analyze_vqa(
+            image_pil=pil_img,
+            question=query,
+            coordinates=coords,
+            zoom_level=zoom
+        )
+
         return {
-            "type": "location_info",
-            "message": answer
+            "type": "analysis_with_imagery",
+            "message": answer,
+            "location": resolved_loc,
+            "temporal_range": {"t1": 2024, "t2": 2025},
+            "real_satellite_image": multi_data["primary_image_base64"],
+            "real_metadata": {
+                "source": multi_data["source"],
+                "resolution": f"{multi_data['resolution_m']}m per pixel (Z{zoom})",
+                "coordinates": coords,
+                "zoom": zoom
+            },
+            "gallery": gallery,
+            "map_layers": {},
+            "metrics": vqa_result["biophysical_metrics"],
+            "trace": [],
+            "bounding_boxes": vqa_result["grounded_bounding_boxes"],
+            "class_distribution": vqa_result.get("bigearthnet_class_distribution", [])
         }
 
     def _fetch_imagery_response(self, query: str) -> Dict[str, Any]:
@@ -380,11 +462,12 @@ class ChatAgent:
         )
 
         response_text = (
-            f"### 🛰️ **Multi-Perspective Satellite Intelligence: {resolved_loc}**\n\n"
-            f"- **Target Coordinates:** `{coords['lat']:.4f}° N, {coords['lon']:.4f}° E` (`{multi_data.get('display_name', resolved_loc)}`)\n"
-            f"- **Optical Spatial Resolution:** `{multi_data['resolution_m']}m GSD` (Zoom Level `{zoom}`)\n"
-            f"- **Data Ingestion Source:** `{multi_data['source']}`\n"
-            f"- **Multi-Spectral Gallery:** **{len(gallery)} Calibrated EO Views** generated (Optical True Color, False Color Infrared, Spectral NDVI, SAR Radar Surface Texture, Macro Context).\n\n"
+            f"### 🛰️ **Multi-Perspective Satellite Imagery: {resolved_loc}**\n\n"
+            f"- **Target Region:** **{multi_data.get('display_name', resolved_loc)}**\n"
+            f"- **Coordinates:** `{coords['lat']:.4f}° N, {coords['lon']:.4f}° E`\n"
+            f"- **Optical Resolution:** `{multi_data['resolution_m']}m GSD` (Zoom Level `{zoom}`)\n"
+            f"- **Sensor Modality:** `Sentinel-2 Multi-Spectral + Sentinel-1 SAR Radar`\n"
+            f"- **Generated Views ({len(gallery)}):** `Optical True Color`, `False Color Infrared (CIR)`, `Spectral NDVI Heatmap`, `Urban SAR Texture`, `Regional Macro View`.\n\n"
             f"{vqa_result['answer']}"
         )
 
@@ -409,20 +492,18 @@ class ChatAgent:
         }
 
     def _execute_full_analysis(self, msg: str) -> Dict[str, Any]:
-        # 1. Fetch Real Photographic Satellite Image with dynamic geocoder
-        real_img_data = fetch_real_satellite_image(msg)
-        resolved_loc = real_img_data["location"]
-        coords = real_img_data["coordinates"]
-        zoom = real_img_data["zoom"]
+        multi_data = fetch_multi_perspective_satellite_images(msg)
+        resolved_loc = multi_data["location"]
+        coords = multi_data["coordinates"]
+        zoom = multi_data["zoom"]
+        gallery = multi_data.get("gallery", [])
 
-        # Decode image to PIL for VQA pixel analysis
         try:
-            img_bytes = base64.b64decode(real_img_data["image_base64"])
+            img_bytes = base64.b64decode(multi_data["primary_image_base64"])
             pil_img = Image.open(io.BytesIO(img_bytes))
         except Exception:
             pil_img = None
 
-        # Execute Genuine Remote Sensing Visual Question Answering (RS-VQA)
         vqa_result = self.vqa_engine.analyze_vqa(
             image_pil=pil_img,
             question=msg,
@@ -430,19 +511,17 @@ class ChatAgent:
             zoom_level=zoom
         )
 
-        # Run Agentic Remote Sensing Pipeline for verifiable trace
         plan = self.planner.plan(query=msg, aoi_override=resolved_loc)
         exec_res = self.executor.execute(plan)
 
         years = plan.temporal_range
         t1, t2 = years.get("t1", 2021), years.get("t2", 2025)
 
-        # Build clean, rich, grounded response
         response_text = (
             f"{vqa_result['answer']}\n\n"
             f"**Verified Satellite Pipeline:**\n"
             f"- **Sensor:** `{plan.sensor}`\n"
-            f"- **Resolution:** `{real_img_data['resolution_m']}m per pixel` (Zoom Level `{zoom}`)\n"
+            f"- **Resolution:** `{multi_data['resolution_m']}m per pixel` (Zoom Level `{zoom}`)\n"
             f"- **Coordinates:** `{coords['lat']:.4f}° N, {coords['lon']:.4f}° E` (`{resolved_loc}`)\n"
             f"- **Temporal Anchors:** `{t1}` vs. `{t2}`\n"
             f"- **Confidence Score:** `{plan.confidence_estimate}` (Gate: **PASS**)\n"
@@ -453,18 +532,42 @@ class ChatAgent:
             "message": response_text,
             "location": resolved_loc,
             "temporal_range": {"t1": t1, "t2": t2},
-            "real_satellite_image": real_img_data["image_base64"],
+            "real_satellite_image": multi_data["primary_image_base64"],
             "real_metadata": {
-                "source": real_img_data["source"],
-                "resolution": f"{real_img_data['resolution_m']}m per pixel (Z{zoom})",
+                "source": multi_data["source"],
+                "resolution": f"{multi_data['resolution_m']}m per pixel (Z{zoom})",
                 "coordinates": coords,
                 "zoom": zoom
             },
+            "gallery": gallery,
             "map_layers": exec_res.get("map_layers", {}),
             "metrics": vqa_result["biophysical_metrics"],
             "trace": exec_res.get("execution_trace", []),
             "bounding_boxes": vqa_result["grounded_bounding_boxes"],
             "class_distribution": vqa_result.get("bigearthnet_class_distribution", [])
+        }
+
+    def _handle_general_query(self, query: str) -> Dict[str, Any]:
+        """Handles any arbitrary user query in natural language without forcing a map."""
+        lower = query.lower()
+
+        # Check if query mentions any known location keyword
+        cleaned = clean_place_name(query)
+        if len(cleaned.split()) <= 3 and any(k in lower for k in GEOCODE_REGISTRY.keys()):
+            return self._answer_location_inquiry(query)
+
+        answer = (
+            f"### 🛰️ **Geospatial Intelligence Assistant**\n\n"
+            f"I analyzed your question: *\"{query}\"*\n\n"
+            f"**How SatQuery can assist:**\n"
+            f"1. **Explore Satellite Imagery for Any Place:** Ask *\"Show satellite imagery of [City/Place]\"* (e.g. Swargate Pune, Marine Drive Mumbai, Jaipur, Mount Everest).\n"
+            f"2. **Ask Any Remote Sensing Question:** Ask about band mathematics, Sentinel/Landsat/ISRO satellites, SAR microwave penetration, or vegetation indices (NDVI, NDWI, NDBI, NBR).\n"
+            f"3. **Compute Quantitative Environmental Change:** Ask *\"Calculate surface water loss in Osman Sagar between 2021 and 2024\"* or *\"What changed in Western Ghats from 2020 to 2025\"*.\n\n"
+            f"Feel free to specify a location or topic, and I will provide verified evidence and imagery!"
+        )
+        return {
+            "type": "knowledge_response",
+            "message": answer
         }
 
     def _answer_knowledge_query(self, query: str) -> Dict[str, Any]:
@@ -498,7 +601,7 @@ class ChatAgent:
                 "$$\\text{NDBI} = \\frac{\\text{SWIR} - \\text{NIR}}{\\text{SWIR} + \\text{NIR}} = \\frac{\\text{B11} - \\text{B08}}{\\text{B11} + \\text{B08}}$$\n\n"
                 "- **Urban Built-up / Concrete / Asphalt:** `NDBI > 0.10` (Concrete reflects strongly in the Shortwave Infrared band)\n"
                 "- **Vegetation & Water:** Strongly negative values\n\n"
-                "**SatQuery Usage:** Used in city growth tracking (e.g. Bangalore, Hyderabad, Kharagpur corridor) to distinguish new concrete footprints from fallow agricultural soil."
+                "**SatQuery Usage:** Used in city growth tracking (e.g. Bangalore, Hyderabad, Pune, Kharagpur corridor) to distinguish new concrete footprints from fallow agricultural soil."
             )
         elif "nbr" in lower or "burn" in lower or "fire" in lower or "stubble" in lower:
             answer = (
@@ -509,6 +612,20 @@ class ChatAgent:
                 "- **Healthy Canopy:** High NBR ($>0.4$)\n"
                 "- **High Severity Burn Scar:** $\\Delta\\text{NBR} > 0.66$\n\n"
                 "**SatQuery Usage:** Deployed during post-harvest seasons in Punjab and Haryana for rapid agricultural stubble burning detection and carbon emission mapping."
+            )
+        elif "why are infrared" in lower or "why is false color" in lower or "cir" in lower or "red in remote sensing" in lower:
+            answer = (
+                "### 🌿 Why Are Infrared Satellite Images (CIR) Red?\n\n"
+                "In standard **Color-Infrared (CIR)** or **Standard False Color Composite** satellite imagery:\n\n"
+                "1. **The Biological Reason:** Healthy green vegetation contains spongy mesophyll leaf cells that reflect up to **50% of incoming Near-Infrared (NIR) light** to prevent solar overheating.\n"
+                "2. **The Display Channel Mapping:** The human eye cannot see infrared light. Remote sensing displays assign:\n"
+                "   - **Red Display Channel** $\\leftarrow$ **Near-Infrared (B08)**\n"
+                "   - **Green Display Channel** $\\leftarrow$ **Red Visible (B04)**\n"
+                "   - **Blue Display Channel** $\\leftarrow$ **Green Visible (B03)**\n"
+                "3. **Visual Interpretation:**\n"
+                "   - **Vivid Bright Red/Crimson:** Dense healthy forest canopies, lush parks, and thriving agricultural crops.\n"
+                "   - **Cyan / Grey / White:** Concrete roads, urban buildings, and asphalt.\n"
+                "   - **Dark Blue / Black:** Clean open water bodies and rivers (water absorbs 100% of NIR)."
             )
         elif "sar" in lower or "cloud" in lower or "radar" in lower:
             answer = (
@@ -543,15 +660,13 @@ class ChatAgent:
             )
         else:
             answer = (
-                "### 🛰️ SatQuery Agentic Intelligence\n\n"
-                "SatQuery AI is an autonomous vision-language assistant built for Earth Observation and remote sensing intelligence.\n\n"
+                "### 🛰️ SatQuery Earth Observation Intelligence\n\n"
                 "**What I Can Do:**\n"
-                "- **Geographical Location Insights:** Ask about any lake, reservoir, national park, or urban sector.\n"
-                "- **Fetch Real Photographic Satellite Imagery:** High-resolution optical and SAR imagery of any city or coordinate worldwide.\n"
-                "- **Quantify Bi-Temporal Development:** Track urban sprawl, lake depletion, deforestation, or agricultural cycles between past and present acquisitions.\n"
+                "- **Fetch Real Multi-Perspective Satellite Imagery:** Clear True Color Optical, False Color NIR (CIR), Spectral NDVI, and SAR Radar views for any city, neighborhood, or forest worldwide.\n"
+                "- **Quantify Bi-Temporal Development:** Track urban sprawl, lake water loss, deforestation, or agricultural cycles between past and present acquisitions.\n"
                 "- **Explain Remote Sensing Doubts:** Deep mathematical derivations of indices (NDVI, NDWI, NDBI, NBR, EVI), SAR radar physics, and sensor specs.\n"
                 "- **Execute Observable 7-Step DAGs:** `UNDERSTAND` $\\rightarrow$ `VALIDATE` $\\rightarrow$ `SELECT` $\\rightarrow$ `ANALYZE` $\\rightarrow$ `FUSE` $\\rightarrow$ `VERIFY` $\\rightarrow$ `EXPLAIN`.\n\n"
-                "💡 *Try asking:* `Where is Osman Sagar located?` or `Show development in Bangalore between 2021 and 2025`!"
+                "💡 *Try asking:* `Show multiple images of Swargate Pune` or `Explain how SAR penetrates monsoon clouds`!"
             )
 
         return {

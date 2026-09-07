@@ -754,9 +754,10 @@ function initAgentChat() {
             const hasGallery = gallery.length > 0;
             const primaryBoxLabel = bboxes.length > 0 ? bboxes[0].label : (isDeforest ? "R01 · Primary Canopy Loss" : "R01 · New Development");
 
-            // Multi-image gallery tab buttons
+            // Multi-image gallery tab buttons and thumbnail grid
             let galleryTabsHtml = "";
             let galleryCardsHtml = "";
+            let galleryThumbsGridHtml = "";
             if (hasGallery) {
                 galleryTabsHtml = `
                     <div class="flex items-center gap-1.5 overflow-x-auto pb-1 px-3 pt-2 bg-white/[0.02] border-b border-white/10 custom-scrollbar" id="gallery-tabs-${mapUniqueId}">
@@ -785,11 +786,28 @@ function initAgentChat() {
                         <div class="absolute inset-x-0 bottom-0 z-20 p-2.5 bg-gradient-to-t from-black/95 via-black/70 to-transparent flex items-center justify-between">
                             <span class="text-[0.65rem] text-white/80 font-mono truncate max-w-[65%]">${escapeHtml(g.sensor)}</span>
                             <a href="data:image/png;base64,${g.image_base64}" download="satquery-${escapeHtml(loc).replace(/\s+/g, '-')}-${g.id}-${Date.now()}.png" class="px-2.5 py-1 rounded-lg bg-cyan-400/20 hover:bg-cyan-400/30 text-cyan-300 border border-cyan-400/30 text-[0.68rem] font-medium transition-all flex items-center gap-1">
-                                <span>📥 Save View</span>
+                                <span>📥 Download Image</span>
                             </a>
                         </div>
                     </div>
                 `).join('');
+
+                galleryThumbsGridHtml = `
+                    <div class="p-3 bg-black/40 border-t border-white/10">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-[0.65rem] font-bold text-white/70 uppercase tracking-wider">📸 Multi-Spectral Satellite Image Suite (${gallery.length} Views)</span>
+                            <span class="text-[0.6rem] text-cyan-400 font-mono">Click thumbnail to switch view</span>
+                        </div>
+                        <div class="grid grid-cols-5 gap-2">
+                            ${gallery.map((g, idx) => `
+                                <div class="gallery-thumb-item cursor-pointer rounded-lg overflow-hidden border ${idx === 0 ? 'border-cyan-400 ring-1 ring-cyan-400/50' : 'border-white/10 hover:border-white/30'} bg-black/60 transition-all relative aspect-[4/3] group" data-target="${mapUniqueId}-view-${idx}">
+                                    <img src="data:image/png;base64,${g.image_base64}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"/>
+                                    <div class="absolute inset-x-0 bottom-0 bg-black/90 px-1 py-0.5 text-[0.58rem] text-center text-white/90 truncate font-mono font-medium">${escapeHtml(g.title.split(' ')[1] || g.title)}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
             }
 
             visualDeckHtml = `
@@ -800,7 +818,7 @@ function initAgentChat() {
                     <div class="p-3 bg-white/[0.03] border-b border-white/10 flex items-center justify-between">
                         <div class="flex items-center gap-2">
                             <span class="w-2 h-2 rounded-full ${isDeforest ? 'bg-emerald-400' : 'bg-cyan-400'} animate-pulse"></span>
-                            <span class="text-xs font-semibold text-white">🛰️ Real Satellite Imagery · ${escapeHtml(loc)}</span>
+                            <span class="text-xs font-semibold text-white">🛰️ Real Satellite Imagery Suite · ${escapeHtml(loc)}</span>
                         </div>
                         <div class="flex items-center gap-2">
                             <button type="button" class="btn-open-lightbox text-[0.65rem] px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-medium transition-all flex items-center gap-1" data-lat="${coords.lat}" data-lon="${coords.lon}" data-zoom="${zoom}" data-loc="${escapeHtml(loc)}">
@@ -832,6 +850,8 @@ function initAgentChat() {
                             </a>
                         </div>
                     </div>
+
+                    ${galleryThumbsGridHtml}
 
                     <!-- Quantified Metrics & 7-Step Observable Trace -->
                     <div class="p-4 bg-white/[0.02] border-t border-white/10 space-y-3">
@@ -890,30 +910,52 @@ function initAgentChat() {
 
         stream.appendChild(msgDiv);
 
-        // Setup Tab switching for Multi-Image Gallery
-        const tabsContainer = msgDiv.querySelector(`#gallery-tabs-${mapElementId}`);
-        if (tabsContainer) {
-            const tabButtons = tabsContainer.querySelectorAll('.gallery-tab-btn');
-            const parentDeck = tabsContainer.closest('.rounded-xl');
+        // Setup Tab and Thumbnail switching for Multi-Image Gallery
+        const parentDeck = msgDiv.querySelector('.rounded-xl');
+        if (parentDeck) {
+            const tabButtons = parentDeck.querySelectorAll('.gallery-tab-btn');
+            const thumbItems = parentDeck.querySelectorAll('.gallery-thumb-item');
+            const panes = parentDeck.querySelectorAll('.gallery-view-pane');
+
+            function switchView(targetId) {
+                // Update Tab styles
+                tabButtons.forEach(b => {
+                    if (b.getAttribute('data-target') === targetId) {
+                        b.className = "gallery-tab-btn px-2.5 py-1 rounded-lg text-[0.7rem] font-medium transition-all whitespace-nowrap bg-cyan-500/30 text-cyan-300 border border-cyan-400/40 shadow-sm";
+                    } else {
+                        b.className = "gallery-tab-btn px-2.5 py-1 rounded-lg text-[0.7rem] font-medium transition-all whitespace-nowrap bg-white/5 hover:bg-white/10 text-white/60 border border-transparent";
+                    }
+                });
+
+                // Update Thumbnail rings
+                thumbItems.forEach(t => {
+                    if (t.getAttribute('data-target') === targetId) {
+                        t.className = "gallery-thumb-item cursor-pointer rounded-lg overflow-hidden border border-cyan-400 ring-1 ring-cyan-400/50 bg-black/60 transition-all relative aspect-[4/3] group";
+                    } else {
+                        t.className = "gallery-thumb-item cursor-pointer rounded-lg overflow-hidden border border-white/10 hover:border-white/30 bg-black/60 transition-all relative aspect-[4/3] group";
+                    }
+                });
+
+                // Show selected pane
+                panes.forEach(p => p.classList.add('hidden'));
+                const targetPane = document.getElementById(targetId);
+                if (targetPane) {
+                    targetPane.classList.remove('hidden');
+                    if (targetId.endsWith('-interactive-map') && mapInstances[mapElementId]) {
+                        mapInstances[mapElementId].invalidateSize();
+                    }
+                }
+            }
+
             tabButtons.forEach(btn => {
                 btn.addEventListener('click', () => {
-                    const targetId = btn.getAttribute('data-target');
-                    tabButtons.forEach(b => {
-                        b.className = "gallery-tab-btn px-2.5 py-1 rounded-lg text-[0.7rem] font-medium transition-all whitespace-nowrap bg-white/5 hover:bg-white/10 text-white/60 border border-transparent";
-                    });
-                    btn.className = "gallery-tab-btn px-2.5 py-1 rounded-lg text-[0.7rem] font-medium transition-all whitespace-nowrap bg-cyan-500/30 text-cyan-300 border border-cyan-400/40 shadow-sm";
+                    switchView(btn.getAttribute('data-target'));
+                });
+            });
 
-                    if (parentDeck) {
-                        const panes = parentDeck.querySelectorAll('.gallery-view-pane');
-                        panes.forEach(p => p.classList.add('hidden'));
-                        const targetPane = document.getElementById(targetId);
-                        if (targetPane) {
-                            targetPane.classList.remove('hidden');
-                            if (targetId.endsWith('-interactive-map') && mapInstances[mapElementId]) {
-                                mapInstances[mapElementId].invalidateSize();
-                            }
-                        }
-                    }
+            thumbItems.forEach(thumb => {
+                thumb.addEventListener('click', () => {
+                    switchView(thumb.getAttribute('data-target'));
                 });
             });
         }
