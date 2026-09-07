@@ -620,7 +620,7 @@ class ChatAgent:
                 "- **High Severity Burn Scar:** $\\Delta\\text{NBR} > 0.66$\n\n"
                 "**SatQuery Usage:** Deployed during post-harvest seasons in Punjab and Haryana for rapid agricultural stubble burning detection and carbon emission mapping."
             )
-        elif "why are infrared" in lower or "why is false color" in lower or "cir" in lower or "red in remote sensing" in lower:
+        elif "false color" in lower or "infrared" in lower or "cir" in lower or "red in remote sensing" in lower:
             answer = (
                 "### 🌿 Why Are Infrared Satellite Images (CIR) Red?\n\n"
                 "In standard **Color-Infrared (CIR)** or **Standard False Color Composite** satellite imagery:\n\n"
