@@ -1,6 +1,7 @@
 """
-Real Satellite Imagery Fetcher and Geocoder for Pan-India and Global Coordinates.
-Fetches real photographic satellite imagery from high-resolution global Earth Observation tile servers.
+Real Satellite Imagery Fetcher, Geocoder, and Landmark Photography Engine for Pan-India and Global Coordinates.
+Fetches real photographic satellite imagery from high-resolution global Earth Observation tile servers
+and genuine ground/scenic landmark photography from Wikipedia/Wikimedia Commons.
 Supports multi-perspective satellite galleries (Optical RGB, False Color Infrared CIR, NDVI Heatmap, SAR Radar Model, and Regional Context).
 """
 
@@ -61,6 +62,37 @@ GEOCODE_REGISTRY = {
     "jaipur": (26.9154, 75.8190, 14),
     "shimla": (31.1048, 77.1734, 14),
     "cherrapunji": (25.2986, 91.7300, 14),
+    "goa": (15.2993, 74.1240, 12),
+    "panaji": (15.4909, 73.8278, 14),
+    "margao": (15.2832, 73.9862, 14),
+    "baga": (15.5553, 73.7516, 15),
+    "calangute": (15.5439, 73.7554, 15),
+    "anjuna": (15.5843, 73.7438, 15),
+    "kerala": (10.8505, 76.2711, 11),
+    "munnar": (10.0889, 77.0595, 14),
+    "kochi": (9.9312, 76.2673, 13),
+    "kanyakumari": (8.0883, 77.5385, 14),
+    "ooty": (11.4102, 76.6950, 14),
+    "darjeeling": (27.0410, 88.2663, 14),
+    "agra": (27.1767, 78.0081, 13),
+    "taj mahal": (27.1751, 78.0421, 16),
+    "varanasi": (25.3176, 82.9739, 14),
+    "rishikesh": (30.0869, 78.2676, 14),
+    "manali": (32.2396, 77.1887, 14),
+    "leh": (34.1526, 77.5771, 13),
+    "srinagar": (34.0837, 74.7973, 13),
+    "kedarnath": (30.7346, 79.0669, 14),
+    "ayodhya": (26.7922, 82.1998, 14),
+    "amritsar": (31.6340, 74.8723, 14),
+    "golden temple": (31.6200, 74.8765, 16),
+    "mysore": (12.2958, 76.6394, 14),
+    "hampi": (15.3350, 76.4600, 14),
+    "puri": (19.8135, 85.8312, 14),
+    "tirupati": (13.6288, 79.4192, 14),
+    "lonavala": (18.7504, 73.4069, 15),
+    "khandala": (18.7610, 73.3746, 15),
+    "mahabaleshwar": (17.9307, 73.6477, 14),
+    "alibaug": (18.6414, 72.8722, 14),
     "amazon": (-10.2000, -63.2000, 12),
     "tokyo": (35.6762, 139.6503, 14),
     "paris": (48.8566, 2.3522, 14),
@@ -75,14 +107,142 @@ def clean_place_name(text: str) -> str:
     """Strips conversational noise, verbs, and image-request phrasing to isolate pure location names."""
     q = text.lower().strip()
     q = re.sub(r'[\?!\.,\*\";:]', ' ', q)
+    
+    # Strip compound conversational phrases first
+    compound_patterns = [
+        r'\b(gimme\s+(the|some|all)?\s*(images|image|photos|photo|pics|pic|pictures|picture|satellite\s*images|satellite\s*photos)?\s*(of|for|in)?)\b',
+        r'\b(give\s*me\s+(the|some|all)?\s*(images|image|photos|photo|pics|pic|pictures|picture|satellite\s*images|satellite\s*photos)?\s*(of|for|in)?)\b',
+        r'\b(can\s+you\s+(show|give|fetch|send|get|provide)\s*(me)?\s*(the|some|all)?\s*(images|image|photos|photo|pics|pic|pictures|picture)?\s*(of|for|in)?)\b',
+        r'\b(show\s*(me)?\s*(the|some|all)?\s*(images|image|photos|photo|pics|pic|pictures|picture|satellite\s*images|satellite\s*photos)?\s*(of|for|in)?)\b',
+        r'\b(i\s*want\s+(the|some|all)?\s*(images|image|photos|photo|pics|pic|pictures|picture)?\s*(of|for|in)?)\b',
+        r'\b(send\s*(me)?\s*(the|some|all)?\s*(images|image|photos|photo|pics|pic|pictures|picture)?\s*(of|for|in)?)\b',
+        r'\b(fetch\s*(the|some|all)?\s*(images|image|photos|photo|pics|pic|pictures|picture)?\s*(of|for|in)?)\b',
+        r'\b(where\s+is\s+(the)?)\b',
+        r'\b(what\s+is\s+the\s+location\s+of\s*(the)?)\b',
+        r'\b(tell\s+me\s+about\s*(the)?)\b',
+        r'\b(information\s+(on|about)\s*(the)?)\b',
+        r'\b(photos\s+(of|from)\s*(google|satellite|the)?)\b',
+        r'\b(normal\s+images\s+(of|for)?)\b',
+        r'\b(real\s+images\s+(of|for)?)\b',
+        r'\b(clear\s+images\s+(of|for)?)\b',
+    ]
+    for pat in compound_patterns:
+        q = re.sub(pat, ' ', q, flags=re.I)
+
+    # Strip individual filler words
     cleaned = re.sub(
-        r'\b(what|where|is|are|the|located|location|of|tell|me|about|which|state|district|city|country|in|at|around|near|show|give|fetch|find|look|up|can|you|please|get|send|images|image|img|imgs|picture|pictures|pic|pics|photo|photos|photograph|photographs|satellite|view|views|optical|sar|tile|tiles|multiple|different|several|some|both|happened|change|between|past|present|area|sector|zone)\b',
+        r'\b(gimme|giveme|give|me|pls|please|want|wanna|show|send|fetch|find|look|search|display|bring|locate|get|got|what|where|is|are|the|located|location|of|tell|about|which|state|district|city|country|in|at|around|near|images|image|img|imgs|picture|pictures|pic|pics|photo|photos|photograph|photographs|satellite|view|views|optical|sar|tile|tiles|multiple|different|several|some|both|google|normal|real|clear|clean|highres|hd|happened|change|between|past|present|area|sector|zone)\b',
         ' ',
         q,
         flags=re.I
     )
     cleaned = re.sub(r'\s+', ' ', cleaned).strip()
     return cleaned
+
+
+def fetch_real_ground_photos(place_name: str, limit: int = 6) -> List[Dict[str, Any]]:
+    """
+    Fetches real ground-level and landmark photographs for any location in India or globally
+    using Wikimedia Commons & Wikipedia Media APIs (free, fast, high-res photos).
+    """
+    cleaned = clean_place_name(place_name)
+    target = cleaned if cleaned else place_name.strip()
+    if not target or len(target) < 2:
+        return []
+
+    images: List[Dict[str, Any]] = []
+    session = requests.Session()
+    session.headers.update({
+        'User-Agent': 'SatQuery-AI/1.0 (Geospatial & Earth Observation Intelligence; contact@satquery.ai)'
+    })
+
+    try:
+        # 1. Search Wikipedia page for the place
+        search_url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={requests.utils.quote(target)}&format=json&utf8=1"
+        resp = session.get(search_url, timeout=3.5).json()
+        results = resp.get('query', {}).get('search', [])
+        
+        page_title = results[0]['title'] if results else target.title()
+
+        # 2. Get lead page summary & thumbnail
+        try:
+            summary_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{requests.utils.quote(page_title)}"
+            sum_resp = session.get(summary_url, timeout=3.5).json()
+            if 'thumbnail' in sum_resp:
+                img_url = sum_resp['thumbnail']['source']
+                img_url_hd = re.sub(r'/\d+px-', '/960px-', img_url)
+                images.append({
+                    "title": f"📍 {page_title} · Overview",
+                    "url": img_url_hd,
+                    "caption": sum_resp.get('description', f"Visual landmark view of {page_title}"),
+                    "type": "ground_photo",
+                    "source": "Wikimedia Commons / Wikipedia"
+                })
+        except Exception:
+            pass
+
+        # 3. Get rich scenic & landmark images from Wikimedia Commons Search
+        commons_url = f"https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch={requests.utils.quote(target)}&gsrnamespace=6&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=960&format=json&gsrlimit={limit + 3}"
+        c_resp = session.get(commons_url, timeout=3.5).json()
+        c_pages = c_resp.get('query', {}).get('pages', {})
+        for cid, cdata in c_pages.items():
+            if len(images) >= limit:
+                break
+            iinfo = cdata.get('imageinfo', [{}])[0]
+            thumb_url = iinfo.get('thumburl') or iinfo.get('url')
+            if thumb_url and not any(ext in thumb_url.lower() for ext in ['.svg', '.webm', '.ogg', '.tif', '.pdf']):
+                meta = iinfo.get('extmetadata', {})
+                desc = meta.get('ObjectName', {}).get('value') or meta.get('ImageDescription', {}).get('value') or cdata.get('title', '').replace('File:', '')
+                desc = re.sub(r'<[^>]+>', '', desc).strip()
+                if len(desc) > 90:
+                    desc = desc[:87] + '...'
+                raw_title = cdata.get('title', '').replace('File:', '').replace('.jpg', '').replace('.jpeg', '').replace('.png', '')
+                clean_title = re.sub(r'[_\-]+', ' ', raw_title).strip()
+                if len(clean_title) > 40:
+                    clean_title = clean_title[:37] + '...'
+
+                if not any(img['url'] == thumb_url for img in images):
+                    images.append({
+                        "title": f"📸 {clean_title}",
+                        "url": thumb_url,
+                        "caption": desc if desc else f"High-resolution landmark photography of {target.title()}",
+                        "type": "ground_photo",
+                        "source": "Wikimedia Photographic Archive"
+                    })
+    except Exception:
+        pass
+
+    return images
+
+
+def fetch_location_deep_profile(place_name: str) -> Dict[str, Any]:
+    """
+    Fetches comprehensive encyclopedic summary, geographical classification, and facts for any place.
+    """
+    cleaned = clean_place_name(place_name)
+    target = cleaned if cleaned else place_name.strip()
+    session = requests.Session()
+    session.headers.update({
+        'User-Agent': 'SatQuery-AI/1.0 (Geospatial & Earth Observation Intelligence; contact@satquery.ai)'
+    })
+
+    try:
+        search_url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={requests.utils.quote(target)}&format=json&utf8=1"
+        resp = session.get(search_url, timeout=3.5).json()
+        results = resp.get('query', {}).get('search', [])
+        if results:
+            page_title = results[0]['title']
+            summary_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{requests.utils.quote(page_title)}"
+            sum_resp = session.get(summary_url, timeout=3.5).json()
+            return {
+                "title": page_title,
+                "extract": sum_resp.get("extract", ""),
+                "description": sum_resp.get("description", ""),
+                "thumbnail": sum_resp.get("thumbnail", {}).get("source", None)
+            }
+    except Exception:
+        pass
+    return {}
 
 
 def geocode_location(query_text: str) -> Tuple[float, float, int, str]:
@@ -106,7 +266,7 @@ def geocode_location(query_text: str) -> Tuple[float, float, int, str]:
     search_term = cleaned_query if cleaned_query else q
 
     for reg_key, (r_lat, r_lon, r_zoom) in GEOCODE_REGISTRY.items():
-        if reg_key in search_term or reg_key in q:
+        if reg_key == search_term or reg_key in search_term.split() or reg_key in q.split() or (search_term and reg_key.startswith(search_term)):
             return r_lat, r_lon, r_zoom, reg_key.title()
 
     # 3. Dynamic micro-local geocoding via OpenStreetMap Nominatim
@@ -161,7 +321,7 @@ def get_location_metadata(query_text: str) -> Dict[str, Any]:
 
     # 2. Check curated registry
     for reg_key, (r_lat, r_lon, r_zoom) in GEOCODE_REGISTRY.items():
-        if reg_key in search_term or reg_key in q:
+        if reg_key == search_term or reg_key in search_term.split() or reg_key in q.split() or (search_term and reg_key.startswith(search_term)):
             return {
                 "name": reg_key.title(),
                 "lat": r_lat,
@@ -296,12 +456,13 @@ def fetch_multi_perspective_satellite_images(
     zoom: Optional[int] = None
 ) -> Dict[str, Any]:
     """
-    Fetches and synthesizes multiple calibrated satellite perspectives for any location in India & worldwide:
+    Fetches and synthesizes multiple calibrated satellite perspectives AND real ground landmark photos for any location:
     1. High-Resolution Optical RGB (True Color 10m GSD)
     2. False Color Infrared (CIR - Vegetation Biomass)
     3. Spectral NDVI Biophysical Heatmap
     4. Urban Infrastructure & SAR Radar Model
     5. Regional Macro Landscape Context
+    6. Ground & Landmark Real Photography (from Wikimedia / Wikipedia)
     """
     meta = get_location_metadata(location_name)
     lat, lon = meta["lat"], meta["lon"]
@@ -348,6 +509,9 @@ def fetch_multi_perspective_satellite_images(
     regional_img = _stitch_tiles(lat, lon, macro_zoom, 2, 2)
     regional_b64 = _pil_to_base64(regional_img)
     macro_res_m = round(156543.03392 * math.cos(math.radians(lat)) / (2 ** macro_zoom), 2)
+
+    # 6. Fetch Ground Landmark Photography
+    ground_photos = fetch_real_ground_photos(resolved_name, limit=6)
 
     gallery: List[Dict[str, Any]] = [
         {
@@ -405,5 +569,6 @@ def fetch_multi_perspective_satellite_images(
         "resolution_m": res_m,
         "source": "ArcGIS World Imagery & Sentinel-2 Multi-Spectral",
         "primary_image_base64": optical_b64,
-        "gallery": gallery
+        "gallery": gallery,
+        "ground_photos": ground_photos
     }

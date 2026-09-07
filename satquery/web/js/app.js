@@ -751,8 +751,43 @@ function initAgentChat() {
             mapElementId = mapUniqueId;
 
             const gallery = data.gallery || [];
+            const groundPhotos = data.ground_photos || [];
             const hasGallery = gallery.length > 0;
             const primaryBoxLabel = bboxes.length > 0 ? bboxes[0].label : (isDeforest ? "R01 · Primary Canopy Loss" : "R01 · New Development");
+
+            // Real Landmark & Ground Photography Showcase
+            let groundPhotosHtml = "";
+            if (groundPhotos.length > 0) {
+                groundPhotosHtml = `
+                    <div class="mt-4 rounded-xl overflow-hidden border border-amber-500/30 bg-black/70 shadow-2xl">
+                        <div class="p-3 bg-amber-950/20 border-b border-amber-500/20 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm">📸</span>
+                                <span class="text-xs font-semibold text-amber-200">Real Landmark & Ground Photography · ${escapeHtml(loc)} (${groundPhotos.length} Images)</span>
+                            </div>
+                            <span class="text-[0.62rem] px-2 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-500/30 font-mono">High-Res Visual Archive</span>
+                        </div>
+                        <div class="p-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                            ${groundPhotos.map((gp, idx) => `
+                                <div class="rounded-lg overflow-hidden border border-white/10 bg-black/60 group relative flex flex-col">
+                                    <div class="relative aspect-[4/3] w-full overflow-hidden bg-black/80">
+                                        <img src="${escapeHtml(gp.url)}" alt="${escapeHtml(gp.title)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=600&q=80';"/>
+                                        <div class="absolute top-2 right-2">
+                                            <a href="${escapeHtml(gp.url)}" target="_blank" rel="noopener noreferrer" class="p-1 rounded-md bg-black/70 hover:bg-black text-white/80 hover:text-white text-[0.65rem] backdrop-blur border border-white/20 transition-all flex items-center gap-0.5">
+                                                <span>🔍 View HD</span>
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div class="p-2 flex-1 flex flex-col justify-between bg-white/[0.02]">
+                                        <span class="text-[0.7rem] font-semibold text-white truncate block">${escapeHtml(gp.title)}</span>
+                                        <span class="text-[0.62rem] text-white/50 line-clamp-2 mt-0.5">${escapeHtml(gp.caption || "")}</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
 
             // Multi-image gallery tab buttons and thumbnail grid
             let galleryTabsHtml = "";
@@ -811,6 +846,8 @@ function initAgentChat() {
             }
 
             visualDeckHtml = `
+                ${groundPhotosHtml}
+
                 <!-- Interactive Zoomable Satellite Evidence Deck -->
                 <div class="mt-4 rounded-xl overflow-hidden border ${isDeforest ? 'border-emerald-500/40' : 'border-cyan-500/30'} bg-black/70 shadow-2xl">
                     
