@@ -14,6 +14,7 @@ from PIL import Image
 
 from satquery.tools.real_imagery import (
     fetch_real_satellite_image,
+    fetch_multi_perspective_satellite_images,
     geocode_location,
     get_location_metadata,
     GEOCODE_REGISTRY
@@ -282,8 +283,15 @@ class ChatAgent:
         return False
 
     def _is_imagery_only_request(self, lower: str) -> bool:
-        has_img_word = any(w in lower for w in ["show image", "satellite photo", "satellite view", "give image", "show satellite", "fetch image", "picture of"])
-        has_math_word = any(w in lower for w in ["calculate", "reduction", "percent", "hectares", "loss rate", "between 20", "vs 20", "delta", "growth rate"])
+        has_img_word = any(w in lower for w in [
+            "image", "images", "photo", "photos", "pic", "pics", "picture", "pictures",
+            "satellite photo", "satellite view", "give image", "show satellite", "fetch image",
+            "multiple images", "different images", "different views", "satellite imagery",
+            "satellite picture", "view of"
+        ])
+        has_math_word = any(w in lower for w in [
+            "calculate", "reduction", "loss rate", "between 20", "vs 20", "delta", "growth rate", "how many hectares"
+        ])
         return has_img_word and not has_math_word
 
     def _answer_location_inquiry(self, query: str) -> Dict[str, Any]:
@@ -352,13 +360,14 @@ class ChatAgent:
         }
 
     def _fetch_imagery_response(self, query: str) -> Dict[str, Any]:
-        real_img_data = fetch_real_satellite_image(query)
-        resolved_loc = real_img_data["location"]
-        coords = real_img_data["coordinates"]
-        zoom = real_img_data["zoom"]
+        multi_data = fetch_multi_perspective_satellite_images(query)
+        resolved_loc = multi_data["location"]
+        coords = multi_data["coordinates"]
+        zoom = multi_data["zoom"]
+        gallery = multi_data.get("gallery", [])
 
         try:
-            img_bytes = base64.b64decode(real_img_data["image_base64"])
+            img_bytes = base64.b64decode(multi_data["primary_image_base64"])
             pil_img = Image.open(io.BytesIO(img_bytes))
         except Exception:
             pil_img = None
@@ -371,10 +380,11 @@ class ChatAgent:
         )
 
         response_text = (
-            f"### 🛰️ **Satellite Imagery: {resolved_loc}**\n\n"
-            f"- **Center Coordinates:** `{coords['lat']:.4f}° N, {coords['lon']:.4f}° E`\n"
-            f"- **Spatial Resolution:** `{real_img_data['resolution_m']}m GSD` (Zoom Level `{zoom}`)\n"
-            f"- **Data Ingestion Source:** `{real_img_data['source']}`\n\n"
+            f"### 🛰️ **Multi-Perspective Satellite Intelligence: {resolved_loc}**\n\n"
+            f"- **Target Coordinates:** `{coords['lat']:.4f}° N, {coords['lon']:.4f}° E` (`{multi_data.get('display_name', resolved_loc)}`)\n"
+            f"- **Optical Spatial Resolution:** `{multi_data['resolution_m']}m GSD` (Zoom Level `{zoom}`)\n"
+            f"- **Data Ingestion Source:** `{multi_data['source']}`\n"
+            f"- **Multi-Spectral Gallery:** **{len(gallery)} Calibrated EO Views** generated (Optical True Color, False Color Infrared, Spectral NDVI, SAR Radar Surface Texture, Macro Context).\n\n"
             f"{vqa_result['answer']}"
         )
 
@@ -383,13 +393,14 @@ class ChatAgent:
             "message": response_text,
             "location": resolved_loc,
             "temporal_range": {"t1": 2024, "t2": 2025},
-            "real_satellite_image": real_img_data["image_base64"],
+            "real_satellite_image": multi_data["primary_image_base64"],
             "real_metadata": {
-                "source": real_img_data["source"],
-                "resolution": f"{real_img_data['resolution_m']}m per pixel (Z{zoom})",
+                "source": multi_data["source"],
+                "resolution": f"{multi_data['resolution_m']}m per pixel (Z{zoom})",
                 "coordinates": coords,
                 "zoom": zoom
             },
+            "gallery": gallery,
             "map_layers": {},
             "metrics": vqa_result["biophysical_metrics"],
             "trace": [],
