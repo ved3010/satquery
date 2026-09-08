@@ -736,3 +736,144 @@ export function GodsEyeGlobe({
         <div className="flex items-center gap-3 px-3 py-1.5 rounded-full border border-[var(--color-line)] bg-black/75 backdrop-blur-md pointer-events-auto mono text-[10.5px] text-[var(--color-mute)]">
           <span>{telemetry.cursorLat}° N, {telemetry.cursorLng}° E</span>
           <span className="text-[var(--color-line)]">|</span>
+          <span>Zoom: {telemetry.zoom}</span>
+          <span className="text-[var(--color-line)]">|</span>
+          <span>Pitch: {telemetry.pitch}°</span>
+        </div>
+
+        <div className="flex items-center gap-1.5 pointer-events-auto">
+          {detectedFeatures.length > 0 && (
+            <button
+              onClick={() => setShowFeaturesLayer(!showFeaturesLayer)}
+              className={`px-3 py-1.5 rounded-full border text-[11px] mono transition flex items-center gap-1.5 ${
+                showFeaturesLayer
+                  ? "bg-amber-500/20 border-amber-500/50 text-amber-300 font-medium"
+                  : "border-[var(--color-line)] bg-black/75 text-[var(--color-mute)]"
+              }`}
+              title="Toggle On-Map Detected Feature Points"
+            >
+              <Activity className="w-3 h-3" />
+              <span>Features ({detectedFeatures.length})</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => setIsBoxSelectMode(!isBoxSelectMode)}
+            className={`px-3 py-1.5 rounded-full border text-[11px] mono transition flex items-center gap-1.5 ${
+              isBoxSelectMode
+                ? "bg-[var(--color-brand)] border-[var(--color-brand)] text-white font-medium shadow-[0_0_15px_rgba(47,123,240,0.5)]"
+                : "border-[var(--color-line)] bg-black/75 text-[var(--color-mute)] hover:text-white hover:border-white/20"
+            }`}
+            title="Click and drag anywhere on the globe to draw a custom bounding box"
+          >
+            <Crop className="w-3 h-3 text-[var(--color-brand-soft)]" />
+            <span>{isBoxSelectMode ? "Drawing Active..." : "Select Area (Draw Box)"}</span>
+          </button>
+
+          <button
+            onClick={triggerCinematicZoomOut}
+            className="px-3 py-1.5 rounded-full border border-[var(--color-line)] bg-black/75 text-[11px] mono text-[var(--color-brand-soft)] hover:text-white hover:border-[var(--color-brand)] transition flex items-center gap-1.5"
+            title="Cinematic Zoom-Out to Full Earth Orbit"
+          >
+            <Compass className="w-3 h-3" />
+            <span>Cinematic Orbit</span>
+          </button>
+          <button
+            onClick={() => setAutoRotate(!autoRotate)}
+            className={`px-3 py-1.5 rounded-full border text-[11px] mono transition flex items-center gap-1.5 ${
+              autoRotate
+                ? "bg-[var(--color-brand)] border-[var(--color-brand)] text-white"
+                : "border-[var(--color-line)] bg-black/75 text-[var(--color-mute)] hover:text-white"
+            }`}
+          >
+            {autoRotate ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+            <span>Rotate</span>
+          </button>
+          <button
+            onClick={() => mapRef.current?.zoomIn()}
+            className="p-1.5 rounded-full border border-[var(--color-line)] bg-black/75 text-[var(--color-mute)] hover:text-white transition"
+          >
+            <ZoomIn className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => mapRef.current?.zoomOut()}
+            className="p-1.5 rounded-full border border-[var(--color-line)] bg-black/75 text-[var(--color-mute)] hover:text-white transition"
+          >
+            <ZoomOut className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Left Sensor Matrix Selector */}
+      <div className="absolute left-3 top-16 z-20 pointer-events-auto flex flex-col gap-1.5 max-w-[210px]">
+        <div className="p-2.5 rounded-xl border border-[var(--color-line)] bg-black/80 backdrop-blur-md space-y-1.5">
+          <div className="mono text-[10px] tracking-[0.16em] text-[var(--color-mute)] uppercase px-1">
+            Sensor Matrix
+          </div>
+          {(Object.keys(LAYER_CONFIGS) as SensorLayer[]).map((layer) => {
+            const cfg = LAYER_CONFIGS[layer];
+            const isSelected = activeLayer === layer;
+            return (
+              <button
+                key={layer}
+                onClick={() => onLayerChange(layer)}
+                className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] transition flex items-center justify-between border ${
+                  isSelected
+                    ? "bg-[var(--color-brand)]/20 border-[var(--color-brand)] text-white font-medium"
+                    : "border-transparent text-[var(--color-mute)] hover:text-white hover:bg-white/5"
+                }`}
+              >
+                <span className="truncate">{cfg.name}</span>
+                {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-brand)]" />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Bottom Hint */}
+      <div className="absolute bottom-3 left-3 z-20 pointer-events-none">
+        <div className="px-3 py-1.5 rounded-full border border-[var(--color-line)] bg-black/75 backdrop-blur-md mono text-[10px] text-[var(--color-mute)] flex items-center gap-2">
+          <span className="text-white">Click any point</span>
+          <span>to pin & acquire · Click &quot;Select Area (Draw Box)&quot; or Shift+Drag to draw box</span>
+          {bbox && (
+            <span className="text-[var(--color-verd)]">
+              • BBox: [{bbox[0]}, {bbox[1]}, {bbox[2]}, {bbox[3]}]
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function generateOrbitalPaths(): any {
+  const features = [];
+  const inclinations = [98.5, 98.18, 97.5, 53.0];
+
+  for (let i = 0; i < inclinations.length; i++) {
+    const inc = (inclinations[i] * Math.PI) / 180;
+    const coords: [number, number][] = [];
+    const offsetLng = (i * 90) - 180;
+
+    for (let lng = -180; lng <= 180; lng += 4) {
+      const radLng = ((lng - offsetLng) * Math.PI) / 180;
+      const lat = Math.asin(Math.sin(inc) * Math.sin(radLng)) * (180 / Math.PI);
+      coords.push([lng, lat]);
+    }
+
+    features.push({
+      type: "Feature",
+      properties: { sat_id: `SAT-${i + 1}` },
+      geometry: {
+        type: "LineString",
+        coordinates: coords,
+      },
+    });
+  }
+
+  return {
+    type: "FeatureCollection",
+    features,
+  };
+}

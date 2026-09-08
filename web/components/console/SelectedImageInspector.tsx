@@ -520,3 +520,352 @@ export function SelectedImageInspector({
                     <img
                       src={getPreviewUrl(baselineImage, bandMode)}
                       alt="Baseline T0"
+                      className="w-full h-auto object-contain block pointer-events-none"
+                    />
+
+                    {/* Foreground: Recent Image (T1) clipped by slider */}
+                    <div
+                      className="absolute inset-0 overflow-hidden"
+                      style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }}
+                    >
+                      <img
+                        src={getPreviewUrl(primaryImage, bandMode)}
+                        alt="Recent T1"
+                        className="w-full h-auto object-contain block pointer-events-none"
+                      />
+                    </div>
+
+                    {/* Interactive Divider Line */}
+                    <div
+                      className="absolute top-0 bottom-0 w-1 bg-white cursor-ew-resize flex items-center justify-center shadow-[0_0_12px_rgba(255,255,255,0.8)]"
+                      style={{ left: `${sliderPos}%` }}
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        isDraggingSlider.current = true;
+                      }}
+                    >
+                      <div className="w-6 h-6 rounded-full bg-black/90 border-2 border-white flex items-center justify-center text-[10px] text-white mono font-bold pointer-events-none">
+                        ↔
+                      </div>
+                    </div>
+
+                    {/* Labels */}
+                    <div className="absolute bottom-3 left-3 px-2 py-1 rounded bg-black/80 border border-white/20 mono text-[10px] text-white">
+                      T1: {primaryImage.date ?? "Recent Pass"}
+                    </div>
+                    <div className="absolute bottom-3 right-3 px-2 py-1 rounded bg-black/80 border border-white/20 mono text-[10px] text-white">
+                      T0: {baselineImage.date ?? "Past Baseline"}
+                    </div>
+                  </div>
+                ) : layoutMode === "side-by-side" && primaryImage && baselineImage ? (
+                  /* CASE 2: Side-by-Side Mode */
+                  <div className="flex items-center gap-3 p-2">
+                    <div className="relative rounded-lg overflow-hidden border border-[var(--color-line)] max-w-[310px]">
+                      <img
+                        src={getPreviewUrl(baselineImage, bandMode)}
+                        alt="T0 Baseline"
+                        className="w-full h-auto object-contain block pointer-events-none"
+                      />
+                      <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/80 border border-white/20 mono text-[9.5px] text-white font-medium">
+                        BASELINE (T0) · {baselineImage.date}
+                      </div>
+                    </div>
+                    <div className="relative rounded-lg overflow-hidden border border-[var(--color-brand)] max-w-[310px] shadow-[0_0_20px_rgba(47,123,240,0.2)]">
+                      <img
+                        src={getPreviewUrl(primaryImage, bandMode)}
+                        alt="T1 Recent"
+                        className="w-full h-auto object-contain block pointer-events-none"
+                      />
+                      <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-[var(--color-brand)] mono text-[9.5px] text-white font-bold">
+                        RECENT (T1) · {primaryImage.date}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* CASE 3: Single Selected Image Mode */
+                  <div className="relative rounded-xl overflow-hidden border border-[var(--color-line)] shadow-2xl max-w-[580px]">
+                    <img
+                      key={`${activeImage.path}_${bandMode}`}
+                      src={getPreviewUrl(activeImage, bandMode)}
+                      alt="Selected Satellite Imagery"
+                      className="w-full h-auto object-contain block pointer-events-none transition-opacity duration-200"
+                    />
+
+                    {/* Image Date & Satellite Overlay Tag */}
+                    <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-black/85 border border-white/20 backdrop-blur-md mono text-[10.5px] text-white flex items-center gap-1.5 shadow-lg">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                      <span>
+                        {activeImage.role || "Optical Scene"} ·{" "}
+                        {activeImage.date || "Sentinel-2 L2A"}
+                      </span>
+                    </div>
+
+                    {/* Selected Hotspot Marker if in AOI */}
+                    {selectedFeaturePoint && (
+                      <div
+                        className="absolute w-6 h-6 -translate-x-1/2 -translate-y-1/2 border-2 border-amber-400 rounded-full flex items-center justify-center animate-pulse pointer-events-none"
+                        style={{ top: "50%", left: "50%" }}
+                        title={selectedFeaturePoint.name}
+                      >
+                        <div className="w-2 h-2 bg-amber-400 rounded-full" />
+                        <span className="absolute -bottom-5 px-1.5 py-0.5 rounded bg-black/90 text-amber-300 mono text-[8px] whitespace-nowrap border border-amber-500/40">
+                          {selectedFeaturePoint.name}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* If no scene is available */
+              <div className="relative z-10 max-w-[460px] p-6 text-center space-y-4 rounded-xl border border-[var(--color-brand)]/40 bg-black/80 backdrop-blur-md shadow-[0_0_30px_rgba(47,123,240,0.15)]">
+                <div className="w-12 h-12 rounded-full border border-[var(--color-brand)]/60 bg-[var(--color-brand)]/15 text-[var(--color-brand-soft)] flex items-center justify-center mx-auto shadow-[0_0_15px_rgba(47,123,240,0.3)]">
+                  <Satellite className={`w-6 h-6 ${isFetching ? "animate-spin" : ""}`} />
+                </div>
+                <div>
+                  <h3 className="text-[16px] font-semibold text-white">
+                    {selectedLocation?.name || "Select A Location on the Globe"}
+                  </h3>
+                  <p className="mt-1 text-[13px] text-[var(--color-mute)] leading-relaxed">
+                    {isFetching
+                      ? "Acquiring real 10m satellite imagery from orbit for this Indian location..."
+                      : "Click any point or draw a bounding box on the 3D globe above, or search any city across India to inspect satellite pixels."}
+                  </p>
+                </div>
+
+                <button
+                  onClick={onFetchAoi}
+                  disabled={isFetching || !bbox}
+                  className={`w-full py-3 rounded-xl text-[14px] font-semibold tracking-wide transition flex items-center justify-center gap-2 ${
+                    isFetching
+                      ? "bg-white/10 text-[var(--color-mute)] cursor-wait"
+                      : "bg-[var(--color-brand)] hover:bg-[#4b8ef5] text-white shadow-[0_0_20px_rgba(47,123,240,0.4)] cursor-pointer"
+                  }`}
+                >
+                  <Radio className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`} />
+                  {isFetching ? "Acquiring Satellite Imagery..." : "Acquire Satellite Imagery for This Spot"}
+                </button>
+              </div>
+            )}
+
+            {/* Live Orbit Acquisition Scanner Overlay when fetching */}
+            {isFetching && (
+              <div className="absolute inset-0 z-30 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center space-y-3">
+                <div className="relative flex items-center justify-center w-16 h-16">
+                  <div className="absolute inset-0 rounded-full border border-[var(--color-brand)]/40 animate-ping" />
+                  <div className="absolute inset-2 rounded-full border-2 border-[var(--color-brand)] animate-spin border-t-transparent" />
+                  <Satellite className="w-6 h-6 text-[var(--color-brand-soft)] animate-pulse" />
+                </div>
+                <div className="space-y-1">
+                  <div className="mono text-[10.5px] uppercase tracking-widest text-[var(--color-brand-soft)] font-bold">
+                    Target Locked · Acquiring Orbit Pass
+                  </div>
+                  <h4 className="text-[16px] font-semibold text-white">
+                    {selectedLocation?.name || "Target Coordinates"}
+                  </h4>
+                  {centerCoords && (
+                    <p className="mono text-[11px] text-[var(--color-mute)]">
+                      {centerCoords[1]}°N, {centerCoords[0]}°E · GSD 10m / px
+                    </p>
+                  )}
+                  <p className="text-[11.5px] text-[var(--color-mute)] opacity-80 pt-1">
+                    Fetching high-resolution multispectral imagery across India...
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Bottom Telemetry HUD Bar */}
+            <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between pointer-events-none">
+              <div className="px-2.5 py-1 rounded-md bg-black/80 border border-[var(--color-line)] mono text-[10px] text-[var(--color-mute)] backdrop-blur-md">
+                SPECTRAL: <span className="text-white font-medium">{bandMode.toUpperCase()}</span> · RES:{" "}
+                <span className="text-white font-medium">10M GSD</span>
+              </div>
+
+              {primaryScene && (
+                <div className="px-2.5 py-1 rounded-md bg-black/80 border border-[var(--color-line)] mono text-[10px] text-[var(--color-mute)] backdrop-blur-md hidden sm:block">
+                  SCENE: <span className="text-white">{primaryScene.id.slice(0, 22)}...</span> · CLOUD:{" "}
+                  <span className="text-white">{primaryScene.cloud}%</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right (5 Cols): "Ask Anything About This Image" Terminal */}
+        <div className="xl:col-span-5 flex flex-col p-5 sm:p-6 space-y-5 bg-black/50">
+          <div className="space-y-1.5 border-b border-[var(--color-line)] pb-4">
+            <div className="flex items-center justify-between">
+              <h3 className="mono text-[11.5px] font-semibold tracking-[0.14em] text-white uppercase flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-[var(--color-brand-soft)]" />
+                Ask Anything About This Image
+              </h3>
+              <span className="mono text-[10px] text-[var(--color-mute)]">MULTIMODAL AGENT</span>
+            </div>
+            <p className="text-[13px] text-[var(--color-mute)] leading-relaxed">
+              Interrogate the selected satellite pixels with specialist remote sensing vision models (M1–M7)
+              and automated spectral calculus.
+            </p>
+          </div>
+
+          {/* Question Input Form */}
+          <form onSubmit={handleQuerySubmit} className="space-y-3">
+            <div className="relative">
+              <textarea
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey || !e.shiftKey)) {
+                    e.preventDefault();
+                    if (query.trim() && !isQuerying) {
+                      const imagesToQuery = activeImage ? [activeImage] : images;
+                      void onRunQuery(query, imagesToQuery);
+                    }
+                  }
+                }}
+                rows={4}
+                placeholder="Ask any question about this selected satellite image (e.g. 'What is the proportion of urban built-up area?', 'Detect new construction or vegetation loss', 'What is the water surface fraction?')..."
+                className="w-full bg-black/75 border border-[var(--color-line)] focus:border-[var(--color-brand)] rounded-xl p-3.5 text-[14px] text-white outline-none resize-none leading-relaxed transition-all placeholder:text-[var(--color-mute)]/60 shadow-inner focus:shadow-[0_0_20px_rgba(47,123,240,0.2)]"
+              />
+              <div className="absolute bottom-3 right-3 mono text-[10px] text-[var(--color-mute)] pointer-events-none hidden sm:block">
+                Press Enter ↵ to Ask
+              </div>
+            </div>
+
+            {/* Quick Prompt Chips */}
+            <div className="space-y-1.5">
+              <span className="mono text-[10px] text-[var(--color-mute)] block uppercase tracking-wider">
+                Quick Satellite Inquiries:
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {quickPrompts.map((item) => (
+                  <button
+                    key={item.label}
+                    type="button"
+                    onClick={() => {
+                      setQuery(item.prompt);
+                      setTimeout(() => {
+                        const imagesToQuery = activeImage ? [activeImage] : images;
+                        void onRunQuery(item.prompt, imagesToQuery);
+                      }, 50);
+                    }}
+                    className="px-2.5 py-1 rounded-full border border-[var(--color-line)] bg-white/5 hover:bg-white/10 text-[11px] text-white/85 hover:text-white transition flex items-center gap-1.5 group cursor-pointer"
+                  >
+                    <ChevronRight className="w-3 h-3 text-[var(--color-brand-soft)] group-hover:translate-x-0.5 transition-transform" />
+                    <span>{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Dispatch Button */}
+            <button
+              type="submit"
+              disabled={isQuerying || !query.trim()}
+              className={`w-full py-3.5 rounded-xl text-[14px] font-semibold tracking-wide transition flex items-center justify-center gap-2.5 ${
+                isQuerying
+                  ? "bg-white/10 text-[var(--color-mute)] cursor-wait"
+                  : query.trim()
+                  ? "bg-[var(--color-brand)] hover:bg-[#4b8ef5] text-white shadow-[0_0_25px_rgba(47,123,240,0.35)] cursor-pointer active:scale-[0.99]"
+                  : "bg-white/5 text-[var(--color-mute)] cursor-not-allowed"
+              }`}
+            >
+              <Send className={`w-4 h-4 ${isQuerying ? "animate-spin" : ""}`} />
+              {isQuerying ? "Analyzing Multimodal Satellite Pixels..." : "Ask Agent About This Image"}
+            </button>
+          </form>
+
+          {/* Integrated Agent Answer Card (Live preview in this section!) */}
+          {trace && (
+            <div className="mt-2 rounded-xl border border-[var(--color-brand)]/50 bg-black/70 p-4 space-y-3 shadow-[0_0_30px_rgba(47,123,240,0.12)] animate-slide-up">
+              <div className="flex items-center justify-between border-b border-[var(--color-line)] pb-2.5">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-[var(--color-brand-soft)] animate-pulse" />
+                  <span className="mono text-[11px] font-semibold text-[var(--color-brand-soft)] uppercase tracking-wider">
+                    Agent Answer
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={copyAnswer}
+                    className="p-1 rounded hover:bg-white/10 text-[var(--color-mute)] hover:text-white transition flex items-center gap-1 mono text-[10px]"
+                    title="Copy Answer"
+                  >
+                    {copiedAnswer ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-emerald-400">Copied</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copy</span>
+                      </>
+                    )}
+                  </button>
+
+                  {trace.run_id && (
+                    <a
+                      href={api.reportUrl(trace.run_id)}
+                      download={`satquery-${trace.run_id}.md`}
+                      className="p-1 rounded hover:bg-white/10 text-[var(--color-brand-soft)] hover:underline transition flex items-center gap-1 mono text-[10px]"
+                      title="Download Full Markdown Audit"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Report</span>
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {/* Synthesized Answer Body */}
+              <p className="text-[14px] leading-[1.65] text-white/95">{trace.answer}</p>
+
+              {/* Quick Spectral Metrics Bar if available */}
+              {trace.analysis?.available && trace.analysis.scene?.cover && (
+                <div className="pt-2 border-t border-[var(--color-line)] space-y-1.5">
+                  <span className="mono text-[10px] text-[var(--color-mute)] uppercase tracking-wider block">
+                    Calculated Land-Cover Fractions:
+                  </span>
+                  <div className="grid grid-cols-4 gap-1.5 mono text-[10.5px]">
+                    <div className="p-1.5 rounded bg-white/5 border border-[var(--color-line)] text-center">
+                      <div className="text-[var(--color-verd)] font-semibold">
+                        {trace.analysis.scene.cover.vegetation?.pct.toFixed(1)}%
+                      </div>
+                      <div className="text-[9px] text-[var(--color-mute)]">Vegetation</div>
+                    </div>
+                    <div className="p-1.5 rounded bg-white/5 border border-[var(--color-line)] text-center">
+                      <div className="text-[var(--color-signal)] font-semibold">
+                        {trace.analysis.scene.cover["built-up"]?.pct.toFixed(1)}%
+                      </div>
+                      <div className="text-[9px] text-[var(--color-mute)]">Built-Up</div>
+                    </div>
+                    <div className="p-1.5 rounded bg-white/5 border border-[var(--color-line)] text-center">
+                      <div className="text-[var(--color-ice)] font-semibold">
+                        {trace.analysis.scene.cover.water?.pct.toFixed(1)}%
+                      </div>
+                      <div className="text-[9px] text-[var(--color-mute)]">Water</div>
+                    </div>
+                    <div className="p-1.5 rounded bg-white/5 border border-[var(--color-line)] text-center">
+                      <div className="text-white/70 font-semibold">
+                        {trace.analysis.scene.cover["bare/other"]?.pct.toFixed(1)}%
+                      </div>
+                      <div className="text-[9px] text-[var(--color-mute)]">Bare / Other</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Model Specialist Attribution */}
+              <div className="flex items-center justify-between pt-1 mono text-[10px] text-[var(--color-mute)]">
+                <span>MODELS: {trace.models_invoked.join(", ") || "M1–M7 ENSEMBLE"}</span>
+                <span>{trace.total_ms} ms</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
