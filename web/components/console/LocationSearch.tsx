@@ -156,7 +156,7 @@ export function LocationSearch({
             e.preventDefault();
             void handleExecuteSearch(query);
           }}
-          className="relative flex items-center shadow-lg rounded-2xl overflow-hidden bg-black/85 backdrop-blur-xl border border-[var(--color-line)] focus-within:border-[var(--color-brand)] focus-within:shadow-[0_0_25px_rgba(47,123,240,0.25)] transition-all"
+          className="relative flex items-center shadow-2xl rounded-2xl overflow-hidden bg-black/40 backdrop-blur-xl border border-white/20 focus-within:border-white/40 focus-within:shadow-[0_0_25px_rgba(255,255,255,0.15)] transition-all"
         >
           <div className="absolute left-4 pointer-events-none text-[var(--color-mute)]">
             <Search className={`w-4 h-4 ${loading ? "animate-spin text-[var(--color-brand)]" : ""}`} />

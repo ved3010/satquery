@@ -263,55 +263,11 @@ export default function ConsolePage() {
   return (
     <>
       <Nav />
-      <main className="relative min-h-screen pt-[68px] pb-6 px-4 sm:px-6 max-w-[1680px] mx-auto text-white flex flex-col">
+      <main className="relative min-h-screen pt-[60px] text-white flex flex-col overflow-hidden">
         <Starfield />
 
-        {/* Clean Top Bar: Target Location & Status */}
-        <div className="flex flex-wrap items-center justify-between gap-3 py-3 mb-3 border-b border-white/[0.08]">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-              <h1 className="text-[15px] font-semibold tracking-tight text-white flex items-center gap-2">
-                <span>Console</span>
-                <span className="text-white/30">/</span>
-                <span className="text-cyan-300 font-normal">
-                  {selectedLocation?.name || "Global Orbit"}
-                </span>
-              </h1>
-            </div>
-            {selectedLocation?.state && (
-              <span className="hidden sm:inline-block px-2 py-0.5 rounded text-[11px] font-mono bg-white/[0.05] text-white/60 border border-white/10">
-                {selectedLocation.state}
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-3">
-            {backend.kind === "up" ? (
-              <div className="flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-950/20 text-[11px] text-emerald-300 font-mono">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span>ONLINE ({backend.health.models_registered} MODELS)</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 px-3 py-1 rounded-full border border-amber-500/30 bg-amber-950/20 text-[11px] text-amber-300 font-mono">
-                <AlertTriangle className="w-3 h-3 text-amber-400" />
-                <span>CONNECTING</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Clean Search Bar */}
-        <div className="w-full max-w-[960px] mx-auto pt-1 pb-1">
-          <LocationSearch
-            selectedLocation={selectedLocation}
-            onSelectLocation={handleSelectLocation}
-            onSetQueryPrompt={(q) => setQueryInput(q)}
-          />
-        </div>
-
-        {/* Floating 3D Earth Globe - No Border Box, Floating Freely */}
-        <div className="w-full h-[480px] sm:h-[540px] relative overflow-hidden bg-transparent my-1">
+        {/* Immersive Full-Screen 3D Earth Globe Canvas (Spans full viewport behind the glass chatbox!) */}
+        <div className="fixed inset-0 top-[60px] w-full h-[calc(100vh-60px)] z-0 bg-transparent overflow-hidden">
           <GodsEyeGlobe
             bbox={bbox}
             onBboxChange={(newBbox) => {
@@ -332,25 +288,72 @@ export default function ConsolePage() {
           />
         </div>
 
-        {/* Gemini Chatbox Directly Below the Globe with Ambient Glass Transition */}
-        <div className="relative w-full max-w-[960px] mx-auto min-h-[500px] mb-16">
-          {/* Subtle Ambient Radial Glow linking Globe to Glass Chatbox */}
-          <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-3/4 h-28 bg-gradient-to-b from-cyan-500/15 via-blue-500/5 to-transparent blur-3xl pointer-events-none -z-10" />
-          <GeminiChatBox
-            currentImage={currentAttachedImage}
-            availableImages={images}
-            onSelectImage={setCurrentAttachedImage}
-            onClearAttachedImage={() => setCurrentAttachedImage(null)}
-            onUploadImage={handleUploadImage}
-            onRunQuery={handleRunQuery}
-            isQuerying={busy === "query"}
-            isFetchingImage={busy === "fetch"}
-            selectedLocationName={selectedLocation?.name}
-            messages={messages}
-            onClearMessages={() => setMessages([])}
-            queryInput={queryInput}
-            setQueryInput={setQueryInput}
-          />
+        {/* Floating Glassmorphic UI Layer (Z-10) */}
+        <div className="relative z-10 flex flex-col justify-between h-[calc(100vh-60px)] pointer-events-none px-4 sm:px-6 pt-3 pb-3 max-w-[1400px] mx-auto w-full">
+          {/* Top Controls: Target Status + Glass Search Bar */}
+          <div className="w-full max-w-[880px] mx-auto space-y-2 pointer-events-auto">
+            {/* Top Bar Status */}
+            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/15 shadow-lg">
+              <div className="flex items-center gap-2.5">
+                <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                <h1 className="text-[13.5px] font-semibold tracking-tight text-white flex items-center gap-2">
+                  <span>Console</span>
+                  <span className="text-white/30">/</span>
+                  <span className="text-cyan-300 font-normal">
+                    {selectedLocation?.name || "Global Orbit"}
+                  </span>
+                </h1>
+                {selectedLocation?.state && (
+                  <span className="hidden sm:inline-block px-2 py-0.5 rounded text-[10.5px] font-mono bg-white/10 text-white/70 border border-white/15">
+                    {selectedLocation.state}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                {backend.kind === "up" ? (
+                  <div className="flex items-center gap-2 px-2.5 py-0.5 rounded-full border border-emerald-500/30 bg-emerald-950/30 text-[10.5px] text-emerald-300 font-mono">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>ONLINE ({backend.health.models_registered} MODELS)</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 px-2.5 py-0.5 rounded-full border border-amber-500/30 bg-amber-950/30 text-[10.5px] text-amber-300 font-mono">
+                    <AlertTriangle className="w-3 h-3 text-amber-400" />
+                    <span>CONNECTING</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Frosted Glass Location Search */}
+            <LocationSearch
+              selectedLocation={selectedLocation}
+              onSelectLocation={handleSelectLocation}
+              onSetQueryPrompt={(q) => setQueryInput(q)}
+            />
+          </div>
+
+          {/* Center Space - Free for globe interaction (clicks pass through to Earth canvas) */}
+          <div className="flex-1 pointer-events-none" />
+
+          {/* Floating Glassmorphic Gemini Chatbox (Earth clearly visible through it!) */}
+          <div className="w-full max-w-[880px] mx-auto pointer-events-auto max-h-[380px] sm:max-h-[420px] flex flex-col mt-2">
+            <GeminiChatBox
+              currentImage={currentAttachedImage}
+              availableImages={images}
+              onSelectImage={setCurrentAttachedImage}
+              onClearAttachedImage={() => setCurrentAttachedImage(null)}
+              onUploadImage={handleUploadImage}
+              onRunQuery={handleRunQuery}
+              isQuerying={busy === "query"}
+              isFetchingImage={busy === "fetch"}
+              selectedLocationName={selectedLocation?.name}
+              messages={messages}
+              onClearMessages={() => setMessages([])}
+              queryInput={queryInput}
+              setQueryInput={setQueryInput}
+            />
+          </div>
         </div>
       </main>
     </>
