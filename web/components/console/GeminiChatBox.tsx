@@ -1,0 +1,590 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import {
+  Sparkles,
+  Send,
+  Paperclip,
+  X,
+  Layers,
+  Check,
+  Copy,
+  ChevronDown,
+  ChevronUp,
+  Radio,
+  Satellite,
+  Compass,
+  Maximize2,
+  Trash2,
+  RefreshCw,
+  Loader2,
+  MapPin,
+  Calendar,
+  Eye,
+  Info,
+} from "lucide-react";
+import { type ImageRef, type Trace, getPreviewUrl } from "@/lib/api";
+
+export type ChatMessage = {
+  id: string;
+  role: "user" | "assistant";
+  text: string;
+  timestamp: string;
+  attachedImages?: ImageRef[];
+  locationName?: string;
+  trace?: Trace;
+  isError?: boolean;
+};
+
+interface GeminiChatBoxProps {
+  currentImage: ImageRef | null;
+  availableImages: ImageRef[];
+  onSelectImage: (img: ImageRef) => void;
+  onClearAttachedImage: () => void;
+  onUploadImage: (file: File) => Promise<void>;
+  onRunQuery: (query: string, imagesToUse: ImageRef[]) => Promise<void>;
+  isQuerying: boolean;
+  isFetchingImage: boolean;
+  selectedLocationName?: string;
+  messages: ChatMessage[];
+  onClearMessages: () => void;
+  queryInput: string;
+  setQueryInput: (q: string) => void;
+}
+
+const STARTER_PROMPTS = [
+  {
+    title: "Land-cover breakdown",
+    desc: "Calculate percentages of built-up, vegetation, water & bare land.",
+    query: "What is the detailed land-cover breakdown (built-up, vegetation, water, bare) across this satellite scene?",
+  },
+  {
+    title: "Detect water & reservoirs",
+    desc: "Find river basins, canals, wetlands, and surface water.",
+    query: "Identify and measure all water bodies, lakes, and river channels visible in this area.",
+  },
+  {
+    title: "Urban sprawl & infrastructure",
+    desc: "Detect residential clusters, transit nodes & commercial density.",
+    query: "Analyze the urban density, transport infrastructure, and built-up pattern in this scene.",
+  },
+  {
+    title: "Vegetation health (NDVI)",
+    desc: "Assess agricultural vigor, tree canopy, and green cover.",
+    query: "Assess the vegetation health and canopy density across this satellite scene.",
+  },
+];
+
+export function GeminiChatBox({
+  currentImage,
+  availableImages,
+  onSelectImage,
+  onClearAttachedImage,
+  onUploadImage,
+  onRunQuery,
+  isQuerying,
+  isFetchingImage,
+  selectedLocationName,
+  messages,
+  onClearMessages,
+  queryInput,
+  setQueryInput,
+}: GeminiChatBoxProps) {
+  const [bandMode, setBandMode] = useState<"rgb" | "cir" | "swir" | "ndvi">("rgb");
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [expandedReasoning, setExpandedReasoning] = useState<Record<string, boolean>>({});
+  const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const chatBottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-scroll on new messages or when querying
+  useEffect(() => {
+    chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isQuerying]);
+
+  // Handle Enter to submit (Shift+Enter for newline)
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+
+  const handleSubmit = () => {
+    const trimmed = queryInput.trim();
+    if (!trimmed || isQuerying) return;
+    const imagesToPass = currentImage ? [currentImage] : availableImages.slice(0, 1);
+    void onRunQuery(trimmed, imagesToPass);
+  };
+
+  const handleCopy = (id: string, text: string) => {
+    void navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await onUploadImage(file);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const toggleReasoning = (id: string) => {
+    setExpandedReasoning((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-[#0d1117]/90 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
+      {/* Sleek Minimal Header */}
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/[0.08] bg-white/[0.02]">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-500 to-cyan-400 p-[1px] shadow-lg shadow-cyan-500/10 flex items-center justify-center">
+            <div className="w-full h-full bg-[#0d1117] rounded-[11px] flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-cyan-300 animate-pulse" />
+            </div>
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-[14px] font-semibold text-white tracking-tight">SatQuery AI</h2>
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+                GEMINI VISION
+              </span>
+            </div>
+            <p className="text-[11px] text-white/50">
+              {selectedLocationName ? `Target: ${selectedLocationName}` : "Search or tap Earth to analyze"}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {messages.length > 0 && (
+            <button
+              onClick={onClearMessages}
+              title="Clear conversation"
+              className="p-1.5 rounded-lg text-white/40 hover:text-white/80 hover:bg-white/5 transition-all text-[12px] flex items-center gap-1"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Clear</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Chat Messages Feed */}
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 space-y-5 scrollbar-thin scrollbar-thumb-white/10">
+        {messages.length === 0 ? (
+          /* Empty / Welcome State like Gemini / ChatGPT */
+          <div className="h-full flex flex-col justify-center items-center text-center px-4 py-8 space-y-6">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600/30 via-indigo-600/20 to-cyan-500/30 border border-cyan-500/30 flex items-center justify-center shadow-[0_0_30px_rgba(6,182,212,0.15)]">
+              <Sparkles className="w-7 h-7 text-cyan-300" />
+            </div>
+
+            <div className="max-w-[420px] space-y-2">
+              <h3 className="text-xl font-bold text-white tracking-tight">
+                What would you like to discover from orbit?
+              </h3>
+              <p className="text-[13px] text-white/60 leading-relaxed">
+                Click any coordinate on the 3D globe or search an Indian city. The satellite scene will automatically attach to your prompt below.
+              </p>
+            </div>
+
+            {/* Quick Starter Prompts */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full max-w-[560px] pt-2">
+              {STARTER_PROMPTS.map((item, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    setQueryInput(item.query);
+                    if (textareaRef.current) {
+                      textareaRef.current.focus();
+                    }
+                  }}
+                  className="text-left p-3.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.06] hover:border-cyan-500/30 transition-all duration-200 group"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[13px] font-medium text-white/90 group-hover:text-cyan-300 transition-colors">
+                      {item.title}
+                    </span>
+                    <Sparkles className="w-3.5 h-3.5 text-white/30 group-hover:text-cyan-400 transition-colors" />
+                  </div>
+                  <p className="text-[11.5px] text-white/50 mt-1 line-clamp-2">{item.desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          /* Conversation Thread */
+          messages.map((msg) => (
+            <div key={msg.id} className="space-y-3">
+              {msg.role === "user" ? (
+                /* User Message */
+                <div className="flex flex-col items-end space-y-2">
+                  {/* Attached Satellite Image Card (if present) */}
+                  {msg.attachedImages && msg.attachedImages.length > 0 && (
+                    <div className="flex flex-wrap gap-2 justify-end">
+                      {msg.attachedImages.map((img, idx) => {
+                        const previewUrl = getPreviewUrl(img, "rgb");
+                        return (
+                          <div
+                            key={idx}
+                            onClick={() => previewUrl && setEnlargedImage(previewUrl)}
+                            className="flex items-center gap-2.5 p-1.5 pr-3 rounded-xl bg-white/[0.06] border border-white/15 cursor-pointer hover:border-cyan-400/50 transition-all shadow-md group"
+                          >
+                            <div className="w-12 h-12 rounded-lg overflow-hidden bg-black/50 shrink-0 border border-white/10 relative">
+                              {previewUrl ? (
+                                <img
+                                  src={previewUrl}
+                                  alt="Attached satellite scene"
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-white/40">
+                                  <Satellite className="w-5 h-5" />
+                                </div>
+                              )}
+                              <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors" />
+                            </div>
+                            <div className="text-left">
+                              <p className="text-[11.5px] font-medium text-white/90 line-clamp-1">
+                                {msg.locationName || img.role || "Attached Scene"}
+                              </p>
+                              <div className="flex items-center gap-1.5 text-[10px] text-white/50">
+                                <span className="uppercase">{img.modality}</span>
+                                {img.date && <span>· {img.date}</span>}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Message Bubble */}
+                  <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-blue-600/20 border border-blue-500/30 px-4 py-2.5 text-[14px] text-white shadow-sm">
+                    <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
+                    <div className="text-right mt-1">
+                      <span className="text-[10px] text-white/40 font-mono">{msg.timestamp}</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Gemini / Assistant Message */
+                <div className="flex items-start gap-3">
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-blue-500 via-indigo-500 to-cyan-400 p-[1px] shrink-0 mt-0.5 shadow-md shadow-cyan-500/20">
+                    <div className="w-full h-full bg-[#0d1117] rounded-[7px] flex items-center justify-center">
+                      <Sparkles className="w-3.5 h-3.5 text-cyan-300" />
+                    </div>
+                  </div>
+
+                  <div className="flex-1 space-y-3 max-w-[92%]">
+                    {/* Error Box */}
+                    {msg.isError ? (
+                      <div className="p-3.5 rounded-xl bg-red-950/40 border border-red-500/30 text-red-200 text-[13px] leading-relaxed">
+                        {msg.text}
+                      </div>
+                    ) : (
+                      /* Rich AI Response */
+                      <div className="p-4 rounded-2xl rounded-tl-sm bg-white/[0.04] border border-white/[0.08] shadow-sm space-y-3">
+                        {/* Main Markdown Text */}
+                        <div className="text-[14px] text-white/90 leading-relaxed whitespace-pre-wrap">
+                          {msg.text}
+                        </div>
+
+                        {/* Land Cover Metric Badges (if available in trace) */}
+                        {msg.trace?.analysis?.available && msg.trace.analysis.scene?.cover && (
+                          <div className="pt-2 border-t border-white/[0.06]">
+                            <p className="text-[11px] font-mono tracking-wider text-white/50 uppercase mb-2">
+                              Measured Spectral Cover
+                            </p>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                              {Object.entries(msg.trace.analysis.scene.cover).map(([key, data]) => {
+                                let color = "text-emerald-400 border-emerald-500/20 bg-emerald-500/5";
+                                if (key.includes("built")) color = "text-amber-400 border-amber-500/20 bg-amber-500/5";
+                                if (key.includes("water")) color = "text-cyan-400 border-cyan-500/20 bg-cyan-500/5";
+                                if (key.includes("bare")) color = "text-stone-300 border-stone-500/20 bg-stone-500/5";
+
+                                return (
+                                  <div key={key} className={`px-2.5 py-1.5 rounded-lg border text-center ${color}`}>
+                                    <p className="text-[10px] uppercase font-mono tracking-wider opacity-80">
+                                      {key}
+                                    </p>
+                                    <p className="text-[15px] font-bold mt-0.5">{data.pct.toFixed(1)}%</p>
+                                    <p className="text-[9.5px] opacity-60">{data.km2.toFixed(2)} km²</p>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Satellite Models & Reasoning Dropdown */}
+                        {msg.trace && (
+                          <div className="pt-1">
+                            <button
+                              onClick={() => toggleReasoning(msg.id)}
+                              className="flex items-center gap-1.5 text-[11px] text-cyan-400/80 hover:text-cyan-300 font-mono transition-colors"
+                            >
+                              <span>
+                                {expandedReasoning[msg.id] ? "Hide" : "Show"} reasoning & pipeline (
+                                {msg.trace.models_invoked.length} models · {msg.trace.total_ms}ms)
+                              </span>
+                              {expandedReasoning[msg.id] ? (
+                                <ChevronUp className="w-3 h-3" />
+                              ) : (
+                                <ChevronDown className="w-3 h-3" />
+                              )}
+                            </button>
+
+                            {expandedReasoning[msg.id] && (
+                              <div className="mt-2 p-3 rounded-xl bg-black/40 border border-white/10 space-y-2 text-[12px] font-mono text-white/70 animate-slide-up">
+                                <div className="flex flex-wrap items-center gap-2 text-[10.5px]">
+                                  <span className="text-white/40">MODELS:</span>
+                                  {msg.trace.models_invoked.map((m) => (
+                                    <span
+                                      key={m}
+                                      className="px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20"
+                                    >
+                                      {m}
+                                    </span>
+                                  ))}
+                                  {msg.trace.confidence && (
+                                    <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                                      {(msg.trace.confidence * 100).toFixed(0)}% CONFIDENCE
+                                    </span>
+                                  )}
+                                </div>
+
+                                {msg.trace.steps && msg.trace.steps.length > 0 && (
+                                  <div className="space-y-1.5 pt-1 border-t border-white/5">
+                                    {msg.trace.steps.map((step, sIdx) => (
+                                      <div key={sIdx} className="flex items-start justify-between text-[11px]">
+                                        <span className="text-white/60">
+                                          {sIdx + 1}. {step.node} ({step.model_id || "rule"})
+                                        </span>
+                                        <span className="text-white/40">{step.latency_ms}ms</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Footer Controls: Copy, Timestamp */}
+                        <div className="flex items-center justify-between pt-1 text-[11px] text-white/40">
+                          <span className="font-mono">{msg.timestamp}</span>
+                          <button
+                            onClick={() => handleCopy(msg.id, msg.text)}
+                            className="flex items-center gap-1 hover:text-white/80 transition-colors"
+                          >
+                            {copiedId === msg.id ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                <span className="text-emerald-400">Copied</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3.5 h-3.5" />
+                                <span>Copy</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+
+        {/* Querying / Thinking State */}
+        {isQuerying && (
+          <div className="flex items-start gap-3 animate-pulse">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-blue-500 via-indigo-500 to-cyan-400 p-[1px] shrink-0 mt-0.5">
+              <div className="w-full h-full bg-[#0d1117] rounded-[7px] flex items-center justify-center">
+                <Sparkles className="w-3.5 h-3.5 text-cyan-300 animate-spin" />
+              </div>
+            </div>
+            <div className="p-4 rounded-2xl rounded-tl-sm bg-white/[0.04] border border-cyan-500/20 shadow-sm space-y-2 max-w-[80%]">
+              <div className="flex items-center gap-2 text-cyan-300 text-[13px] font-medium">
+                <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />
+                <span>Interrogating satellite neural models...</span>
+              </div>
+              <div className="h-1.5 w-48 bg-white/10 rounded-full overflow-hidden">
+                <div className="h-full w-full bg-gradient-to-r from-blue-500 via-cyan-400 to-indigo-500 animate-[pulse_1s_ease-in-out_infinite]" />
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div ref={chatBottomRef} />
+      </div>
+
+      {/* Floating Image Attachment Dock + Input Box (Gemini / ChatGPT Style) */}
+      <div className="p-3 sm:p-4 border-t border-white/[0.08] bg-black/40 space-y-2">
+        {/* Attached Satellite Image Dock */}
+        {currentImage ? (
+          <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/[0.05] border border-cyan-500/30 shadow-sm animate-slide-up">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div
+                onClick={() => {
+                  const url = getPreviewUrl(currentImage, bandMode);
+                  if (url) setEnlargedImage(url);
+                }}
+                className="w-10 h-10 rounded-lg overflow-hidden bg-black shrink-0 border border-white/20 relative cursor-pointer group"
+                title="Click to expand"
+              >
+                <img
+                  src={getPreviewUrl(currentImage, bandMode)}
+                  alt="Attached scene"
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                />
+                <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors flex items-center justify-center">
+                  <Maximize2 className="w-3 h-3 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </div>
+
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-[12.5px] font-semibold text-white truncate">
+                    {selectedLocationName || currentImage.role || "Orbital Satellite Scene"}
+                  </p>
+                  <span className="px-1.5 py-0.2 rounded text-[9.5px] font-mono uppercase bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                    {currentImage.modality}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-[10.5px] text-white/50">
+                  <span>{currentImage.date || "Acquired"}</span>
+                  {availableImages.length > 1 && (
+                    <span className="text-cyan-400">· {availableImages.length} scenes available</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Band Switcher + Detach */}
+            <div className="flex items-center gap-1.5">
+              <div className="hidden sm:flex items-center bg-black/40 rounded-lg p-0.5 border border-white/10 text-[10px] font-mono">
+                {(["rgb", "cir", "ndvi"] as const).map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => setBandMode(m)}
+                    className={`px-1.5 py-0.5 rounded uppercase transition-colors ${
+                      bandMode === m ? "bg-cyan-500 text-black font-bold" : "text-white/60 hover:text-white"
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={onClearAttachedImage}
+                title="Detach image"
+                className="p-1 rounded-lg text-white/40 hover:text-white/90 hover:bg-white/10 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        ) : isFetchingImage ? (
+          /* Pulsing Image Acquisition Status */
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-cyan-300 text-[12px] animate-pulse">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            <span>Acquiring satellite imagery from orbit for targeted location...</span>
+          </div>
+        ) : null}
+
+        {/* Input Composer Box */}
+        <div className="relative rounded-2xl bg-white/[0.05] border border-white/15 focus-within:border-cyan-500/60 focus-within:ring-2 focus-within:ring-cyan-500/10 transition-all">
+          <textarea
+            ref={textareaRef}
+            rows={1}
+            value={queryInput}
+            onChange={(e) => setQueryInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={
+              currentImage
+                ? "Ask anything about this satellite scene (e.g. land cover, water bodies)..."
+                : "Select a location on the globe or type your question..."
+            }
+            className="w-full resize-none bg-transparent px-4 pt-3.5 pb-10 text-[14px] text-white placeholder-white/40 focus:outline-none scrollbar-none"
+            style={{ minHeight: "56px", maxHeight: "140px" }}
+          />
+
+          {/* Bottom Action Bar inside Composer */}
+          <div className="absolute left-3 right-3 bottom-2 flex items-center justify-between">
+            {/* Attachment Button */}
+            <div className="flex items-center gap-2">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept=".tif,.tiff,.png,.jpg,.jpeg"
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                title="Upload custom satellite image (.tif, .png, .jpg)"
+                className="p-1.5 rounded-lg text-white/50 hover:text-cyan-300 hover:bg-white/10 transition-all flex items-center gap-1 text-[11px]"
+              >
+                <Paperclip className="w-4 h-4" />
+                <span className="hidden sm:inline">Upload Image</span>
+              </button>
+
+              {currentImage && (
+                <span className="hidden md:inline text-[10.5px] text-white/40 font-mono">
+                  Press Enter to send
+                </span>
+              )}
+            </div>
+
+            {/* Send Button */}
+            <button
+              onClick={handleSubmit}
+              disabled={!queryInput.trim() || isQuerying}
+              className={`p-2 rounded-xl flex items-center justify-center transition-all ${
+                queryInput.trim() && !isQuerying
+                  ? "bg-gradient-to-r from-blue-500 to-cyan-400 text-black shadow-lg shadow-cyan-500/20 hover:opacity-90 active:scale-95"
+                  : "bg-white/10 text-white/30 cursor-not-allowed"
+              }`}
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Fullscreen Image Preview Modal */}
+      {enlargedImage && (
+        <div
+          onClick={() => setEnlargedImage(null)}
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-6 animate-fade-in"
+        >
+          <div className="relative max-w-4xl max-h-[85vh] rounded-2xl overflow-hidden border border-white/20 shadow-2xl bg-black">
+            <button
+              onClick={() => setEnlargedImage(null)}
+              className="absolute top-3 right-3 z-10 p-2 rounded-full bg-black/60 text-white hover:bg-black transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <img
+              src={enlargedImage}
+              alt="Enlarged satellite inspection"
+              className="w-full h-full object-contain"
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

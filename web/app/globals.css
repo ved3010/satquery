@@ -1,27 +1,32 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Share+Tech+Mono&display=swap');
+@import "maplibre-gl/dist/maplibre-gl.css";
 @import "tailwindcss";
 
 @theme {
   --color-ink: #000000;
-  --color-panel: #08080a;
-  --color-line: rgba(255, 255, 255, 0.08);
+  --color-panel: #06080d;
+  --color-panel-card: rgba(8, 12, 20, 0.82);
+  --color-line: rgba(0, 243, 255, 0.14);
+  --color-line-solid: rgba(255, 255, 255, 0.08);
   --color-mute: rgba(255, 255, 255, 0.46);
   --color-dim: rgba(255, 255, 255, 0.70);
   --color-brand: #2f7bf0;
   --color-brand-soft: #7fb2ff;
-  --color-ice: #a4f4fd;
-  --color-verd: #34d399;
+  --color-ice: #00f3ff;
+  --color-verd: #10b981;
   --color-signal: #f59e0b;
+  --color-danger: #ef4444;
 
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-tactical: "Share Tech Mono", "JetBrains Mono", monospace;
 }
 
 html {
   scroll-behavior: smooth;
-  /* the fixed header is 60px; without this an anchor lands under it */
   scroll-padding-top: 76px;
   background: #000;
+  color-scheme: dark;
 }
 
 body {
@@ -33,22 +38,21 @@ body {
   overflow-x: hidden;
 }
 
-::selection { background: rgba(47, 123, 240, 0.35); }
+::selection { background: rgba(0, 243, 255, 0.35); color: #fff; }
 
 :focus-visible {
-  outline: 2px solid var(--color-brand-soft);
+  outline: 2px solid var(--color-ice);
   outline-offset: 3px;
   border-radius: 3px;
 }
 
-::-webkit-scrollbar { width: 9px; height: 9px; }
-::-webkit-scrollbar-track { background: #000; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #04060a; }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.13);
-  border: 2px solid #000;
+  background: rgba(0, 243, 255, 0.22);
   border-radius: 99px;
 }
-::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.24); }
+::-webkit-scrollbar-thumb:hover { background: rgba(0, 243, 255, 0.45); }
 
 /* ------------------------------------------------------------ typography */
 .eyebrow {
@@ -60,80 +64,206 @@ body {
 }
 
 .mono { font-family: var(--font-mono); }
+.tactical { font-family: var(--font-tactical); }
 
-/* Optical centring for the big hero lines. */
 .display {
   letter-spacing: -0.033em;
   line-height: 1.04;
   font-weight: 600;
 }
 
-/* ------------------------------------------------------- the Earth limb */
-/*
-   The hero horizon is drawn, not photographed: a very large circle whose top
-   edge crosses the viewport low down, with an atmospheric rim above it. A
-   photo would cost ~1 MB and pin the page to one continent; this scales to
-   any viewport and stays crisp.
-*/
-.earth {
+/* ------------------------------------------------------- Tactical God's Eye HUD Styles */
+.tactical-glass {
+  background: rgba(6, 10, 18, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 243, 255, 0.16);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6), inset 0 0 12px 0 rgba(0, 243, 255, 0.03);
+}
+
+.tactical-glass-subtle {
+  background: rgba(8, 12, 22, 0.70);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hud-border {
+  position: relative;
+}
+
+.hud-border::before {
+  content: "";
   position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 300vw;
-  height: 300vw;
-  max-width: 4200px;
-  max-height: 4200px;
-  border-radius: 50%;
-  /*
-     A dark globe with a bright limb, not a blue glow: the light lives in the
-     last ~1.5% of the radius. Painting the whole disc bright washes the
-     headline out, which is the failure mode of every CSS "planet".
-  */
-  background:
-    radial-gradient(circle at 50% 50%,
-      #01030a 0%,
-      #02061a 44%,
-      #062247 47.6%,
-      #0f4b93 49.0%,
-      #4f9ae8 49.72%,
-      #cfe8ff 49.96%,
-      transparent 50%);
-  box-shadow:
-    0 0 90px 26px rgba(58, 130, 220, 0.16),
-    0 0 180px 60px rgba(30, 86, 165, 0.12);
+  top: -1px;
+  left: -1px;
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid var(--color-ice);
+  border-left: 2px solid var(--color-ice);
   pointer-events: none;
 }
 
-/* the atmospheric halo sitting just outside the limb */
-.earth::before {
+.hud-border::after {
   content: "";
   position: absolute;
-  inset: -8%;
-  border-radius: 50%;
-  background: radial-gradient(circle at 50% 50%,
-    transparent 0 45.5%,
-    rgba(90, 160, 240, 0.16) 46.3%,
-    rgba(60, 125, 210, 0.07) 46.8%,
-    transparent 47.6%);
-  -webkit-mask-image: linear-gradient(180deg, #000 0 55%, transparent 62%);
-  mask-image: linear-gradient(180deg, #000 0 55%, transparent 62%);
+  bottom: -1px;
+  right: -1px;
+  width: 8px;
+  height: 8px;
+  border-bottom: 2px solid var(--color-ice);
+  border-right: 2px solid var(--color-ice);
+  pointer-events: none;
 }
 
-/* --------------------------------------------------------------- surface */
-.panel {
-  background: linear-gradient(180deg,
-    rgba(255, 255, 255, 0.035) 0%,
-    rgba(255, 255, 255, 0.012) 100%);
-  border: 1px solid var(--color-line);
+/* Scanline and Grid effect */
+.scanlines {
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.25) 50%
+  ), linear-gradient(
+    90deg,
+    rgba(255, 0, 0, 0.01),
+    rgba(0, 255, 0, 0.005),
+    rgba(0, 0, 255, 0.01)
+  );
+  background-size: 100% 3px, 6px 100%;
+  pointer-events: none;
 }
 
-.hairline { border-color: var(--color-line); }
+.grid-bg {
+  background-size: 32px 32px;
+  background-image: 
+    linear-gradient(to right, rgba(0, 243, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 243, 255, 0.04) 1px, transparent 1px);
+}
 
-/* ------------------------------------------------------------- reveal */
+/* Tactical Crosshair Animation */
+@keyframes hud-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes hud-pulse {
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(1.08); }
+}
+
+.animate-hud-spin {
+  animation: hud-spin 20s linear infinite;
+}
+
+.animate-hud-pulse {
+  animation: hud-pulse 3s ease-in-out infinite;
+}
+
+/* MapLibre Canvas Container */
+.maplibregl-map {
+  font-family: inherit;
+}
+
+.maplibregl-ctrl-attrib {
+  display: none !important;
+}
+
+/* ------------------------------------------------------- Console Animations & Keyframes */
+@keyframes fadeInScale {
+  0% {
+    opacity: 0;
+    transform: scale(0.97) translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes slideUpFade {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes radarSweep {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes laserScan {
+  0% {
+    top: 0%;
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.8;
+  }
+  85% {
+    opacity: 0.8;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+
+@keyframes glowPulse {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(47, 123, 240, 0.2), inset 0 0 15px rgba(47, 123, 240, 0.05);
+  }
+  50% {
+    box-shadow: 0 0 28px rgba(47, 123, 240, 0.4), inset 0 0 25px rgba(47, 123, 240, 0.15);
+  }
+}
+
+@keyframes shimmerEffect {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-fade-in-scale {
+  animation: fadeInScale 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-up {
+  animation: slideUpFade 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-laser-scan {
+  animation: laserScan 3.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.animate-glow-pulse {
+  animation: glowPulse 4s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0) 100%);
+  background-size: 200% 100%;
+  animation: shimmerEffect 2.5s infinite;
+}
+
+/* Stagger animation delay helper classes */
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
+
+/* ------------------------------------------------------- reveal */
 .reveal {
-  /* Reveal wrappers are grid and flex items. Those default to min-width:auto,
-     which refuses to shrink below their content -- one wide <pre> then widens
-     the whole track and gives the page a horizontal scrollbar on a phone. */
   min-width: 0;
   opacity: 0;
   transform: translateY(18px);
@@ -146,5 +276,13 @@ body {
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .reveal { opacity: 1; transform: none; transition: none; }
-  .twinkle { animation: none !important; }
+  .animate-fade-in-scale,
+  .animate-slide-up,
+  .animate-laser-scan,
+  .animate-glow-pulse,
+  .animate-shimmer {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
