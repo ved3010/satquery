@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import operator
 import os
-from typing import Annotated, Any, TypedDict
+from typing import Annotated, Any, Optional, TypedDict, Union
 
 from langgraph.graph import END, START, StateGraph
 from langgraph.checkpoint.memory import MemorySaver
@@ -42,12 +42,12 @@ class State(TypedDict, total=False):
     query: str
     images: list[dict[str, Any]]          # {path, modality, date, crs, ...}
     trace: Trace
-    plan: R.Plan | None
+    plan: Optional[R.Plan]
     results: Annotated[dict[str, Any], operator.or_]
     answer: str
-    confidence: float | None
+    confidence: Optional[float]
     evidence: list[str]
-    rejected: str | None
+    rejected: Optional[str]
 
 
 # --------------------------------------------------------------------------- #
@@ -191,7 +191,8 @@ def synthesise(state: State) -> dict[str, Any]:
         res = run_model(spec, state["query"], state.get("images", []),
                         dict(spec.params_schema), findings=findings,
                         measured=measured,
-                        dominant=dominant_class(trace.analysis))
+                        dominant=dominant_class(trace.analysis),
+                        analysis=trace.analysis)
         step.outcome = "synthesised"
         if res.get("stub"):
             step.params["STUB"] = "no trained weights"
@@ -201,9 +202,10 @@ def synthesise(state: State) -> dict[str, Any]:
     conf = min(confs) if confs else None      # weakest link, not average:
                                               # a chain is only as good as its
                                               # least confident step
-    trace.answer = res["answer"]
+    ans = res.get("answer") or res.get("summary") or ""
+    trace.answer = ans
     trace.confidence = conf
-    return {"answer": res["answer"], "confidence": conf}
+    return {"answer": ans, "confidence": conf}
 
 
 def evidence(state: State) -> dict[str, Any]:

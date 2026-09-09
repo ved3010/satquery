@@ -40,3 +40,4 @@ venv/
 
 # local overrides
 web/.env.local
+*.log
