@@ -32,19 +32,57 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount API
+@app.middleware("http")
+async def add_no_cache_header(request, call_next):
+    response = await call_next(request)
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
+# Mount API under /api and root
 app.include_router(api_router)
+app.include_router(api_router, prefix="")
 
 # Mount Web UI Static Files
 if WEB_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(WEB_DIR)), name="static")
 
 
+@app.get("/health")
+def health_check():
+    return {
+        "status": "healthy",
+        "service": settings.APP_NAME,
+        "version": settings.APP_VERSION,
+        "sensors": ["Sentinel-2 MSI", "Sentinel-1 SAR", "ISRO Cartosat", "ArcGIS High-Res"],
+        "pipelines": ["Optical RGB", "False Color NIR", "NDVI Calculus", "Deforestation Change VQA", "Ground Landmark Archive"]
+    }
+
+
+@app.get("/models")
+def get_models():
+    return {
+        "models": [
+            {"id": "satquery-vlm-2.0", "name": "SatQuery Vision-Language Geospatial Assistant", "type": "Multimodal VLM"},
+            {"id": "sentinel2-bitemporal-ndvi", "name": "Bi-Temporal NDVI Differential Calculus Engine", "type": "Spectral Tensor Pipeline"},
+            {"id": "sar-monsoon-radar", "name": "Sentinel-1 SAR Cloud-Penetration Radar Model", "type": "Active Microwave Model"}
+        ]
+    }
+
+
+@app.get("/favicon.ico")
+def favicon():
+    from fastapi.responses import Response
+    svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🛰️</text></svg>'
+    return Response(content=svg, media_type="image/svg+xml")
+
+
 @app.get("/")
 def serve_index():
     index_file = WEB_DIR / "index.html"
     if index_file.exists():
-        return FileResponse(index_file)
+        return FileResponse(index_file, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
     return {"message": "SatQuery AI Backend Running. Web UI assets loading..."}
 
 
