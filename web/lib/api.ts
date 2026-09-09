@@ -49,6 +49,7 @@ export type AoiResult = {
   warnings?: string[];
   size_px?: [number, number];
   ground_km?: [number, number];
+  error?: string;
 };
 
 export type Step = {
@@ -192,8 +193,19 @@ export const api = {
     }).then(json<Trace>),
 
   reportUrl: (runId: string) => `${BASE}/runs/${runId}/report.md`,
-  previewUrl: (path: string) => `${BASE}/preview?path=${encodeURIComponent(path)}`,
+  previewUrl: (path: string, mode: "rgb" | "cir" | "swir" | "ndvi" = "rgb") =>
+    `${BASE}/preview?path=${encodeURIComponent(path)}${mode !== "rgb" ? `&mode=${mode}` : ""}`,
 };
+
+export function getPreviewUrl(img: ImageRef, mode: "rgb" | "cir" | "swir" | "ndvi" = "rgb"): string {
+  if (img.path) {
+    return api.previewUrl(img.path, mode);
+  }
+  if (img.preview) {
+    return img.preview.startsWith("http") ? img.preview : `${BASE}${img.preview}`;
+  }
+  return "";
+}
 
 /** The eight IndiaSat regions, as map presets. */
 export const REGIONS = [
