@@ -673,7 +673,11 @@ function initAgentChat() {
 
             const data = await res.json();
             removeLoadingMessage(loadingId);
-            appendAIMessage(data);
+            try {
+                appendAIMessage(data);
+            } catch (renderErr) {
+                console.error('Rendering error in appendAIMessage:', renderErr);
+            }
         } catch (err) {
             console.error('Chat error:', err);
             removeLoadingMessage(loadingId);

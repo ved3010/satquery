@@ -32,7 +32,7 @@
     </script>
     
     <!-- Design System Stylesheet -->
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/style.css?v=20260908_04">
 </head>
 <body class="bg-[#070a12] text-white font-sans h-screen w-screen overflow-hidden flex flex-row select-none">
 
@@ -84,7 +84,15 @@
                     <span class="text-[0.6rem] text-cyan-400/70 font-mono">Pan-India</span>
                 </div>
                 <div id="chatHistoryList" class="space-y-1 overflow-y-auto max-h-[calc(100vh-280px)] pr-1 custom-scrollbar">
-                    <button class="history-item active" data-query="gimme the images of goa">
+                    <button class="history-item active" data-query="is there any deforestation in Western Ghats?">
+                        <span class="text-emerald-400">🌲</span>
+                        <span class="truncate">Deforestation Western Ghats</span>
+                    </button>
+                    <button class="history-item" data-query="check tree loss and canopy degradation in Wayanad">
+                        <span class="text-rose-400">🪵</span>
+                        <span class="truncate">Tree Loss Wayanad</span>
+                    </button>
+                    <button class="history-item" data-query="gimme the images of goa">
                         <span class="text-amber-400">🏖️</span>
                         <span class="truncate">Goa Beaches & Coast</span>
                     </button>
@@ -103,10 +111,6 @@
                     <button class="history-item" data-query="what is the formula for NDVI and how is it used in SatQuery?">
                         <span class="text-purple-400">📐</span>
                         <span class="truncate">NDVI Spectral Calculus</span>
-                    </button>
-                    <button class="history-item" data-query="how does Sentinel-1 SAR radar penetrate monsoon clouds?">
-                        <span class="text-rose-400">🌧️</span>
-                        <span class="truncate">SAR Cloud Penetration</span>
                     </button>
                 </div>
             </div>
@@ -136,17 +140,18 @@
                     <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
                     <span>SatQuery VLM 2.0</span>
                 </span>
-                <span class="text-[0.65rem] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/50 hidden md:inline">Sentinel-2 MSI · Sentinel-1 SAR · Real Photos</span>
+                <span class="text-[0.65rem] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/50 hidden md:inline">Sentinel-2 MSI · Sentinel-1 SAR · Deforestation AI</span>
             </div>
 
             <!-- Quick Topic Pills (Clickable) -->
             <div class="flex items-center gap-1.5 overflow-x-auto custom-scrollbar max-w-[60%]">
-                <button type="button" class="topic-pill" data-query="gimme the images of goa">🏖️ Goa</button>
+                <button type="button" class="topic-pill" data-query="is there any deforestation in Western Ghats?">🌲 Deforestation Ghats</button>
+                <button type="button" class="topic-pill" data-query="check tree loss in Wayanad">🪵 Wayanad Tree Loss</button>
+                <button type="button" class="topic-pill" data-query="is there any deforestation in Goa?">🏖️ Goa Forest Cover</button>
+                <button type="button" class="topic-pill" data-query="gimme the images of goa">📸 Goa Photos</button>
                 <button type="button" class="topic-pill" data-query="give me photos of swargate pune">🏙️ Swargate</button>
                 <button type="button" class="topic-pill" data-query="where is osman sagar located">💧 Osman Sagar</button>
-                <button type="button" class="topic-pill" data-query="tell me about kedarnath">🏔️ Kedarnath</button>
                 <button type="button" class="topic-pill" data-query="what is NDVI?">🌱 NDVI Math</button>
-                <button type="button" class="topic-pill" data-query="how does SAR penetrate clouds?">🌧️ SAR Radar</button>
             </div>
         </header>
 
@@ -226,6 +231,6 @@
     </main>
 
     <!-- Application JavaScript Engine -->
-    <script src="/static/js/app.js"></script>
+    <script src="/static/js/app.js?v=20260908_04"></script>
 </body>
 </html>
