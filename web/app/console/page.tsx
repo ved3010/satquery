@@ -332,8 +332,10 @@ export default function ConsolePage() {
           />
         </div>
 
-        {/* Gemini Chatbox Directly Below the Globe */}
-        <div className="w-full max-w-[960px] mx-auto min-h-[500px] mb-12">
+        {/* Gemini Chatbox Directly Below the Globe with Ambient Glass Transition */}
+        <div className="relative w-full max-w-[960px] mx-auto min-h-[500px] mb-16">
+          {/* Subtle Ambient Radial Glow linking Globe to Glass Chatbox */}
+          <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-3/4 h-28 bg-gradient-to-b from-cyan-500/15 via-blue-500/5 to-transparent blur-3xl pointer-events-none -z-10" />
           <GeminiChatBox
             currentImage={currentAttachedImage}
             availableImages={images}
