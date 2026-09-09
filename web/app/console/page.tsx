@@ -20,7 +20,9 @@ import {
   type Scene,
   type Trace,
 } from "@/lib/api";
-import { AlertTriangle, Satellite, Sparkles, MapPin } from "lucide-react";
+import { AlertTriangle, Satellite, Sparkles, MapPin, Video } from "lucide-react";
+import { DualSurveillanceCockpit } from "@/components/console/DualSurveillanceCockpit";
+import { getMatchedCctvFeed, type GroundCctvFeed } from "@/lib/puneCctvFeeds";
 
 type Backend =
   | { kind: "checking" }
@@ -75,6 +77,17 @@ export default function ConsolePage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [queryInput, setQueryInput] = useState<string>("");
   const [latestTrace, setLatestTrace] = useState<Trace | null>(null);
+
+  // Live Street CCTV state for Pune and urban hubs
+  const [isDualCockpitOpen, setIsDualCockpitOpen] = useState(false);
+
+  // Match live street CCTV feed for targeted location
+  const matchedCctv: GroundCctvFeed | null = useMemo(() => {
+    return getMatchedCctvFeed(
+      selectedLocation?.name || "",
+      (flyToCoords || selectedLocation?.coords) as [number, number] | undefined
+    );
+  }, [selectedLocation, flyToCoords]);
 
   // Spatial features for map visualization
   const spatialResult: SpatialAnalysisResult | null = useMemo(() => {
@@ -311,6 +324,18 @@ export default function ConsolePage() {
               </div>
 
               <div className="flex items-center gap-2">
+                {matchedCctv && (
+                  <button
+                    type="button"
+                    onClick={() => setIsDualCockpitOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-red-500/40 bg-red-600/30 text-[11px] text-red-200 font-mono hover:bg-red-600/50 transition-all shadow-[0_0_15px_rgba(239,68,68,0.3)] animate-pulse"
+                    title="View live street CCTV camera footage side-by-side with satellite view"
+                  >
+                    <Video className="w-3.5 h-3.5 text-red-400" />
+                    <span className="font-bold">LIVE STREET CCTV</span>
+                  </button>
+                )}
+
                 {backend.kind === "up" ? (
                   <div className="flex items-center gap-2 px-2.5 py-0.5 rounded-full border border-emerald-500/30 bg-emerald-950/30 text-[10.5px] text-emerald-300 font-mono">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -352,9 +377,22 @@ export default function ConsolePage() {
               onClearMessages={() => setMessages([])}
               queryInput={queryInput}
               setQueryInput={setQueryInput}
+              hasCctvFeed={!!matchedCctv}
+              onOpenDualCockpit={() => setIsDualCockpitOpen(true)}
             />
           </div>
         </div>
+
+        {/* Dual Orbit-to-Ground Side-by-Side Surveillance Cockpit Modal */}
+        {isDualCockpitOpen && matchedCctv && (
+          <DualSurveillanceCockpit
+            cctvFeed={matchedCctv}
+            satelliteImage={currentAttachedImage || (images.length > 0 ? images[0] : null)}
+            locationName={selectedLocation?.name || "Pune"}
+            coords={(flyToCoords || selectedLocation?.coords || [73.8567, 18.5018]) as [number, number]}
+            onClose={() => setIsDualCockpitOpen(false)}
+          />
+        )}
       </main>
     </>
   );

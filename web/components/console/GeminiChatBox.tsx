@@ -23,6 +23,7 @@ import {
   Calendar,
   Eye,
   Info,
+  Video,
 } from "lucide-react";
 import { type ImageRef, type Trace, getPreviewUrl } from "@/lib/api";
 
@@ -51,6 +52,8 @@ interface GeminiChatBoxProps {
   onClearMessages: () => void;
   queryInput: string;
   setQueryInput: (q: string) => void;
+  hasCctvFeed?: boolean;
+  onOpenDualCockpit?: () => void;
 }
 
 export function GeminiChatBox({
@@ -67,6 +70,8 @@ export function GeminiChatBox({
   onClearMessages,
   queryInput,
   setQueryInput,
+  hasCctvFeed,
+  onOpenDualCockpit,
 }: GeminiChatBoxProps) {
   const [bandMode, setBandMode] = useState<"rgb" | "cir" | "swir" | "ndvi">("rgb");
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -95,6 +100,14 @@ export function GeminiChatBox({
   const handleSubmit = () => {
     const trimmed = queryInput.trim();
     if (!trimmed || isQuerying) return;
+    const lower = trimmed.toLowerCase();
+    if (
+      (lower.includes("cctv") || lower.includes("footage") || lower.includes("camera") || lower.includes("street view") || lower.includes("live feed")) &&
+      hasCctvFeed &&
+      onOpenDualCockpit
+    ) {
+      onOpenDualCockpit();
+    }
     const imagesToPass = currentImage ? [currentImage] : availableImages.slice(0, 1);
     void onRunQuery(trimmed, imagesToPass);
   };
@@ -444,8 +457,20 @@ export function GeminiChatBox({
               </div>
             </div>
 
-            {/* Quick Band Switcher + Detach */}
+            {/* Quick Band Switcher + Live CCTV + Detach */}
             <div className="flex items-center gap-1.5">
+              {hasCctvFeed && onOpenDualCockpit && (
+                <button
+                  type="button"
+                  onClick={onOpenDualCockpit}
+                  className="px-2.5 py-1 rounded-lg bg-red-600/30 hover:bg-red-600/50 border border-red-500/40 text-red-200 text-[10px] font-mono flex items-center gap-1.5 transition-all shadow-[0_0_12px_rgba(239,68,68,0.25)]"
+                  title="View live street CCTV camera footage side-by-side with satellite imagery"
+                >
+                  <Video className="w-3.5 h-3.5 text-red-400 animate-pulse" />
+                  <span className="font-semibold">Live CCTV</span>
+                </button>
+              )}
+
               <div className="hidden sm:flex items-center bg-black/50 backdrop-blur-xs rounded-lg p-0.5 border border-white/15 text-[9.5px] font-mono">
                 {(["rgb", "cir", "ndvi"] as const).map((m) => (
                   <button
