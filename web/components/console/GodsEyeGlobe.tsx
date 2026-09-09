@@ -693,7 +693,7 @@ export function GodsEyeGlobe({
   };
 
   return (
-    <div className="relative w-full h-full min-h-[520px] overflow-hidden select-none bg-black rounded-xl border border-[var(--color-line)]">
+    <div className="relative w-full h-full min-h-[480px] overflow-hidden select-none bg-transparent">
       {/* 3D WebGL Globe Container */}
       <div ref={mapContainerRef} className="absolute inset-0 w-full h-full cursor-crosshair z-0" />
 

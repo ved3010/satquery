@@ -301,58 +301,54 @@ export default function ConsolePage() {
           </div>
         </div>
 
-        {/* Core Layout: Globe + Search Bar on Left, Gemini Chatbox on Right */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 min-h-[640px] lg:h-[calc(100vh-125px)]">
-          {/* Left Canvas: Location Search Bar + 3D Earth Globe */}
-          <div className="lg:col-span-7 flex flex-col space-y-3 min-h-[480px] lg:min-h-0 h-full">
-            {/* Clean Location Search Bar */}
-            <LocationSearch
-              selectedLocation={selectedLocation}
-              onSelectLocation={handleSelectLocation}
-              onSetQueryPrompt={(q) => setQueryInput(q)}
-            />
+        {/* Clean Search Bar */}
+        <div className="w-full max-w-[960px] mx-auto pt-1 pb-1">
+          <LocationSearch
+            selectedLocation={selectedLocation}
+            onSelectLocation={handleSelectLocation}
+            onSetQueryPrompt={(q) => setQueryInput(q)}
+          />
+        </div>
 
-            {/* 3D Earth Globe */}
-            <div className="flex-1 rounded-2xl overflow-hidden border border-white/10 bg-black/60 shadow-2xl relative min-h-[380px]">
-              <GodsEyeGlobe
-                bbox={bbox}
-                onBboxChange={(newBbox) => {
-                  setBbox(newBbox);
-                  void fetchAoi(newBbox);
-                }}
-                activeLayer={activeLayer}
-                onLayerChange={setActiveLayer}
-                isScanning={busy === "fetch"}
-                flyToTarget={flyToCoords}
-                onMapClick={handleMapClick}
-                detectedFeatures={detectedFeatures}
-                selectedFeaturePoint={selectedFeaturePoint}
-                onSelectFeaturePoint={setSelectedFeaturePoint}
-                onAskAboutPoint={(q) => {
-                  setQueryInput(q);
-                }}
-              />
-            </div>
-          </div>
+        {/* Floating 3D Earth Globe - No Border Box, Floating Freely */}
+        <div className="w-full h-[480px] sm:h-[540px] relative overflow-hidden bg-transparent my-1">
+          <GodsEyeGlobe
+            bbox={bbox}
+            onBboxChange={(newBbox) => {
+              setBbox(newBbox);
+              void fetchAoi(newBbox);
+            }}
+            activeLayer={activeLayer}
+            onLayerChange={setActiveLayer}
+            isScanning={busy === "fetch"}
+            flyToTarget={flyToCoords}
+            onMapClick={handleMapClick}
+            detectedFeatures={detectedFeatures}
+            selectedFeaturePoint={selectedFeaturePoint}
+            onSelectFeaturePoint={setSelectedFeaturePoint}
+            onAskAboutPoint={(q) => {
+              setQueryInput(q);
+            }}
+          />
+        </div>
 
-          {/* Right Panel: Gemini AI Chatbox with Image Attachment */}
-          <div className="lg:col-span-5 h-[600px] lg:h-full flex flex-col">
-            <GeminiChatBox
-              currentImage={currentAttachedImage}
-              availableImages={images}
-              onSelectImage={setCurrentAttachedImage}
-              onClearAttachedImage={() => setCurrentAttachedImage(null)}
-              onUploadImage={handleUploadImage}
-              onRunQuery={handleRunQuery}
-              isQuerying={busy === "query"}
-              isFetchingImage={busy === "fetch"}
-              selectedLocationName={selectedLocation?.name}
-              messages={messages}
-              onClearMessages={() => setMessages([])}
-              queryInput={queryInput}
-              setQueryInput={setQueryInput}
-            />
-          </div>
+        {/* Gemini Chatbox Directly Below the Globe */}
+        <div className="w-full max-w-[960px] mx-auto min-h-[500px] mb-12">
+          <GeminiChatBox
+            currentImage={currentAttachedImage}
+            availableImages={images}
+            onSelectImage={setCurrentAttachedImage}
+            onClearAttachedImage={() => setCurrentAttachedImage(null)}
+            onUploadImage={handleUploadImage}
+            onRunQuery={handleRunQuery}
+            isQuerying={busy === "query"}
+            isFetchingImage={busy === "fetch"}
+            selectedLocationName={selectedLocation?.name}
+            messages={messages}
+            onClearMessages={() => setMessages([])}
+            queryInput={queryInput}
+            setQueryInput={setQueryInput}
+          />
         </div>
       </main>
     </>

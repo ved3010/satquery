@@ -52,29 +52,6 @@ interface GeminiChatBoxProps {
   setQueryInput: (q: string) => void;
 }
 
-const STARTER_PROMPTS = [
-  {
-    title: "Land-cover breakdown",
-    desc: "Calculate percentages of built-up, vegetation, water & bare land.",
-    query: "What is the detailed land-cover breakdown (built-up, vegetation, water, bare) across this satellite scene?",
-  },
-  {
-    title: "Detect water & reservoirs",
-    desc: "Find river basins, canals, wetlands, and surface water.",
-    query: "Identify and measure all water bodies, lakes, and river channels visible in this area.",
-  },
-  {
-    title: "Urban sprawl & infrastructure",
-    desc: "Detect residential clusters, transit nodes & commercial density.",
-    query: "Analyze the urban density, transport infrastructure, and built-up pattern in this scene.",
-  },
-  {
-    title: "Vegetation health (NDVI)",
-    desc: "Assess agricultural vigor, tree canopy, and green cover.",
-    query: "Assess the vegetation health and canopy density across this satellite scene.",
-  },
-];
-
 export function GeminiChatBox({
   currentImage,
   availableImages,
@@ -139,23 +116,23 @@ export function GeminiChatBox({
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#0d1117]/90 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
+    <div className="flex flex-col h-full bg-black rounded-2xl border border-neutral-800 shadow-2xl overflow-hidden">
       {/* Sleek Minimal Header */}
-      <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/[0.08] bg-white/[0.02]">
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-neutral-800 bg-black">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-500 to-cyan-400 p-[1px] shadow-lg shadow-cyan-500/10 flex items-center justify-center">
-            <div className="w-full h-full bg-[#0d1117] rounded-[11px] flex items-center justify-center">
+            <div className="w-full h-full bg-black rounded-[11px] flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-cyan-300 animate-pulse" />
             </div>
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-[14px] font-semibold text-white tracking-tight">SatQuery AI</h2>
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-neutral-900 text-neutral-300 border border-neutral-800">
                 GEMINI VISION
               </span>
             </div>
-            <p className="text-[11px] text-white/50">
+            <p className="text-[11px] text-neutral-400">
               {selectedLocationName ? `Target: ${selectedLocationName}` : "Search or tap Earth to analyze"}
             </p>
           </div>
@@ -166,7 +143,7 @@ export function GeminiChatBox({
             <button
               onClick={onClearMessages}
               title="Clear conversation"
-              className="p-1.5 rounded-lg text-white/40 hover:text-white/80 hover:bg-white/5 transition-all text-[12px] flex items-center gap-1"
+              className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-900 transition-all text-[12px] flex items-center gap-1"
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Clear</span>
@@ -176,45 +153,21 @@ export function GeminiChatBox({
       </div>
 
       {/* Chat Messages Feed */}
-      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 space-y-5 scrollbar-thin scrollbar-thumb-white/10">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 space-y-5 scrollbar-thin scrollbar-thumb-neutral-800 bg-black min-h-[360px]">
         {messages.length === 0 ? (
-          /* Empty / Welcome State like Gemini / ChatGPT */
-          <div className="h-full flex flex-col justify-center items-center text-center px-4 py-8 space-y-6">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600/30 via-indigo-600/20 to-cyan-500/30 border border-cyan-500/30 flex items-center justify-center shadow-[0_0_30px_rgba(6,182,212,0.15)]">
-              <Sparkles className="w-7 h-7 text-cyan-300" />
+          /* Empty Minimal Welcome State without Suggestion Buttons */
+          <div className="h-full flex flex-col justify-center items-center text-center px-4 py-16 space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-neutral-900 border border-neutral-800 flex items-center justify-center shadow-lg">
+              <Sparkles className="w-6 h-6 text-cyan-400" />
             </div>
 
-            <div className="max-w-[420px] space-y-2">
-              <h3 className="text-xl font-bold text-white tracking-tight">
-                What would you like to discover from orbit?
+            <div className="max-w-[420px] space-y-1.5">
+              <h3 className="text-lg font-semibold text-white tracking-tight">
+                SatQuery AI Vision
               </h3>
-              <p className="text-[13px] text-white/60 leading-relaxed">
-                Click any coordinate on the 3D globe or search an Indian city. The satellite scene will automatically attach to your prompt below.
+              <p className="text-[13px] text-neutral-400 leading-relaxed">
+                Ask any question about this satellite scene, or tap anywhere on the globe above to inspect new coordinates.
               </p>
-            </div>
-
-            {/* Quick Starter Prompts */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full max-w-[560px] pt-2">
-              {STARTER_PROMPTS.map((item, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => {
-                    setQueryInput(item.query);
-                    if (textareaRef.current) {
-                      textareaRef.current.focus();
-                    }
-                  }}
-                  className="text-left p-3.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.06] hover:border-cyan-500/30 transition-all duration-200 group"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[13px] font-medium text-white/90 group-hover:text-cyan-300 transition-colors">
-                      {item.title}
-                    </span>
-                    <Sparkles className="w-3.5 h-3.5 text-white/30 group-hover:text-cyan-400 transition-colors" />
-                  </div>
-                  <p className="text-[11.5px] text-white/50 mt-1 line-clamp-2">{item.desc}</p>
-                </button>
-              ))}
             </div>
           </div>
         ) : (
@@ -233,9 +186,9 @@ export function GeminiChatBox({
                           <div
                             key={idx}
                             onClick={() => previewUrl && setEnlargedImage(previewUrl)}
-                            className="flex items-center gap-2.5 p-1.5 pr-3 rounded-xl bg-white/[0.06] border border-white/15 cursor-pointer hover:border-cyan-400/50 transition-all shadow-md group"
+                            className="flex items-center gap-2.5 p-1.5 pr-3 rounded-xl bg-neutral-900 border border-neutral-800 cursor-pointer hover:border-neutral-600 transition-all shadow-md group"
                           >
-                            <div className="w-12 h-12 rounded-lg overflow-hidden bg-black/50 shrink-0 border border-white/10 relative">
+                            <div className="w-12 h-12 rounded-lg overflow-hidden bg-black shrink-0 border border-neutral-800 relative">
                               {previewUrl ? (
                                 <img
                                   src={previewUrl}
@@ -243,7 +196,7 @@ export function GeminiChatBox({
                                   className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                                 />
                               ) : (
-                                <div className="w-full h-full flex items-center justify-center text-white/40">
+                                <div className="w-full h-full flex items-center justify-center text-neutral-500">
                                   <Satellite className="w-5 h-5" />
                                 </div>
                               )}
@@ -253,7 +206,7 @@ export function GeminiChatBox({
                               <p className="text-[11.5px] font-medium text-white/90 line-clamp-1">
                                 {msg.locationName || img.role || "Attached Scene"}
                               </p>
-                              <div className="flex items-center gap-1.5 text-[10px] text-white/50">
+                              <div className="flex items-center gap-1.5 text-[10px] text-neutral-400">
                                 <span className="uppercase">{img.modality}</span>
                                 {img.date && <span>· {img.date}</span>}
                               </div>
@@ -265,10 +218,10 @@ export function GeminiChatBox({
                   )}
 
                   {/* Message Bubble */}
-                  <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-blue-600/20 border border-blue-500/30 px-4 py-2.5 text-[14px] text-white shadow-sm">
+                  <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-neutral-900 border border-neutral-800 px-4 py-2.5 text-[14px] text-white shadow-sm">
                     <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
                     <div className="text-right mt-1">
-                      <span className="text-[10px] text-white/40 font-mono">{msg.timestamp}</span>
+                      <span className="text-[10px] text-neutral-500 font-mono">{msg.timestamp}</span>
                     </div>
                   </div>
                 </div>
@@ -276,7 +229,7 @@ export function GeminiChatBox({
                 /* Gemini / Assistant Message */
                 <div className="flex items-start gap-3">
                   <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-blue-500 via-indigo-500 to-cyan-400 p-[1px] shrink-0 mt-0.5 shadow-md shadow-cyan-500/20">
-                    <div className="w-full h-full bg-[#0d1117] rounded-[7px] flex items-center justify-center">
+                    <div className="w-full h-full bg-black rounded-[7px] flex items-center justify-center">
                       <Sparkles className="w-3.5 h-3.5 text-cyan-300" />
                     </div>
                   </div>
@@ -288,8 +241,8 @@ export function GeminiChatBox({
                         {msg.text}
                       </div>
                     ) : (
-                      /* Rich AI Response */
-                      <div className="p-4 rounded-2xl rounded-tl-sm bg-white/[0.04] border border-white/[0.08] shadow-sm space-y-3">
+                      /* Rich AI Response in Deep Black */
+                      <div className="p-4 rounded-2xl rounded-tl-sm bg-[#0a0a0a] border border-neutral-800/90 shadow-sm space-y-3">
                         {/* Main Markdown Text */}
                         <div className="text-[14px] text-white/90 leading-relaxed whitespace-pre-wrap">
                           {msg.text}
@@ -297,8 +250,8 @@ export function GeminiChatBox({
 
                         {/* Land Cover Metric Badges (if available in trace) */}
                         {msg.trace?.analysis?.available && msg.trace.analysis.scene?.cover && (
-                          <div className="pt-2 border-t border-white/[0.06]">
-                            <p className="text-[11px] font-mono tracking-wider text-white/50 uppercase mb-2">
+                          <div className="pt-2 border-t border-neutral-800/80">
+                            <p className="text-[11px] font-mono tracking-wider text-neutral-400 uppercase mb-2">
                               Measured Spectral Cover
                             </p>
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -341,32 +294,32 @@ export function GeminiChatBox({
                             </button>
 
                             {expandedReasoning[msg.id] && (
-                              <div className="mt-2 p-3 rounded-xl bg-black/40 border border-white/10 space-y-2 text-[12px] font-mono text-white/70 animate-slide-up">
+                              <div className="mt-2 p-3 rounded-xl bg-black border border-neutral-800 space-y-2 text-[12px] font-mono text-neutral-300 animate-slide-up">
                                 <div className="flex flex-wrap items-center gap-2 text-[10.5px]">
-                                  <span className="text-white/40">MODELS:</span>
+                                  <span className="text-neutral-500">MODELS:</span>
                                   {msg.trace.models_invoked.map((m) => (
                                     <span
                                       key={m}
-                                      className="px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20"
+                                      className="px-1.5 py-0.5 rounded bg-neutral-900 text-cyan-300 border border-neutral-800"
                                     >
                                       {m}
                                     </span>
                                   ))}
                                   {msg.trace.confidence && (
-                                    <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                                    <span className="px-1.5 py-0.5 rounded bg-neutral-900 text-emerald-300 border border-neutral-800">
                                       {(msg.trace.confidence * 100).toFixed(0)}% CONFIDENCE
                                     </span>
                                   )}
                                 </div>
 
                                 {msg.trace.steps && msg.trace.steps.length > 0 && (
-                                  <div className="space-y-1.5 pt-1 border-t border-white/5">
+                                  <div className="space-y-1.5 pt-1 border-t border-neutral-800">
                                     {msg.trace.steps.map((step, sIdx) => (
                                       <div key={sIdx} className="flex items-start justify-between text-[11px]">
-                                        <span className="text-white/60">
+                                        <span className="text-neutral-400">
                                           {sIdx + 1}. {step.node} ({step.model_id || "rule"})
                                         </span>
-                                        <span className="text-white/40">{step.latency_ms}ms</span>
+                                        <span className="text-neutral-500">{step.latency_ms}ms</span>
                                       </div>
                                     ))}
                                   </div>
@@ -377,11 +330,11 @@ export function GeminiChatBox({
                         )}
 
                         {/* Footer Controls: Copy, Timestamp */}
-                        <div className="flex items-center justify-between pt-1 text-[11px] text-white/40">
+                        <div className="flex items-center justify-between pt-1 text-[11px] text-neutral-500">
                           <span className="font-mono">{msg.timestamp}</span>
                           <button
                             onClick={() => handleCopy(msg.id, msg.text)}
-                            className="flex items-center gap-1 hover:text-white/80 transition-colors"
+                            className="flex items-center gap-1 hover:text-white transition-colors"
                           >
                             {copiedId === msg.id ? (
                               <>
@@ -409,16 +362,16 @@ export function GeminiChatBox({
         {isQuerying && (
           <div className="flex items-start gap-3 animate-pulse">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-blue-500 via-indigo-500 to-cyan-400 p-[1px] shrink-0 mt-0.5">
-              <div className="w-full h-full bg-[#0d1117] rounded-[7px] flex items-center justify-center">
+              <div className="w-full h-full bg-black rounded-[7px] flex items-center justify-center">
                 <Sparkles className="w-3.5 h-3.5 text-cyan-300 animate-spin" />
               </div>
             </div>
-            <div className="p-4 rounded-2xl rounded-tl-sm bg-white/[0.04] border border-cyan-500/20 shadow-sm space-y-2 max-w-[80%]">
+            <div className="p-4 rounded-2xl rounded-tl-sm bg-[#0a0a0a] border border-neutral-800 shadow-sm space-y-2 max-w-[80%]">
               <div className="flex items-center gap-2 text-cyan-300 text-[13px] font-medium">
                 <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />
                 <span>Interrogating satellite neural models...</span>
               </div>
-              <div className="h-1.5 w-48 bg-white/10 rounded-full overflow-hidden">
+              <div className="h-1.5 w-48 bg-neutral-800 rounded-full overflow-hidden">
                 <div className="h-full w-full bg-gradient-to-r from-blue-500 via-cyan-400 to-indigo-500 animate-[pulse_1s_ease-in-out_infinite]" />
               </div>
             </div>
@@ -428,18 +381,18 @@ export function GeminiChatBox({
         <div ref={chatBottomRef} />
       </div>
 
-      {/* Floating Image Attachment Dock + Input Box (Gemini / ChatGPT Style) */}
-      <div className="p-3 sm:p-4 border-t border-white/[0.08] bg-black/40 space-y-2">
+      {/* Floating Image Attachment Dock + Input Box in Deep Black */}
+      <div className="p-3 sm:p-4 border-t border-neutral-800 bg-black space-y-2">
         {/* Attached Satellite Image Dock */}
         {currentImage ? (
-          <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/[0.05] border border-cyan-500/30 shadow-sm animate-slide-up">
+          <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-neutral-950 border border-neutral-800 shadow-sm animate-slide-up">
             <div className="flex items-center gap-2.5 min-w-0">
               <div
                 onClick={() => {
                   const url = getPreviewUrl(currentImage, bandMode);
                   if (url) setEnlargedImage(url);
                 }}
-                className="w-10 h-10 rounded-lg overflow-hidden bg-black shrink-0 border border-white/20 relative cursor-pointer group"
+                className="w-10 h-10 rounded-lg overflow-hidden bg-black shrink-0 border border-neutral-800 relative cursor-pointer group"
                 title="Click to expand"
               >
                 <img
@@ -457,14 +410,14 @@ export function GeminiChatBox({
                   <p className="text-[12.5px] font-semibold text-white truncate">
                     {selectedLocationName || currentImage.role || "Orbital Satellite Scene"}
                   </p>
-                  <span className="px-1.5 py-0.2 rounded text-[9.5px] font-mono uppercase bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                  <span className="px-1.5 py-0.2 rounded text-[9.5px] font-mono uppercase bg-neutral-900 text-cyan-300 border border-neutral-800">
                     {currentImage.modality}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 text-[10.5px] text-white/50">
+                <div className="flex items-center gap-2 text-[10.5px] text-neutral-400">
                   <span>{currentImage.date || "Acquired"}</span>
                   {availableImages.length > 1 && (
-                    <span className="text-cyan-400">· {availableImages.length} scenes available</span>
+                    <span className="text-neutral-500">· {availableImages.length} scenes available</span>
                   )}
                 </div>
               </div>
@@ -472,13 +425,13 @@ export function GeminiChatBox({
 
             {/* Quick Band Switcher + Detach */}
             <div className="flex items-center gap-1.5">
-              <div className="hidden sm:flex items-center bg-black/40 rounded-lg p-0.5 border border-white/10 text-[10px] font-mono">
+              <div className="hidden sm:flex items-center bg-neutral-900 rounded-lg p-0.5 border border-neutral-800 text-[10px] font-mono">
                 {(["rgb", "cir", "ndvi"] as const).map((m) => (
                   <button
                     key={m}
                     onClick={() => setBandMode(m)}
                     className={`px-1.5 py-0.5 rounded uppercase transition-colors ${
-                      bandMode === m ? "bg-cyan-500 text-black font-bold" : "text-white/60 hover:text-white"
+                      bandMode === m ? "bg-white text-black font-bold" : "text-neutral-400 hover:text-white"
                     }`}
                   >
                     {m}
@@ -489,7 +442,7 @@ export function GeminiChatBox({
               <button
                 onClick={onClearAttachedImage}
                 title="Detach image"
-                className="p-1 rounded-lg text-white/40 hover:text-white/90 hover:bg-white/10 transition-colors"
+                className="p-1 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-900 transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -497,14 +450,14 @@ export function GeminiChatBox({
           </div>
         ) : isFetchingImage ? (
           /* Pulsing Image Acquisition Status */
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-cyan-300 text-[12px] animate-pulse">
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-neutral-950 border border-neutral-800 text-neutral-300 text-[12px] animate-pulse">
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400" />
             <span>Acquiring satellite imagery from orbit for targeted location...</span>
           </div>
         ) : null}
 
         {/* Input Composer Box */}
-        <div className="relative rounded-2xl bg-white/[0.05] border border-white/15 focus-within:border-cyan-500/60 focus-within:ring-2 focus-within:ring-cyan-500/10 transition-all">
+        <div className="relative rounded-2xl bg-[#0a0a0a] border border-neutral-800 focus-within:border-neutral-700 transition-all">
           <textarea
             ref={textareaRef}
             rows={1}
@@ -514,9 +467,9 @@ export function GeminiChatBox({
             placeholder={
               currentImage
                 ? "Ask anything about this satellite scene (e.g. land cover, water bodies)..."
-                : "Select a location on the globe or type your question..."
+                : "Select a location on the globe above or type your question..."
             }
-            className="w-full resize-none bg-transparent px-4 pt-3.5 pb-10 text-[14px] text-white placeholder-white/40 focus:outline-none scrollbar-none"
+            className="w-full resize-none bg-transparent px-4 pt-3.5 pb-10 text-[14px] text-white placeholder-neutral-500 focus:outline-none scrollbar-none"
             style={{ minHeight: "56px", maxHeight: "140px" }}
           />
 
@@ -535,14 +488,14 @@ export function GeminiChatBox({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 title="Upload custom satellite image (.tif, .png, .jpg)"
-                className="p-1.5 rounded-lg text-white/50 hover:text-cyan-300 hover:bg-white/10 transition-all flex items-center gap-1 text-[11px]"
+                className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-900 transition-all flex items-center gap-1 text-[11px]"
               >
                 <Paperclip className="w-4 h-4" />
                 <span className="hidden sm:inline">Upload Image</span>
               </button>
 
               {currentImage && (
-                <span className="hidden md:inline text-[10.5px] text-white/40 font-mono">
+                <span className="hidden md:inline text-[10.5px] text-neutral-500 font-mono">
                   Press Enter to send
                 </span>
               )}
@@ -554,8 +507,8 @@ export function GeminiChatBox({
               disabled={!queryInput.trim() || isQuerying}
               className={`p-2 rounded-xl flex items-center justify-center transition-all ${
                 queryInput.trim() && !isQuerying
-                  ? "bg-gradient-to-r from-blue-500 to-cyan-400 text-black shadow-lg shadow-cyan-500/20 hover:opacity-90 active:scale-95"
-                  : "bg-white/10 text-white/30 cursor-not-allowed"
+                  ? "bg-white text-black shadow-lg hover:bg-neutral-200 active:scale-95"
+                  : "bg-neutral-900 text-neutral-600 cursor-not-allowed"
               }`}
             >
               <Send className="w-4 h-4" />
@@ -568,12 +521,12 @@ export function GeminiChatBox({
       {enlargedImage && (
         <div
           onClick={() => setEnlargedImage(null)}
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-6 animate-fade-in"
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-6 animate-fade-in"
         >
-          <div className="relative max-w-4xl max-h-[85vh] rounded-2xl overflow-hidden border border-white/20 shadow-2xl bg-black">
+          <div className="relative max-w-4xl max-h-[85vh] rounded-2xl overflow-hidden border border-neutral-800 shadow-2xl bg-black">
             <button
               onClick={() => setEnlargedImage(null)}
-              className="absolute top-3 right-3 z-10 p-2 rounded-full bg-black/60 text-white hover:bg-black transition-colors"
+              className="absolute top-3 right-3 z-10 p-2 rounded-full bg-neutral-900 text-white hover:bg-neutral-800 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
