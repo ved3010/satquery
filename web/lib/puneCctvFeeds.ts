@@ -318,3 +318,67 @@ export const PUNE_CCTV_FEEDS: Record<string, GroundCctvFeed> = {
         focalLength: "4.5mm High-Resolution Optical",
         detectionCount: { vehicles: 39, buses: 9, pedestrians: 54 },
       },
+    ],
+  },
+  "hyderabad-hitec": {
+    id: "hyderabad-hitec",
+    locationName: "Hyderabad HITEC City",
+    district: "Rangareddy, Telangana",
+    landmark: "Cyber Towers Intersection & Mindspace Boulevard",
+    coords: [78.3816, 17.4504],
+    cameraId: "HYD-CCTV-029-HTC",
+    junctionType: "Technology Corridor & Elevated Metro Spine",
+    resolution: "1920x1080 FHD",
+    fps: 30,
+    description: "Cyberabad IT hub centerpiece featuring Cyber Towers, Mindspace Business District, and elevated Hyderabad Metro Blue line viaducts. Core engine of Telangana's IT export and corporate sector.",
+    surveillanceContext: "Multi-tiered vehicular infrastructure with flyover ramps, corporate bus terminals, and high-volume tech employee ingress routes.",
+    securityTier: "Tier-1 Global Technology Infrastructure Sector",
+    opticalCrossReference: "Sentinel-2 MSI 10m Multispectral + Sentinel-1 SAR Radar Co-Registration",
+    spectralSignature: "Structural steel, reflective architectural curtain walls, and asphalt corridors (NDBI: +0.38, NDVI: +0.10)",
+    telemetrySource: "Cyberabad Police Commissionerate Smart Surveillance Center",
+    angles: [
+      {
+        id: "htc-cam-01",
+        name: "CAM 01: Cyber Towers Junction & Inorbit Spine",
+        videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-traffic-in-a-busy-intersection-at-night-42862-large.mp4",
+        posterUrl: "https://images.unsplash.com/photo-1605379399642-870262d3d051?w=800&q=80",
+        description: "Primary IT district arterial crossroads with rapid bus corridors, elevated metro pillars, and Mindspace flyover access.",
+        tacticalSector: "Cyber Towers Main Rotunda",
+        fieldOfView: "86° Boulevard Perspective",
+        focalLength: "5.4mm Ultra-HD Lens",
+        detectionCount: { vehicles: 58, buses: 7, pedestrians: 31 },
+      },
+    ],
+  },
+};
+
+/**
+ * Find matched CCTV feed for a given place name or GPS coordinates
+ */
+export function getMatchedCctvFeed(queryOrName: string, coords?: [number, number]): GroundCctvFeed | null {
+  const low = queryOrName.toLowerCase();
+
+  // Pune Locations
+  if (low.includes("swargate") || low.includes("parvati") || low.includes("jedhe")) {
+    return PUNE_CCTV_FEEDS["pune-swargate"];
+  }
+  if (low.includes("hinjawadi") || low.includes("hinjewadi") || low.includes("wakad")) {
+    return PUNE_CCTV_FEEDS["pune-hinjawadi"];
+  }
+  if (low.includes("fc road") || low.includes("fergusson") || low.includes("deccan") || low.includes("goodluck")) {
+    return PUNE_CCTV_FEEDS["pune-fc-road"];
+  }
+  if (low.includes("shivajinagar") || low.includes("sancheti") || low.includes("coep")) {
+    return PUNE_CCTV_FEEDS["pune-shivajinagar"];
+  }
+  if (low.includes("koregaon") || low.includes("kp") || low.includes("north main")) {
+    return PUNE_CCTV_FEEDS["pune-koregaon"];
+  }
+  if (low.includes("pune")) {
+    return PUNE_CCTV_FEEDS["pune-swargate"];
+  }
+
+  // Mumbai Locations
+  if (low.includes("mumbai") || low.includes("bkc") || low.includes("bandra") || low.includes("kurla")) {
+    return PUNE_CCTV_FEEDS["mumbai-bkc"];
+  }
