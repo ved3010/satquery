@@ -109,3 +109,70 @@ export function DualSurveillanceCockpit({
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
+              className="p-1.5 rounded-xl text-white/50 hover:text-white hover:bg-white/10 transition-colors"
+              title="Close Dual View"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Central Synchronized Telemetry Banner */}
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-2 border-b border-white/[0.08] bg-white/[0.02] text-[11px] font-mono text-white/70">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-cyan-400">COORDS:</span>
+            <span>{coords[1].toFixed(4)}° N, {coords[0].toFixed(4)}° E</span>
+            <span className="text-white/20">|</span>
+            <span className="text-emerald-400">CAMERA ID:</span>
+            <span>{cctvFeed.cameraId}</span>
+            <span className="text-white/20">|</span>
+            <span className="text-purple-300">TIER:</span>
+            <span className="text-white/90">{cctvFeed.securityTier || "Tier-1 Critical"}</span>
+            <span className="text-white/20">|</span>
+            <span className="text-amber-300">SENSOR SUITE:</span>
+            <span>Sentinel-2 MSI + 1080p Optical CCTV</span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 text-white/50">
+              <Clock className="w-3.5 h-3.5 text-cyan-400" />
+              <span className="tabular-nums text-white/80">{currentTime}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Side-by-Side Dual Display Area */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
+          {/* ================= LEFT PANE: ORBITAL SATELLITE VIEW ================= */}
+          <div className="flex flex-col rounded-2xl bg-black/60 border border-white/15 overflow-hidden shadow-xl relative group">
+            {/* Top Bar for Satellite */}
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/10 bg-white/[0.03]">
+              <div className="flex items-center gap-2">
+                <Satellite className="w-4 h-4 text-cyan-400" />
+                <span className="text-[12px] font-semibold text-white tracking-wide">
+                  ORBITAL VIEW (OVERHEAD)
+                </span>
+                <span className="px-1.5 py-0.2 rounded text-[9.5px] font-mono uppercase bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                  10m GSD
+                </span>
+              </div>
+
+              {/* Band Mode Switcher */}
+              <div className="flex items-center bg-black/60 rounded-lg p-0.5 border border-white/10 text-[10px] font-mono">
+                {(["rgb", "cir", "ndvi"] as const).map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => setBandMode(m)}
+                    className={`px-2 py-0.5 rounded uppercase transition-colors ${
+                      bandMode === m ? "bg-cyan-500 text-black font-bold" : "text-white/60 hover:text-white"
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Satellite Image Canvas */}
+            <div className="relative flex-1 min-h-[300px] sm:min-h-[380px] bg-black flex items-center justify-center overflow-hidden">
+              {satelliteImage ? (
