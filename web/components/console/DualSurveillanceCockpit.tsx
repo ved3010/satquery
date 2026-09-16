@@ -242,3 +242,70 @@ export function DualSurveillanceCockpit({
             <div className="relative flex-1 min-h-[300px] sm:min-h-[380px] bg-black flex items-center justify-center overflow-hidden">
               <video
                 ref={videoRef}
+                src={selectedAngle.videoUrl}
+                poster={selectedAngle.posterUrl}
+                autoPlay
+                loop
+                muted={isMuted}
+                playsInline
+                className="w-full h-full object-cover"
+              />
+
+              {/* Live Video OSD (On-Screen Display Overlays) */}
+              <div className="absolute top-3 left-3 z-10 font-mono text-[11px] text-emerald-400 drop-shadow-md pointer-events-none space-y-0.5">
+                <div className="flex items-center gap-2 font-bold tracking-wider">
+                  <span className="px-1.5 py-0.5 bg-red-600 text-white text-[9.5px] rounded">REC</span>
+                  <span>{selectedAngle.name}</span>
+                </div>
+                <div className="text-[10px] text-white/80">{currentTime}</div>
+              </div>
+
+              {/* AI Object Detection Bounding Boxes Overlay */}
+              {showAiDetections && (
+                <div className="absolute inset-0 pointer-events-none z-10">
+                  {/* Bounding Box 1: Bus */}
+                  <div className="absolute top-[35%] left-[22%] w-[26%] h-[28%] border-2 border-amber-400/80 rounded bg-amber-400/10">
+                    <span className="absolute -top-4 left-0 px-1 rounded bg-amber-400 text-black font-mono text-[9px] font-bold">
+                      BUS 96%
+                    </span>
+                  </div>
+
+                  {/* Bounding Box 2: Car */}
+                  <div className="absolute top-[55%] left-[58%] w-[18%] h-[20%] border-2 border-emerald-400/80 rounded bg-emerald-400/10">
+                    <span className="absolute -top-4 left-0 px-1 rounded bg-emerald-400 text-black font-mono text-[9px] font-bold">
+                      CAR 92%
+                    </span>
+                  </div>
+
+                  {/* Bounding Box 3: Auto Rickshaw */}
+                  <div className="absolute top-[48%] left-[45%] w-[12%] h-[16%] border-2 border-cyan-400/80 rounded bg-cyan-400/10">
+                    <span className="absolute -top-4 left-0 px-1 rounded bg-cyan-400 text-black font-mono text-[9px] font-bold">
+                      AUTO 94%
+                    </span>
+                  </div>
+
+                  {/* Bounding Box 4: Pedestrian */}
+                  <div className="absolute top-[62%] left-[12%] w-[8%] h-[18%] border-2 border-purple-400/80 rounded bg-purple-400/10">
+                    <span className="absolute -top-4 left-0 px-1 rounded bg-purple-400 text-white font-mono text-[9px] font-bold">
+                      PED 88%
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Player Floating Control Bar */}
+              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-[11px] font-mono text-white/90 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/15 z-20">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={togglePlay}
+                    className="hover:text-cyan-400 transition-colors"
+                    title={isPlaying ? "Pause" : "Play"}
+                  >
+                    {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                  </button>
+                  <button
+                    onClick={() => setIsMuted(!isMuted)}
+                    className="hover:text-cyan-400 transition-colors"
+                    title={isMuted ? "Unmute" : "Mute"}
+                  >
+                    {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
