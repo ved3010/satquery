@@ -176,3 +176,69 @@ export function DualSurveillanceCockpit({
             {/* Satellite Image Canvas */}
             <div className="relative flex-1 min-h-[300px] sm:min-h-[380px] bg-black flex items-center justify-center overflow-hidden">
               {satelliteImage ? (
+                <img
+                  src={getPreviewUrl(satelliteImage, bandMode)}
+                  alt="Orbital Satellite Observation"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="flex flex-col items-center gap-2 text-white/40">
+                  <Satellite className="w-8 h-8 text-cyan-400 animate-pulse" />
+                  <span className="text-[12px] font-mono">Acquiring Orbital Sentinel Imagery...</span>
+                </div>
+              )}
+
+              {/* Overlaid Tactical Crosshair & Target Reticle */}
+              <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                <div className="w-24 h-24 rounded-full border border-cyan-400/40 animate-ping opacity-25" />
+                <div className="w-16 h-16 rounded-full border border-cyan-400/60 flex items-center justify-center">
+                  <div className="w-2 h-2 rounded-full bg-cyan-400" />
+                </div>
+                <div className="absolute w-28 h-px bg-cyan-400/40" />
+                <div className="absolute h-28 w-px bg-cyan-400/40" />
+              </div>
+
+              {/* Bottom Telemetry Overlay */}
+              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-[10.5px] font-mono text-white/80 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/15 pointer-events-none">
+                <span>SENSOR: Sentinel-2 MSI</span>
+                <span>ALTITUDE: ~786 KM LEO</span>
+                <span>SUN ELEVATION: 58.4°</span>
+              </div>
+            </div>
+          </div>
+
+          {/* ================= RIGHT PANE: LIVE STREET CCTV VIDEO FOOTAGE ================= */}
+          <div className="flex flex-col rounded-2xl bg-black/60 border border-white/15 overflow-hidden shadow-xl relative group">
+            {/* Top Bar for Ground Camera */}
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/10 bg-white/[0.03]">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+                </span>
+                <span className="text-[12px] font-semibold text-white tracking-wide">
+                  GROUND STREET CCTV (LIVE)
+                </span>
+                <span className="px-1.5 py-0.2 rounded text-[9.5px] font-mono bg-red-500/20 text-red-300 border border-red-500/30">
+                  {cctvFeed.fps} FPS
+                </span>
+              </div>
+
+              {/* AI Detection Toggle */}
+              <button
+                onClick={() => setShowAiDetections(!showAiDetections)}
+                className={`px-2 py-0.5 rounded-lg border text-[10.5px] font-mono transition-colors flex items-center gap-1 ${
+                  showAiDetections
+                    ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300"
+                    : "bg-black/50 border-white/10 text-white/50 hover:text-white"
+                }`}
+              >
+                <Eye className="w-3 h-3" />
+                <span>AI Boxes</span>
+              </button>
+            </div>
+
+            {/* Video Footage Player Container */}
+            <div className="relative flex-1 min-h-[300px] sm:min-h-[380px] bg-black flex items-center justify-center overflow-hidden">
+              <video
+                ref={videoRef}
