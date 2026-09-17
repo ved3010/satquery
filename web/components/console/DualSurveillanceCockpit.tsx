@@ -376,3 +376,70 @@ export function DualSurveillanceCockpit({
                     FOV: {selectedAngle.fieldOfView}
                   </span>
                 )}
+                {selectedAngle.focalLength && (
+                  <span className="px-1.5 py-0.5 rounded text-[9.5px] font-mono bg-white/10 text-white/70 border border-white/15 hidden sm:inline-block">
+                    Lens: {selectedAngle.focalLength}
+                  </span>
+                )}
+              </div>
+              <p className="text-[11.5px] text-white/80 leading-relaxed">
+                {selectedAngle.description}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 self-start md:self-auto">
+              <span className="flex h-2 w-2 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500" />
+              </span>
+              <span className="mono text-[10px] font-bold text-cyan-300 tracking-wider">
+                SYNCHRONIZED (ORBIT → GROUND LOCKED)
+              </span>
+            </div>
+          </div>
+
+          {/* Tactical Intelligence Breakdown Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-[11px] leading-relaxed pt-0.5">
+            {/* Column 1: Comprehensive Location Intelligence */}
+            <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] space-y-1">
+              <div className="mono text-[9px] uppercase tracking-wider text-cyan-400 font-bold flex items-center gap-1.5">
+                <Activity className="w-3 h-3 text-cyan-400" />
+                <span>Geospatial Target Description</span>
+              </div>
+              <p className="text-white/85 text-[11px] line-clamp-2">
+                {cctvFeed.description || "High-precision municipal surveillance corridor cross-referenced with satellite observation."}
+              </p>
+            </div>
+
+            {/* Column 2: Operational Surveillance Context */}
+            <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] space-y-1">
+              <div className="mono text-[9px] uppercase tracking-wider text-amber-300 font-bold flex items-center gap-1.5">
+                <ShieldAlert className="w-3 h-3 text-amber-300" />
+                <span>Surveillance Context & Choke Points</span>
+              </div>
+              <p className="text-white/85 text-[11px] line-clamp-2">
+                {cctvFeed.surveillanceContext || "Multi-modal transit intersection subject to continuous real-time vehicular and pedestrian analysis."}
+              </p>
+            </div>
+
+            {/* Column 3: Optical Cross-Reference & Spectral Signature */}
+            <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] space-y-1">
+              <div className="mono text-[9px] uppercase tracking-wider text-emerald-400 font-bold flex items-center gap-1.5">
+                <Satellite className="w-3 h-3 text-emerald-400" />
+                <span>Spaceborne Optical Cross-Reference</span>
+              </div>
+              <div className="text-[10.5px] text-white/85 space-y-0.5">
+                <div className="truncate text-white/90 font-medium">
+                  {cctvFeed.opticalCrossReference || "Sentinel-2 MSI 10m L2A"}
+                </div>
+                <div className="text-[10px] text-emerald-300/80 font-mono truncate">
+                  {cctvFeed.spectralSignature || "Built-Up Asphalt / Concrete Matrix"}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
