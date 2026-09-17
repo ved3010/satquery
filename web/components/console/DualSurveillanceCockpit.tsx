@@ -309,3 +309,70 @@ export function DualSurveillanceCockpit({
                     title={isMuted ? "Unmute" : "Mute"}
                   >
                     {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                  </button>
+                  <span className="text-white/40">|</span>
+                  <span className="text-[10px] text-white/70">{cctvFeed.resolution}</span>
+                </div>
+
+                {/* Detected Live Counts */}
+                <div className="flex items-center gap-3 text-[10.5px]">
+                  <div className="flex items-center gap-1 text-amber-300">
+                    <Bus className="w-3 h-3" />
+                    <span>{selectedAngle.detectionCount.buses}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-emerald-300">
+                    <Car className="w-3 h-3" />
+                    <span>{selectedAngle.detectionCount.vehicles}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-purple-300">
+                    <Users className="w-3 h-3" />
+                    <span>{selectedAngle.detectionCount.pedestrians}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Camera Angle Switcher Bar */}
+            <div className="px-3 py-2 border-t border-white/10 bg-black/40 flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+              <span className="text-[10px] font-mono text-white/40 uppercase shrink-0 px-1">
+                Angles:
+              </span>
+              {cctvFeed.angles.map((angle) => {
+                const isCurrent = angle.id === selectedAngle.id;
+                return (
+                  <button
+                    key={angle.id}
+                    onClick={() => setSelectedAngle(angle)}
+                    className={`px-2.5 py-1 rounded-lg border text-[10.5px] font-mono transition-colors shrink-0 ${
+                      isCurrent
+                        ? "bg-cyan-500/20 border-cyan-400 text-cyan-300 font-bold"
+                        : "bg-black/50 border-white/10 text-white/60 hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    {angle.name.split(":")[0]}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Professional Tactical Intelligence Briefing Footer */}
+        <div className="px-5 py-3.5 border-t border-white/10 bg-black/60 backdrop-blur-md space-y-2.5">
+          {/* Top Line: Selected Angle & Primary Target Description */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-white/[0.08] pb-2">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <span className="text-[12px] font-bold text-white tracking-wide">
+                  {selectedAngle.name}
+                </span>
+                {selectedAngle.tacticalSector && (
+                  <span className="px-1.5 py-0.5 rounded text-[9.5px] font-mono bg-cyan-500/15 text-cyan-300 border border-cyan-500/25">
+                    {selectedAngle.tacticalSector}
+                  </span>
+                )}
+                {selectedAngle.fieldOfView && (
+                  <span className="px-1.5 py-0.5 rounded text-[9.5px] font-mono bg-white/10 text-white/70 border border-white/15 hidden sm:inline-block">
+                    FOV: {selectedAngle.fieldOfView}
+                  </span>
+                )}
