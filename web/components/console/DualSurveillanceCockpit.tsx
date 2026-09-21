@@ -220,3 +220,128 @@ export function DualSurveillanceCockpit({
                   GROUND STREET CCTV (LIVE)
                 </span>
                 <span className="px-1.5 py-0.2 rounded text-[9.5px] font-mono bg-red-500/20 text-red-300 border border-red-500/30">
+                  {cctvFeed.fps} FPS
+                </span>
+              </div>
+
+              {/* AI Detection Toggle */}
+              <button
+                onClick={() => setShowAiDetections(!showAiDetections)}
+                className={`px-2 py-0.5 rounded-lg border text-[10.5px] font-mono transition-colors flex items-center gap-1 ${
+                  showAiDetections
+                    ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300"
+                    : "bg-black/50 border-white/10 text-white/50 hover:text-white"
+                }`}
+              >
+                <Eye className="w-3 h-3" />
+                <span>AI Boxes</span>
+              </button>
+            </div>
+
+            {/* Video Footage Player Container */}
+            <div className="relative flex-1 min-h-[300px] sm:min-h-[380px] bg-black flex items-center justify-center overflow-hidden">
+              <video
+                ref={videoRef}
+                src={selectedAngle.videoUrl}
+                poster={selectedAngle.posterUrl}
+                autoPlay
+                loop
+                muted={isMuted}
+                playsInline
+                className="w-full h-full object-cover"
+              />
+
+              {/* Live Video OSD (On-Screen Display Overlays) */}
+              <div className="absolute top-3 left-3 z-10 font-mono text-[11px] text-emerald-400 drop-shadow-md pointer-events-none space-y-0.5">
+                <div className="flex items-center gap-2 font-bold tracking-wider">
+                  <span className="px-1.5 py-0.5 bg-red-600 text-white text-[9.5px] rounded">REC</span>
+                  <span>{selectedAngle.name}</span>
+                </div>
+                <div className="text-[10px] text-white/80">{currentTime}</div>
+              </div>
+
+              {/* AI Object Detection Bounding Boxes Overlay */}
+              {showAiDetections && (
+                <div className="absolute inset-0 pointer-events-none z-10">
+                  {/* Bounding Box 1: Bus */}
+                  <div className="absolute top-[35%] left-[22%] w-[26%] h-[28%] border-2 border-amber-400/80 rounded bg-amber-400/10">
+                    <span className="absolute -top-4 left-0 px-1 rounded bg-amber-400 text-black font-mono text-[9px] font-bold">
+                      BUS 96%
+                    </span>
+                  </div>
+
+                  {/* Bounding Box 2: Car */}
+                  <div className="absolute top-[55%] left-[58%] w-[18%] h-[20%] border-2 border-emerald-400/80 rounded bg-emerald-400/10">
+                    <span className="absolute -top-4 left-0 px-1 rounded bg-emerald-400 text-black font-mono text-[9px] font-bold">
+                      CAR 92%
+                    </span>
+                  </div>
+
+                  {/* Bounding Box 3: Auto Rickshaw */}
+                  <div className="absolute top-[48%] left-[45%] w-[12%] h-[16%] border-2 border-cyan-400/80 rounded bg-cyan-400/10">
+                    <span className="absolute -top-4 left-0 px-1 rounded bg-cyan-400 text-black font-mono text-[9px] font-bold">
+                      AUTO 94%
+                    </span>
+                  </div>
+
+                  {/* Bounding Box 4: Pedestrian */}
+                  <div className="absolute top-[62%] left-[12%] w-[8%] h-[18%] border-2 border-purple-400/80 rounded bg-purple-400/10">
+                    <span className="absolute -top-4 left-0 px-1 rounded bg-purple-400 text-white font-mono text-[9px] font-bold">
+                      PED 88%
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Player Floating Control Bar */}
+              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-[11px] font-mono text-white/90 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/15 z-20">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={togglePlay}
+                    className="hover:text-cyan-400 transition-colors"
+                    title={isPlaying ? "Pause" : "Play"}
+                  >
+                    {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                  </button>
+                  <button
+                    onClick={() => setIsMuted(!isMuted)}
+                    className="hover:text-cyan-400 transition-colors"
+                    title={isMuted ? "Unmute" : "Mute"}
+                  >
+                    {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                  </button>
+                  <span className="text-white/40">|</span>
+                  <span className="text-[10px] text-white/70">{cctvFeed.resolution}</span>
+                </div>
+
+                {/* Detected Live Counts */}
+                <div className="flex items-center gap-3 text-[10.5px]">
+                  <div className="flex items-center gap-1 text-amber-300">
+                    <Bus className="w-3 h-3" />
+                    <span>{selectedAngle.detectionCount.buses}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-emerald-300">
+                    <Car className="w-3 h-3" />
+                    <span>{selectedAngle.detectionCount.vehicles}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-purple-300">
+                    <Users className="w-3 h-3" />
+                    <span>{selectedAngle.detectionCount.pedestrians}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Camera Angle Switcher Bar */}
+            <div className="px-3 py-2 border-t border-white/10 bg-black/40 flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+              <span className="text-[10px] font-mono text-white/40 uppercase shrink-0 px-1">
+                Angles:
+              </span>
+              {cctvFeed.angles.map((angle) => {
+                const isCurrent = angle.id === selectedAngle.id;
+                return (
+                  <button
+                    key={angle.id}
+                    onClick={() => setSelectedAngle(angle)}
+                    className={`px-2.5 py-1 rounded-lg border text-[10.5px] font-mono transition-colors shrink-0 ${
+                      isCurrent
