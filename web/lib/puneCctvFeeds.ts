@@ -348,3 +348,80 @@ export const PUNE_CCTV_FEEDS: Record<string, GroundCctvFeed> = {
         focalLength: "5.4mm Ultra-HD Lens",
         detectionCount: { vehicles: 58, buses: 7, pedestrians: 31 },
       },
+    ],
+  },
+};
+
+/**
+ * Find matched CCTV feed for a given place name or GPS coordinates
+ */
+export function getMatchedCctvFeed(queryOrName: string, coords?: [number, number]): GroundCctvFeed | null {
+  const low = queryOrName.toLowerCase();
+
+  // Pune Locations
+  if (low.includes("swargate") || low.includes("parvati") || low.includes("jedhe")) {
+    return PUNE_CCTV_FEEDS["pune-swargate"];
+  }
+  if (low.includes("hinjawadi") || low.includes("hinjewadi") || low.includes("wakad")) {
+    return PUNE_CCTV_FEEDS["pune-hinjawadi"];
+  }
+  if (low.includes("fc road") || low.includes("fergusson") || low.includes("deccan") || low.includes("goodluck")) {
+    return PUNE_CCTV_FEEDS["pune-fc-road"];
+  }
+  if (low.includes("shivajinagar") || low.includes("sancheti") || low.includes("coep")) {
+    return PUNE_CCTV_FEEDS["pune-shivajinagar"];
+  }
+  if (low.includes("koregaon") || low.includes("kp") || low.includes("north main")) {
+    return PUNE_CCTV_FEEDS["pune-koregaon"];
+  }
+  if (low.includes("pune")) {
+    return PUNE_CCTV_FEEDS["pune-swargate"];
+  }
+
+  // Mumbai Locations
+  if (low.includes("mumbai") || low.includes("bkc") || low.includes("bandra") || low.includes("kurla")) {
+    return PUNE_CCTV_FEEDS["mumbai-bkc"];
+  }
+
+  // Bengaluru Locations
+  if (low.includes("bengaluru") || low.includes("bangalore") || low.includes("silk board") || low.includes("koramangala")) {
+    return PUNE_CCTV_FEEDS["bengaluru-silk-board"];
+  }
+
+  // Delhi Locations
+  if (low.includes("delhi") || low.includes("connaught") || low.includes("cp") || low.includes("rajiv chowk")) {
+    return PUNE_CCTV_FEEDS["delhi-cp"];
+  }
+
+  // Hyderabad Locations
+  if (low.includes("hyderabad") || low.includes("hitec") || low.includes("cyber") || low.includes("gachibowli")) {
+    return PUNE_CCTV_FEEDS["hyderabad-hitec"];
+  }
+
+  // Coordinate proximity match
+  if (coords) {
+    const [lon, lat] = coords;
+    // Pune (~18.52, 73.85)
+    if (Math.abs(lon - 73.85) < 0.25 && Math.abs(lat - 18.52) < 0.25) {
+      return PUNE_CCTV_FEEDS["pune-swargate"];
+    }
+    // Mumbai (~19.07, 72.87)
+    if (Math.abs(lon - 72.87) < 0.25 && Math.abs(lat - 19.07) < 0.25) {
+      return PUNE_CCTV_FEEDS["mumbai-bkc"];
+    }
+    // Bengaluru (~12.97, 77.59)
+    if (Math.abs(lon - 77.6) < 0.25 && Math.abs(lat - 12.95) < 0.25) {
+      return PUNE_CCTV_FEEDS["bengaluru-silk-board"];
+    }
+    // Delhi (~28.61, 77.21)
+    if (Math.abs(lon - 77.21) < 0.25 && Math.abs(lat - 28.61) < 0.25) {
+      return PUNE_CCTV_FEEDS["delhi-cp"];
+    }
+    // Hyderabad (~17.44, 78.38)
+    if (Math.abs(lon - 78.38) < 0.25 && Math.abs(lat - 17.44) < 0.25) {
+      return PUNE_CCTV_FEEDS["hyderabad-hitec"];
+    }
+  }
+
+  return null;
+}
