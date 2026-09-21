@@ -140,3 +140,83 @@ export function DualSurveillanceCockpit({
             </div>
           </div>
         </div>
+
+        {/* Main Side-by-Side Dual Display Area */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
+          {/* ================= LEFT PANE: ORBITAL SATELLITE VIEW ================= */}
+          <div className="flex flex-col rounded-2xl bg-black/60 border border-white/15 overflow-hidden shadow-xl relative group">
+            {/* Top Bar for Satellite */}
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/10 bg-white/[0.03]">
+              <div className="flex items-center gap-2">
+                <Satellite className="w-4 h-4 text-cyan-400" />
+                <span className="text-[12px] font-semibold text-white tracking-wide">
+                  ORBITAL VIEW (OVERHEAD)
+                </span>
+                <span className="px-1.5 py-0.2 rounded text-[9.5px] font-mono uppercase bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                  10m GSD
+                </span>
+              </div>
+
+              {/* Band Mode Switcher */}
+              <div className="flex items-center bg-black/60 rounded-lg p-0.5 border border-white/10 text-[10px] font-mono">
+                {(["rgb", "cir", "ndvi"] as const).map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => setBandMode(m)}
+                    className={`px-2 py-0.5 rounded uppercase transition-colors ${
+                      bandMode === m ? "bg-cyan-500 text-black font-bold" : "text-white/60 hover:text-white"
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Satellite Image Canvas */}
+            <div className="relative flex-1 min-h-[300px] sm:min-h-[380px] bg-black flex items-center justify-center overflow-hidden">
+              {satelliteImage ? (
+                <img
+                  src={getPreviewUrl(satelliteImage, bandMode)}
+                  alt="Orbital Satellite Observation"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="flex flex-col items-center gap-2 text-white/40">
+                  <Satellite className="w-8 h-8 text-cyan-400 animate-pulse" />
+                  <span className="text-[12px] font-mono">Acquiring Orbital Sentinel Imagery...</span>
+                </div>
+              )}
+
+              {/* Overlaid Tactical Crosshair & Target Reticle */}
+              <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                <div className="w-24 h-24 rounded-full border border-cyan-400/40 animate-ping opacity-25" />
+                <div className="w-16 h-16 rounded-full border border-cyan-400/60 flex items-center justify-center">
+                  <div className="w-2 h-2 rounded-full bg-cyan-400" />
+                </div>
+                <div className="absolute w-28 h-px bg-cyan-400/40" />
+                <div className="absolute h-28 w-px bg-cyan-400/40" />
+              </div>
+
+              {/* Bottom Telemetry Overlay */}
+              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-[10.5px] font-mono text-white/80 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/15 pointer-events-none">
+                <span>SENSOR: Sentinel-2 MSI</span>
+                <span>ALTITUDE: ~786 KM LEO</span>
+                <span>SUN ELEVATION: 58.4°</span>
+              </div>
+            </div>
+          </div>
+
+          {/* ================= RIGHT PANE: LIVE STREET CCTV VIDEO FOOTAGE ================= */}
+          <div className="flex flex-col rounded-2xl bg-black/60 border border-white/15 overflow-hidden shadow-xl relative group">
+            {/* Top Bar for Ground Camera */}
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/10 bg-white/[0.03]">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+                </span>
+                <span className="text-[12px] font-semibold text-white tracking-wide">
+                  GROUND STREET CCTV (LIVE)
+                </span>
+                <span className="px-1.5 py-0.2 rounded text-[9.5px] font-mono bg-red-500/20 text-red-300 border border-red-500/30">
