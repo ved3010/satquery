@@ -740,3 +740,174 @@ export const INDEXED_INDIAN_LOCATIONS: LocationBriefing[] = [
     type: "North-East Gateway & Ramsar Wetland",
     coords: [91.7362, 26.1445],
     bbox: [91.58, 26.04, 91.88, 26.24],
+    zoom: 12.0,
+    pitch: 52,
+    climateZone: "Humid Subtropical (Cwa)",
+    terrainType: "Brahmaputra River Valley & Montane Hills",
+    landCoverSummary: "Urban built-up fabric (50%), Deepor Beel wetland (18%), dense hill forests (20%), Brahmaputra riverbed (12%).",
+    recommendedSensor: "Joint Optical + SAR",
+    suggestedQuestions: [
+      "Monitor Deepor Beel Ramsar wetland shrinkage and encroaching urban developments.",
+      "Track bridge and logistics construction across the Brahmaputra at North Guwahati.",
+      "Assess forest canopy health on the Kamakhya and surrounding hill ridges.",
+    ],
+    ecologicalSignificance: "Primary metropolitan hub of Northeast India, harboring the vital Deepor Beel wetland for migratory bird flyways.",
+    localHotspots: [
+      "Deepor Beel Ramsar Wetland Reserve",
+      "North Guwahati IIT Tech Corridor",
+      "Brahmaputra Riverfront Promenade",
+      "Dispur Capital Complex",
+    ],
+  },
+
+  // ==================== CENTRAL & HIMALAYAN INDIA ====================
+  {
+    name: "Indore Super Corridor & Pithampur",
+    state: "Madhya Pradesh",
+    country: "India",
+    regionCategory: "Central",
+    type: "Commercial Capital & Cleanest City",
+    coords: [75.8577, 22.7196],
+    bbox: [75.72, 22.60, 75.98, 22.84],
+    zoom: 12.0,
+    pitch: 48,
+    climateZone: "Tropical Savanna (Aw)",
+    terrainType: "Malwa Plateau (550m)",
+    landCoverSummary: "Urban built-up & planned corridors (54%), fertile black cotton soil farmland (38%), water tanks (8%).",
+    recommendedSensor: "Sentinel-2 MSI (Optical)",
+    suggestedQuestions: [
+      "Track tech campus development along the Indore Super Corridor.",
+      "Analyze industrial expansion in the Pithampur Auto Cluster (SEZ).",
+      "Measure lake revival and green cover in Bilawali and Sirpur lakes.",
+    ],
+    ecologicalSignificance: "Commercial hub of the Malwa plateau renowned for high-rate urban infrastructure and environmental clean initiatives.",
+    localHotspots: [
+      "Super Corridor IT & Educational Belt (TCS/Infosys)",
+      "Pithampur Industrial Auto SEZ",
+      "Vijay Nagar & Ring Road Commercial Hub",
+      "Sirpur Lake Ramsar Wetland",
+    ],
+  },
+  {
+    name: "Bhopal & Bhoj Wetland (Upper Lake)",
+    state: "Madhya Pradesh",
+    country: "India",
+    regionCategory: "Central",
+    type: "City of Lakes & State Capital",
+    coords: [77.4126, 23.2599],
+    bbox: [77.30, 23.16, 77.52, 23.34],
+    zoom: 12.2,
+    pitch: 48,
+    climateZone: "Humid Subtropical (Cwa)",
+    terrainType: "Malwa Plateau Undulating Hills & Lakes",
+    landCoverSummary: "Urban fabric (52%), Bhojtal Upper Lake water body (26%), Van Vihar National Park forest (22%).",
+    recommendedSensor: "Joint Optical + SAR",
+    suggestedQuestions: [
+      "Monitor Bhojtal (Upper Lake) water levels and catchment vegetation.",
+      "Assess industrial growth in Mandideep and Govindpura estates.",
+      "Analyze forest canopy integrity in Van Vihar National Park.",
+    ],
+    ecologicalSignificance: "Home to the historic Bhoj Wetland, an essential Ramsar wetland constructed in the 11th century.",
+    localHotspots: [
+      "Bhojtal (Upper Lake) Catchment",
+      "Van Vihar National Park Forest",
+      "Mandideep Industrial Corridor",
+      "Hoshangabad Road Growth Corridor",
+    ],
+  },
+  {
+    name: "Shimla Himalayan Ridge",
+    state: "Himachal Pradesh",
+    country: "India",
+    regionCategory: "Himalayan & Islands",
+    type: "Montane Hill Station & Pine Forest",
+    coords: [77.1734, 31.1048],
+    bbox: [77.08, 31.02, 77.25, 31.18],
+    zoom: 12.4,
+    pitch: 62,
+    climateZone: "Subtropical Highland (Cwb)",
+    terrainType: "Steep Himalayan Ridges & Valleys (2,200m)",
+    landCoverSummary: "Coniferous pine/deodar forest (56%), montane slopes & bare rock (26%), high-slope urban settlements (18%).",
+    recommendedSensor: "Sentinel-2 MSI (Optical)",
+    suggestedQuestions: [
+      "Analyze forest canopy health and deforestation along ridge roads.",
+      "Assess slope stability and landslide susceptibility zones.",
+      "Track seasonal snowfall coverage on higher Shivalik peaks.",
+    ],
+    ecologicalSignificance: "Key catchment for the Sutlej and Yamuna river systems with critical Himalayan biodiversity.",
+    localHotspots: [
+      "Mall Road & Ridge Montane Axis",
+      "Sanjauli-Dhalli Highway Corridor",
+      "Kufri Snow & Pine Ridge",
+      "Jutogh Forest Catchment",
+    ],
+  },
+  {
+    name: "Ladakh High-Altitude Cold Desert (Leh)",
+    state: "Ladakh",
+    country: "India",
+    regionCategory: "Himalayan & Islands",
+    type: "Trans-Himalayan Cold Desert Plateau",
+    coords: [77.5771, 34.1526],
+    bbox: [77.45, 34.05, 77.70, 34.25],
+    zoom: 11.8,
+    pitch: 58,
+    climateZone: "Cold Arid Alpine (BWk)",
+    terrainType: "High-Altitude Glaciated Valley (3,500m+)",
+    landCoverSummary: "Bare scree, rock & glacial moraine (74%), snow/ice caps (16%), river valley oasis agriculture (10%).",
+    recommendedSensor: "Sentinel-2 MSI (Optical)",
+    suggestedQuestions: [
+      "Calculate snow cover retreat and glacial melt lake formation.",
+      "Map Indus River oasis agricultural greening (NDVI).",
+      "Monitor military and civilian infrastructure along mountain highways.",
+    ],
+    ecologicalSignificance: "Fragile high-altitude trans-Himalayan ecosystem dependent on glacial meltwater for perennial survival.",
+    localHotspots: [
+      "Indus River Oasis Agriculture Strip",
+      "Leh Kushok Bakula Airport & Defense Base",
+      "Khardung La High Mountain Pass Foot",
+      "Spituk Monastery Valley Basin",
+    ],
+  },
+];
+
+/**
+ * Reverse Geocode: Generate instant briefing for ANY clicked coordinate on the 3D Globe
+ */
+export async function reverseGeocodeLocation(lat: number, lon: number): Promise<LocationBriefing> {
+  const normLat = Number(lat.toFixed(5));
+  const normLon = Number(lon.toFixed(5));
+
+  // Check if near any pre-indexed location
+  const nearMatch = INDEXED_INDIAN_LOCATIONS.find(
+    (loc) =>
+      Math.abs(loc.coords[1] - normLat) < 0.15 &&
+      Math.abs(loc.coords[0] - normLon) < 0.15
+  );
+
+  if (nearMatch) {
+    return {
+      ...nearMatch,
+      coords: [normLon, normLat],
+    };
+  }
+
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${normLat}&lon=${normLon}&addressdetails=1`;
+    const res = await fetch(url, {
+      headers: {
+        "Accept-Language": "en",
+        "User-Agent": "SatQuery-AI-Geospatial-Console/1.0",
+      },
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const addr = data.address || {};
+      const name =
+        data.name ||
+        addr.city ||
+        addr.town ||
+        addr.village ||
+        addr.county ||
+        addr.municipality ||
