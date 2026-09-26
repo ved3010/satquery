@@ -158,3 +158,83 @@ export const PRESET_SATELLITE_SCENES: PresetScene[] = [
     name: "Bengaluru Whitefield IT Corridor",
     locationName: "Bengaluru",
     state: "Karnataka",
+    coords: [77.75, 12.97],
+    bbox: [77.71, 12.93, 77.79, 13.01],
+    badge: "10m Optical",
+    description: "Major software tech park zone, residential developments, and lake catchments.",
+    defaultPrompt: "Detect urban growth, lake water bodies, and vegetation loss across Whitefield Bengaluru.",
+    images: [
+      {
+        path: "data/aoi_fetch/20260908_bengaluru_whitefield_s2.tif",
+        modality: "optical",
+        date: "2024-03-05",
+        role: "Optical (T1 Recent)",
+        preview: "/preview?path=data/aoi_fetch/20260908_bengaluru_whitefield_s2.tif",
+      },
+    ],
+    scenes: [
+      {
+        id: "S2A_MSIL2A_20240305_BLR_WHITEFIELD",
+        collection: "sentinel-2-l2a",
+        date: "2024-03-05",
+        cloud: 2.0,
+      },
+    ],
+  },
+  {
+    id: "delhi-dwarka",
+    name: "Delhi Dwarka Expressway & IGI Aerocity",
+    locationName: "Delhi NCR",
+    state: "Delhi",
+    coords: [77.05, 28.56],
+    bbox: [77.01, 28.52, 77.09, 28.60],
+    badge: "10m Optical",
+    description: "Mega transportation expressway corridor, airport logistics hubs, and urban expansion.",
+    defaultPrompt: "Measure the built-up density and infrastructure expansion along the Dwarka Expressway.",
+    images: [
+      {
+        path: "data/aoi_fetch/20260908_delhi_dwarka_s2.tif",
+        modality: "optical",
+        date: "2024-04-02",
+        role: "Optical (T1 Recent)",
+        preview: "/preview?path=data/aoi_fetch/20260908_delhi_dwarka_s2.tif",
+      },
+    ],
+    scenes: [
+      {
+        id: "S2A_MSIL2A_20240402_DELHI_DWARKA",
+        collection: "sentinel-2-l2a",
+        date: "2024-04-02",
+        cloud: 1.8,
+      },
+    ],
+  },
+  {
+    id: "hyderabad-hitec",
+    name: "Hyderabad HITEC City & Gachibowli",
+    locationName: "Hyderabad",
+    state: "Telangana",
+    coords: [78.38, 17.44],
+    bbox: [78.34, 17.40, 78.42, 17.48],
+    badge: "10m Optical",
+    description: "Financial district, high-rise tech towers, and rocky granitic terrain.",
+    defaultPrompt: "Analyze the proportion of built-up area and granite rocky outcrops in HITEC City.",
+    images: [
+      {
+        path: "data/aoi_fetch/20260908_hyderabad_hitec_s2.tif",
+        modality: "optical",
+        date: "2024-03-18",
+        role: "Optical (T1 Recent)",
+        preview: "/preview?path=data/aoi_fetch/20260908_hyderabad_hitec_s2.tif",
+      },
+    ],
+    scenes: [
+      {
+        id: "S2A_MSIL2A_20240318_HYD_HITEC",
+        collection: "sentinel-2-l2a",
+        date: "2024-03-18",
+        cloud: 1.5,
+      },
+    ],
+  },
+  {
