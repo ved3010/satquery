@@ -238,3 +238,83 @@ export const PRESET_SATELLITE_SCENES: PresetScene[] = [
     ],
   },
   {
+    id: "chennai-omr",
+    name: "Chennai OMR IT Expressway",
+    locationName: "Chennai",
+    state: "Tamil Nadu",
+    coords: [80.23, 12.93],
+    bbox: [80.19, 12.89, 80.27, 12.97],
+    badge: "10m Optical",
+    description: "Coastal IT corridor, Pallikaranai marshlands buffer, and suburban growth.",
+    defaultPrompt: "Identify water bodies, marshland buffers, and built-up corridors along OMR Chennai.",
+    images: [
+      {
+        path: "data/aoi_fetch/20260908_chennai_omr_s2.tif",
+        modality: "optical",
+        date: "2024-02-19",
+        role: "Optical (T1 Recent)",
+        preview: "/preview?path=data/aoi_fetch/20260908_chennai_omr_s2.tif",
+      },
+    ],
+    scenes: [
+      {
+        id: "S2A_MSIL2A_20240219_CHN_OMR",
+        collection: "sentinel-2-l2a",
+        date: "2024-02-19",
+        cloud: 2.8,
+      },
+    ],
+  },
+  {
+    id: "kolkata-newtown",
+    name: "Kolkata New Town Action Area",
+    locationName: "Kolkata",
+    state: "West Bengal",
+    coords: [88.46, 22.58],
+    bbox: [88.42, 22.54, 88.50, 22.62],
+    badge: "10m Optical",
+    description: "Planned smart city, IT parks, and East Kolkata Ramsar wetland proximity.",
+    defaultPrompt: "Measure the wetland water fraction and new built-up construction in Kolkata New Town.",
+    images: [
+      {
+        path: "data/aoi_fetch/20260908_kolkata_newtown_s2.tif",
+        modality: "optical",
+        date: "2024-03-12",
+        role: "Optical (T1 Recent)",
+        preview: "/preview?path=data/aoi_fetch/20260908_kolkata_newtown_s2.tif",
+      },
+    ],
+    scenes: [
+      {
+        id: "S2A_MSIL2A_20240312_KOL_NEWTOWN",
+        collection: "sentinel-2-l2a",
+        date: "2024-03-12",
+        cloud: 2.2,
+      },
+    ],
+  },
+  {
+    id: "sriharikota-isro-shar",
+    name: "ISRO Satish Dhawan Space Centre (SDSC SHAR)",
+    locationName: "Sriharikota",
+    state: "Andhra Pradesh",
+    coords: [80.2304, 13.7199],
+    bbox: [80.18, 13.67, 80.28, 13.78],
+    badge: "Spaceport / Coast",
+    description: "Primary orbital launch complex of ISRO, coastal barrier island, Pulicat lake lagoon interface, and launch pads.",
+    defaultPrompt: "Assess the coastal barrier island infrastructure and vegetation buffer surrounding the launch pads.",
+    images: [
+      {
+        path: "data/aoi_fetch/20260908_sriharikota_s2.tif",
+        modality: "optical",
+        date: "2024-04-18",
+        role: "Optical (Launch Zone)",
+        preview: "/preview?path=data/aoi_fetch/20260908_sriharikota_s2.tif",
+      },
+    ],
+    scenes: [
+      {
+        id: "S2A_MSIL2A_20240418_SDSC_SHAR",
+        collection: "sentinel-2-l2a",
+        date: "2024-04-18",
+        cloud: 0.8,
