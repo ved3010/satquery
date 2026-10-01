@@ -22,3 +22,27 @@ export function exportFeaturesToGeoJson(features: DetectedFeaturePoint[], runId?
       type: "Feature",
       geometry: {
         type: "Point",
+        coordinates: f.coords, // [longitude, latitude]
+      },
+      properties: {
+        id: f.id,
+        name: f.name,
+        category: f.category,
+        changeType: f.changeType,
+        confidence: f.confidence,
+        ndvi: f.ndvi,
+        ndbi: f.ndbi,
+        mndwi: f.mndwi,
+        areaHectares: f.areaHectares,
+        description: f.description,
+      },
+    })),
+  };
+
+  return JSON.stringify(geojson, null, 2);
+}
+
+/**
+ * Exports detected features as tabular CSV format for GIS tools (QGIS, ArcGIS)
+ */
+export function exportFeaturesToCsv(features: DetectedFeaturePoint[]): string {
