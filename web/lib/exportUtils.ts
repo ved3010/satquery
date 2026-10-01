@@ -46,3 +46,27 @@ export function exportFeaturesToGeoJson(features: DetectedFeaturePoint[], runId?
  * Exports detected features as tabular CSV format for GIS tools (QGIS, ArcGIS)
  */
 export function exportFeaturesToCsv(features: DetectedFeaturePoint[]): string {
+  const headers = [
+    "ID",
+    "Name",
+    "Longitude",
+    "Latitude",
+    "Category",
+    "ChangeType",
+    "Confidence",
+    "NDVI",
+    "NDBI",
+    "MNDWI",
+    "Area_Hectares",
+    "Description",
+  ];
+
+  const rows = features.map((f) => [
+    f.id,
+    `"${f.name.replace(/"/g, '""')}"`,
+    f.coords[0].toFixed(6),
+    f.coords[1].toFixed(6),
+    f.category,
+    `"${f.changeType.replace(/"/g, '""')}"`,
+    f.confidence.toFixed(2),
+    f.ndvi.toFixed(3),
