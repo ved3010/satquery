@@ -70,3 +70,27 @@ export function exportFeaturesToCsv(features: DetectedFeaturePoint[]): string {
     `"${f.changeType.replace(/"/g, '""')}"`,
     f.confidence.toFixed(2),
     f.ndvi.toFixed(3),
+    f.ndbi.toFixed(3),
+    f.mndwi.toFixed(3),
+    f.areaHectares.toFixed(2),
+    `"${f.description.replace(/"/g, '""')}"`,
+  ]);
+
+  return [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+}
+
+/**
+ * Triggers a client-side browser file download
+ */
+export function downloadFile(content: string, filename: string, mimeType: string = "application/json") {
+  if (typeof window === "undefined") return;
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
