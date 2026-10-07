@@ -888,3 +888,255 @@ export async function reverseGeocodeLocation(lat: number, lon: number): Promise<
   if (nearMatch) {
     return {
       ...nearMatch,
+      coords: [normLon, normLat],
+    };
+  }
+
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${normLat}&lon=${normLon}&addressdetails=1`;
+    const res = await fetch(url, {
+      headers: {
+        "Accept-Language": "en",
+        "User-Agent": "SatQuery-AI-Geospatial-Console/1.0",
+      },
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const addr = data.address || {};
+      const name =
+        data.name ||
+        addr.city ||
+        addr.town ||
+        addr.village ||
+        addr.county ||
+        addr.municipality ||
+        addr.state_district ||
+        addr.state ||
+        `Target Location [${normLat}, ${normLon}]`;
+
+      const state = addr.state || addr.region || addr.province || "Regional Area";
+      const country = addr.country || "Earth";
+      const placeType = data.type || data.class || "Geographical Coordinates";
+
+      const west = Number((normLon - 0.05).toFixed(5));
+      const south = Number((normLat - 0.05).toFixed(5));
+      const east = Number((normLon + 0.05).toFixed(5));
+      const north = Number((normLat + 0.05).toFixed(5));
+
+      return {
+        name,
+        state,
+        country,
+        type: `${placeType.toUpperCase()} · ${country}`,
+        coords: [normLon, normLat],
+        bbox: [west, south, east, north],
+        zoom: 12.0,
+        pitch: 50,
+        climateZone: inferClimateZone(normLat, normLon, state),
+        terrainType: `${placeType} in ${state}, ${country}`,
+        landCoverSummary: `Regional surface profile at coordinates ${normLat}°N, ${normLon}°E. Surface reflectance computed from Sentinel bands upon acquisition.`,
+        recommendedSensor: Math.abs(normLat) < 22 && normLon > 80 ? "Sentinel-1 (C-Band SAR)" : "Sentinel-2 MSI (Optical)",
+        suggestedQuestions: [
+          `Describe the land-cover classification and natural features visible at ${name}.`,
+          `Analyze changes in built-up infrastructure and vegetation cover over recent seasons.`,
+          `Compute NDVI vegetation vigour and water boundaries (MNDWI) for this AOI.`,
+        ],
+        ecologicalSignificance: `Geographical position located in ${state}, ${country} (${normLat}°N, ${normLon}°E).`,
+        localHotspots: [
+          `${name} Central Grid`,
+          `${name} Growth Corridor`,
+          `${name} Environmental Perimeter`,
+        ],
+      };
+    }
+  } catch {
+    // fallback
+  }
+
+  // Fallback for offline or fast coordinate click
+  const west = Number((normLon - 0.05).toFixed(5));
+  const south = Number((normLat - 0.05).toFixed(5));
+  const east = Number((normLon + 0.05).toFixed(5));
+  const north = Number((normLat + 0.05).toFixed(5));
+
+  return {
+    name: `Target Coordinates [${normLat}° N, ${normLon}° E]`,
+    state: "Earth Coordinates",
+    country: "Global",
+    type: "Target Acquisition AOI",
+    coords: [normLon, normLat],
+    bbox: [west, south, east, north],
+    zoom: 12.0,
+    pitch: 50,
+    climateZone: inferClimateZone(normLat, normLon, ""),
+    terrainType: `Surface Area at ${normLat}°N, ${normLon}°E`,
+    landCoverSummary: "Multi-spectral optical surface reflectance and SAR microwave backscatter available via Copernicus constellation.",
+    recommendedSensor: "Sentinel-2 MSI (Optical)",
+    suggestedQuestions: [
+      `Describe the land cover and major objects visible in this satellite scene.`,
+      `Has the built-up area increased, decreased, or remained unchanged?`,
+      `Calculate the NDVI vegetation index for this locked area of interest.`,
+    ],
+    ecologicalSignificance: `Target area centered at coordinates ${normLat}°N, ${normLon}°E.`,
+    localHotspots: [
+      `Coordinate Sector Alpha`,
+      `Coordinate Sector Beta`,
+    ],
+  };
+}
+
+/**
+ * Universal Search: Searches across Indian cities, precise hotspots, and worldwide geocoding
+ */
+export async function searchAnyLocation(query: string): Promise<LocationBriefing[]> {
+  const q = query.trim();
+  if (!q) return INDEXED_INDIAN_LOCATIONS.slice(0, 8);
+
+  // Check direct coordinate input
+  const coordMatch = q.match(/^([-+]?\d{1,2}(?:\.\d+)?)[,\s]+([-+]?\d{1,3}(?:\.\d+)?)$/);
+  if (coordMatch) {
+    const p1 = parseFloat(coordMatch[1]);
+    const p2 = parseFloat(coordMatch[2]);
+    let lat = p1;
+    let lon = p2;
+    if (Math.abs(p1) > 90 && Math.abs(p2) <= 90) {
+      lon = p1;
+      lat = p2;
+    }
+    const briefing = await reverseGeocodeLocation(lat, lon);
+    return [briefing];
+  }
+
+  // 1. Check local pre-indexed high-precision database
+  const qLow = q.toLowerCase();
+  const localMatches = INDEXED_INDIAN_LOCATIONS.filter(
+    (loc) =>
+      loc.name.toLowerCase().includes(qLow) ||
+      loc.state.toLowerCase().includes(qLow) ||
+      loc.type.toLowerCase().includes(qLow) ||
+      loc.climateZone.toLowerCase().includes(qLow) ||
+      (loc.localHotspots && loc.localHotspots.some((h) => h.toLowerCase().includes(qLow)))
+  );
+
+  // 2. Fetch server-side geocoding endpoint (${API_BASE}/geocode or /api/geocode)
+  let serverData: any[] = [];
+  try {
+    const endpoints = [
+      `${API_BASE}/geocode?q=${encodeURIComponent(q)}&limit=8`,
+      `/api/geocode?q=${encodeURIComponent(q)}&limit=8`,
+    ];
+    for (const ep of endpoints) {
+      try {
+        const res = await fetch(ep);
+        if (res.ok) {
+          const d = await res.json();
+          if (Array.isArray(d) && d.length > 0) {
+            serverData = d;
+            break;
+          }
+        }
+      } catch {
+        // try next endpoint
+      }
+    }
+
+    // 3. Fallback to direct OpenStreetMap Nominatim for any town, village, or global place
+    if (serverData.length === 0) {
+      const osmUrls = [
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=in&addressdetails=1&limit=8`,
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&addressdetails=1&limit=8`,
+      ];
+      for (const url of osmUrls) {
+        try {
+          const res = await fetch(url, { headers: { "Accept-Language": "en" } });
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data) && data.length > 0) {
+              serverData = data.map((item: any) => {
+                const lat = parseFloat(item.lat);
+                const lon = parseFloat(item.lon);
+                const bb = item.boundingbox ? [
+                  parseFloat(item.boundingbox[2]),
+                  parseFloat(item.boundingbox[0]),
+                  parseFloat(item.boundingbox[3]),
+                  parseFloat(item.boundingbox[1]),
+                ] : [lon - 0.03, lat - 0.03, lon + 0.03, lat + 0.03];
+                const parts = (item.display_name || "").split(",").map((p: string) => p.trim());
+                return {
+                  name: parts[0] || q,
+                  state: item.address?.state || parts[parts.length - 2] || "India",
+                  country: item.address?.country || "India",
+                  type: (item.type || "Geographical Region").replace(/_/g, " "),
+                  coords: [lon, lat],
+                  bbox: bb,
+                };
+              });
+              break;
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Geocode lookup notice:", err);
+  }
+
+  const mappedServer: LocationBriefing[] = serverData.map((item: any) => {
+    const lat = item.coords[1];
+    const lon = item.coords[0];
+    const name = item.name || q;
+    const state = item.state || "India";
+    const country = item.country || "India";
+    const type = item.type || "Geographical Region";
+    return {
+      name,
+      state,
+      country,
+      type,
+      coords: [lon, lat],
+      bbox: item.bbox || [
+        Number((lon - 0.03).toFixed(5)),
+        Number((lat - 0.03).toFixed(5)),
+        Number((lon + 0.03).toFixed(5)),
+        Number((lat + 0.03).toFixed(5)),
+      ],
+      zoom: 13.0,
+      pitch: 48,
+      climateZone: inferClimateZone(lat, lon, state),
+      terrainType: `${type} in ${state}, ${country}`,
+      landCoverSummary: `Regional surface profile over ${name} within ${state}, ${country}. Multispectral reflectance computed upon acquisition.`,
+      recommendedSensor: "Sentinel-2 MSI (Optical)",
+      suggestedQuestions: [
+        `What is the detailed land-cover breakdown (built-up, vegetation, water, bare) across ${name}?`,
+        `Identify major urban infrastructure, transportation corridors, and structural density in ${name}.`,
+        `Detect surface water bodies, canals, and vegetation canopy vitality in ${name}.`,
+      ],
+      ecologicalSignificance: `Geographical zone situated in ${state}, ${country} at ${lat.toFixed(3)}°N, ${lon.toFixed(3)}°E.`,
+      localHotspots: [`${name} Central Sector`, `${name} Commercial Corridor`],
+    };
+  });
+
+  const combined = [...localMatches];
+  for (const r of mappedServer) {
+    if (!combined.some((c) => Math.abs(c.coords[0] - r.coords[0]) < 0.02 && Math.abs(c.coords[1] - r.coords[1]) < 0.02)) {
+      combined.push(r);
+    }
+  }
+
+  return combined;
+}
+
+function inferClimateZone(lat: number, lon: number, state: string): string {
+  const s = (state || "").toLowerCase();
+  if (s.includes("rajasthan") || (s.includes("gujarat") && lon < 71)) return "Arid Desert (BWh)";
+  if (s.includes("kerala") || s.includes("goa") || s.includes("coastal karnataka")) return "Tropical Monsoon (Am)";
+  if (s.includes("himachal") || s.includes("uttarakhand") || s.includes("jammu") || s.includes("ladakh")) return "Montane / Alpine";
+  if (s.includes("assam") || s.includes("meghalaya") || s.includes("bengal")) return "Humid Subtropical (Cwa)";
+  if (Math.abs(lat) > 55) return "Subpolar / Tundra";
+  if (Math.abs(lat) > 35) return "Temperate Continental";
+  if (Math.abs(lat) < 15) return "Equatorial Tropical";
+  return "Tropical Savanna / Subtropical";
+}

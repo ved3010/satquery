@@ -38,3 +38,59 @@ export function exportFeaturesToGeoJson(features: DetectedFeaturePoint[], runId?
       },
     })),
   };
+
+  return JSON.stringify(geojson, null, 2);
+}
+
+/**
+ * Exports detected features as tabular CSV format for GIS tools (QGIS, ArcGIS)
+ */
+export function exportFeaturesToCsv(features: DetectedFeaturePoint[]): string {
+  const headers = [
+    "ID",
+    "Name",
+    "Longitude",
+    "Latitude",
+    "Category",
+    "ChangeType",
+    "Confidence",
+    "NDVI",
+    "NDBI",
+    "MNDWI",
+    "Area_Hectares",
+    "Description",
+  ];
+
+  const rows = features.map((f) => [
+    f.id,
+    `"${f.name.replace(/"/g, '""')}"`,
+    f.coords[0].toFixed(6),
+    f.coords[1].toFixed(6),
+    f.category,
+    `"${f.changeType.replace(/"/g, '""')}"`,
+    f.confidence.toFixed(2),
+    f.ndvi.toFixed(3),
+    f.ndbi.toFixed(3),
+    f.mndwi.toFixed(3),
+    f.areaHectares.toFixed(2),
+    `"${f.description.replace(/"/g, '""')}"`,
+  ]);
+
+  return [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+}
+
+/**
+ * Triggers a client-side browser file download
+ */
+export function downloadFile(content: string, filename: string, mimeType: string = "application/json") {
+  if (typeof window === "undefined") return;
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}

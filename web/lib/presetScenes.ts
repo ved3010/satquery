@@ -270,3 +270,132 @@ export const PRESET_SATELLITE_SCENES: PresetScene[] = [
     name: "Kolkata New Town Action Area",
     locationName: "Kolkata",
     state: "West Bengal",
+    coords: [88.46, 22.58],
+    bbox: [88.42, 22.54, 88.50, 22.62],
+    badge: "10m Optical",
+    description: "Planned smart city, IT parks, and East Kolkata Ramsar wetland proximity.",
+    defaultPrompt: "Measure the wetland water fraction and new built-up construction in Kolkata New Town.",
+    images: [
+      {
+        path: "data/aoi_fetch/20260908_kolkata_newtown_s2.tif",
+        modality: "optical",
+        date: "2024-03-12",
+        role: "Optical (T1 Recent)",
+        preview: "/preview?path=data/aoi_fetch/20260908_kolkata_newtown_s2.tif",
+      },
+    ],
+    scenes: [
+      {
+        id: "S2A_MSIL2A_20240312_KOL_NEWTOWN",
+        collection: "sentinel-2-l2a",
+        date: "2024-03-12",
+        cloud: 2.2,
+      },
+    ],
+  },
+  {
+    id: "sriharikota-isro-shar",
+    name: "ISRO Satish Dhawan Space Centre (SDSC SHAR)",
+    locationName: "Sriharikota",
+    state: "Andhra Pradesh",
+    coords: [80.2304, 13.7199],
+    bbox: [80.18, 13.67, 80.28, 13.78],
+    badge: "Spaceport / Coast",
+    description: "Primary orbital launch complex of ISRO, coastal barrier island, Pulicat lake lagoon interface, and launch pads.",
+    defaultPrompt: "Assess the coastal barrier island infrastructure and vegetation buffer surrounding the launch pads.",
+    images: [
+      {
+        path: "data/aoi_fetch/20260908_sriharikota_s2.tif",
+        modality: "optical",
+        date: "2024-04-18",
+        role: "Optical (Launch Zone)",
+        preview: "/preview?path=data/aoi_fetch/20260908_sriharikota_s2.tif",
+      },
+    ],
+    scenes: [
+      {
+        id: "S2A_MSIL2A_20240418_SDSC_SHAR",
+        collection: "sentinel-2-l2a",
+        date: "2024-04-18",
+        cloud: 0.8,
+      },
+    ],
+  },
+  {
+    id: "bhadla-solar-park",
+    name: "Bhadla Megawatt Solar Park",
+    locationName: "Jodhpur / Thar",
+    state: "Rajasthan",
+    coords: [71.9167, 27.5333],
+    bbox: [71.85, 27.48, 71.98, 27.58],
+    badge: "Clean Energy / SAR",
+    description: "World's largest contiguous photovoltaic solar installation spanning 56 km² in the Thar desert basin.",
+    defaultPrompt: "Measure the built-up photovoltaic spectral signature against arid desert background using NDBI and SWIR.",
+    images: [
+      {
+        path: "data/aoi_fetch/20260908_bhadla_solar_s2.tif",
+        modality: "optical",
+        date: "2024-03-29",
+        role: "Optical (Solar Grid)",
+        preview: "/preview?path=data/aoi_fetch/20260908_bhadla_solar_s2.tif",
+      },
+    ],
+    scenes: [
+      {
+        id: "S2A_MSIL2A_20240329_BHADLA_SOLAR",
+        collection: "sentinel-2-l2a",
+        date: "2024-03-29",
+        cloud: 0.0,
+      },
+    ],
+  },
+  {
+    id: "sundarbans-mangrove-core",
+    name: "Sundarbans Biosphere Mangrove Core",
+    locationName: "Sundarbans",
+    state: "West Bengal",
+    coords: [88.85, 21.95],
+    bbox: [88.78, 21.88, 88.92, 22.02],
+    badge: "Wetland / SAR Fusion",
+    description: "UNESCO World Heritage tidal halophytic mangrove forest and estuarine delta water network.",
+    defaultPrompt: "What is the water vs dense mangrove canopy fraction across this estuarine delta?",
+    images: [
+      {
+        path: "data/aoi_fetch/20260908_sundarbans_s2.tif",
+        modality: "optical",
+        date: "2024-02-14",
+        role: "Optical (Mangrove)",
+        preview: "/preview?path=data/aoi_fetch/20260908_sundarbans_s2.tif",
+      },
+    ],
+    scenes: [
+      {
+        id: "S2A_MSIL2A_20240214_SUNDARBANS_CORE",
+        collection: "sentinel-2-l2a",
+        date: "2024-02-14",
+        cloud: 1.5,
+      },
+    ],
+  },
+];
+
+/**
+ * Finds matching preset scenes for a searched city or query.
+ */
+export function findPresetScene(queryOrName: string): PresetScene | null {
+  const q = queryOrName.toLowerCase().trim();
+  if (!q) return null;
+
+  for (const scene of PRESET_SATELLITE_SCENES) {
+    if (
+      scene.id.toLowerCase().includes(q) ||
+      scene.name.toLowerCase().includes(q) ||
+      scene.locationName.toLowerCase().includes(q) ||
+      scene.state.toLowerCase().includes(q) ||
+      q.includes(scene.locationName.toLowerCase())
+    ) {
+      return scene;
+    }
+  }
+  return null;
+}
