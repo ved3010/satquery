@@ -1,0 +1,14 @@
+name: SatQuery AI CI
+
+on:
+  push:
+    branches: [main, ui-and-globe]
+  pull_request:
+    branches: [main, ui-and-globe]
+
+jobs:
+  python-tests:
+    name: Backend Tests & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
