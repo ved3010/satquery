@@ -26,3 +26,17 @@ jobs:
           pip install -r requirements.txt
 
       - name: Verify Model Registry Coverage
+        run: |
+          python -m agent.registry
+
+      - name: Verify Router Rule Classification
+        run: |
+          python -m agent.router
+
+  web-build:
+    name: Next.js Frontend Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
