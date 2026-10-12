@@ -8,3 +8,14 @@
  */
 import { spawn } from "node:child_process";
 
+const [command, ...rest] = process.argv.slice(2);
+if (!command) {
+  console.error("usage: node scripts/with-dist-dir.mjs <next-command> [args]");
+  process.exit(2);
+}
+
+const child = spawn(
+  process.platform === "win32" ? "next.cmd" : "next",
+  [command, ...rest],
+  {
+    stdio: "inherit",
