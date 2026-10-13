@@ -19,3 +19,13 @@ const child = spawn(
   [command, ...rest],
   {
     stdio: "inherit",
+    env: { ...process.env, NEXT_DIST_DIR: process.env.NEXT_DIST_DIR ?? ".next-build" },
+    shell: process.platform === "win32",
+  },
+);
+
+child.on("exit", (code, signal) => process.exit(signal ? 1 : (code ?? 0)));
+child.on("error", (err) => {
+  console.error(err);
+  process.exit(1);
+});
