@@ -85,3 +85,91 @@ One question in. One agent. Seven observable steps.
                       └────────────────────┬─────────────────────┘
                                            ▼
                       ┌──────────────────────────────────────────┐
+                      │ 02 VALIDATE   can these inputs answer    │──▶ REJECT
+                      │               this question at all?      │    (with a
+                      └────────────────────┬─────────────────────┘     reason)
+                                           ▼
+                      ┌──────────────────────────────────────────┐
+                      │ 03 ROUTE      task family → specialists   │
+                      │               from the declared registry │
+                      └────────────────────┬─────────────────────┘
+                                           ▼
+                      ┌──────────────────────────────────────────┐
+                      │ 04 EXECUTE    run the selected models     │
+                      │               text · mask · box · stats  │
+                      └────────────────────┬─────────────────────┘
+                                           ▼
+                      ┌──────────────────────────────────────────┐
+                      │ 05 MEASURE    NDVI · MNDWI · NDBI over    │
+                      │               the real reflectance values│
+                      └────────────────────┬─────────────────────┘
+                                           ▼
+                      ┌──────────────────────────────────────────┐
+                      │ 06 SYNTHESISE M7 narrates the findings.   │
+                      │               It never supplies a number.│
+                      └────────────────────┬─────────────────────┘
+                                           ▼
+                      ┌──────────────────────────────────────────┐
+                      │ 07 EXPLAIN    answer + measured table +   │
+                      │               execution trace → report.md│
+                      └──────────────────────────────────────────┘
+```
+
+### Five task families
+
+| | Family | What it answers |
+|---|---|---|
+| 01 | **Single-image understanding** | What does this scene contain? What dominates its land cover? — VQA and captioning over one optical or SAR observation. |
+| 02 | **Cross-modal analysis** | Optical carries spectral context; SAR carries structure and sees through cloud, day or night. Together they resolve built-up and water regions either alone leaves ambiguous. |
+| 03 | **Multitemporal change** | What changed between two co-registered dates, where, and by how much — with a change mask as spatial evidence. |
+| 04 | **Text-guided grounding** | "The water body north of the settlement" resolves to a box on the scene, so the answer points at something. |
+| 05 | **Agentic orchestration** | The question decides the pipeline, not the developer. A LangGraph state machine classifies, validates, selects, sequences and integrates — checkpointing every transition. |
+
+### Refusal is a feature
+
+```
+Q: What changed between these two dates?          (one image supplied)
+   config=single-optical  task=change_vqa  models=[]  11ms
+   REJECTED: Change analysis needs two images acquired at different times;
+             one was supplied.
+```
+
+The refusal is written to the vault as a run note like any other. PS 26167 asks
+for input compatibility checking — correctly refusing an impossible request
+demonstrates it; silently returning garbage does not.
+
+---
+
+## 2.1 The Tactical 3D Console & Dual Surveillance Cockpit
+
+SatQuery AI pairs spaceborne earth observation with street-level municipal ground intelligence in an interactive interface:
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│  ORBIT: Sentinel-2 Multispectral 10m GSD (Top of Atmosphere / L2A)     │
+│  [==============================================================]      │
+│  70.09 km² AOI · Multispectral Reflectance · Calculated Indices        │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ Spatial-Temporal Synchronization
+┌───────────────────────────────────▼────────────────────────────────────┐
+│  GROUND: Real-Time Municipal Smart-City CCTV Feeds (1080p FHD @ 30fps) │
+│  Pune Swargate · Mumbai BKC · Bengaluru Silk Board · Delhi CP · Hyd    │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+| Feature | Description | Technical Implementation |
+|---|---|---|
+| **Full-Viewport 3D Globe** | Interactive 3D Earth canvas with dynamic pitch, bearing, and orbital satellite tracking. | MapLibre GL 3D globe with custom atmosphere, starfield shader, and sensor layer toggles (Optical, SAR, CIR, NDVI). |
+| **Gemini AI Chat Studio** | Floating translucent glassmorphic terminal anchored above Earth. Accepts natural language queries, image attachments, and preset scenes. | React 19 + Tailwind CSS glassmorphism (`backdrop-blur-xl`), automatic STAC scene attachment, and live streaming traces. |
+| **Dual Orbit-to-Ground Cockpit** | Side-by-side synchronized view comparing spaceborne Sentinel-2 passes with live street-level traffic/transit feeds. | `DualSurveillanceCockpit.tsx` + `puneCctvFeeds.ts` with camera switching, detection counts (vehicles, buses, pedestrians), and incident reports. |
+| **Point Inspector HUD** | Click any coordinate on Earth to inspect localized spectral reflectance and instant AI confidence. | `PointInspectorHud.tsx` displaying real-time NDVI, NDBI, MNDWI gauges, transition category, and direct agent query trigger. |
+| **Client-Side GIS Export** | Export detected features and spectral anomalies directly into GIS-ready formats for QGIS and ArcGIS. | `exportUtils.ts` exporting standard GeoJSON FeatureCollections and tabular CSV files. |
+
+---
+
+## 3. Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  web/            Next.js 15 · Tailwind 4 · React 19                      │
+│  ├── /           landing — problem, solution, models, business plan      │
