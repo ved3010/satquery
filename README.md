@@ -173,3 +173,91 @@ SatQuery AI pairs spaceborne earth observation with street-level municipal groun
 ┌─────────────────────────────────────────────────────────────────────────┐
 │  web/            Next.js 15 · Tailwind 4 · React 19                      │
 │  ├── /           landing — problem, solution, models, business plan      │
+│  └── /console    map AOI → live Sentinel fetch → query → trace → .md     │
+└───────────────────────────────┬─────────────────────────────────────────┘
+                                │  HTTP (same-origin rewrite, or direct
+                                │        via NEXT_PUBLIC_SATQUERY_API)
+┌───────────────────────────────▼─────────────────────────────────────────┐
+│  serve/          FastAPI                                                │
+│  ├── api.py      /health /models /upload /aoi/fetch /query /runs        │
+│  ├── aoi.py      keyless STAC search → Sentinel-2 L2A + Sentinel-1 GRD  │
+│  └── analysis.py NDVI · MNDWI · NDBI → measured land cover              │
+└───────────────────────────────┬─────────────────────────────────────────┘
+                                │
+┌───────────────────────────────▼─────────────────────────────────────────┐
+│  agent/          the controller                                         │
+│  ├── registry.py declarative ModelSpec table — the router's ONLY source │
+│  ├── router.py   hybrid rule + LLM task routing, with refusal reasons   │
+│  ├── graph.py    LangGraph state machine (the 7 nodes above)            │
+│  ├── tools.py    runtime dispatch: torch · onnx · llama.cpp             │
+│  ├── torch_runtime.py  per-model adapters for the CPU-trained specialists│
+│  └── trace.py    execution trace → JSON + Markdown + Obsidian vault     │
+└───────────────────────────────┬─────────────────────────────────────────┘
+                                │
+┌───────────────────────────────▼─────────────────────────────────────────┐
+│  models/         one shared encoder, many heads                         │
+│  ├── backbone.py 14-channel CNN encoder (12 S2 bands + S1 VV/VH)        │
+│  │                └─ M1 CLIP · M3 caption · M4 ground · M5 change · M6  │
+│  ├── vlm.py      M7 — frozen tower → 17 visual tokens → causal decoder  │
+│  └── train_all.py / train_vlm.py    CPU training, every metric baselined│
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Why a registry.** The router may only select models that exist in
+`agent/registry.py`, and the trace records exactly which entry ran with which
+parameters. Adding a model later is one `ModelSpec` — not a code change
+anywhere else. That constraint is what makes the trace auditable in the sense
+the problem statement requires.
+
+**Why LangGraph.** It checkpoints every state transition. That checkpoint
+stream *is* the auditable execution summary, so the deliverable falls out of
+the architecture instead of being a separate log that drifts out of sync with
+what actually ran.
+
+---
+
+## 4. IndiaSat — a 100% Indian corpus
+
+**BigEarthNet contains zero Indian data.** Its labels come from CORINE Land
+Cover, a Europe-only product, so its latitude and longitude ranges do not
+overlap India at all. Swapping CORINE for **ESA WorldCover** (10 m, global,
+CC-BY-4.0) reproduces the recipe over India.
+
+| | |
+|---|---|
+| **985** | patches |
+| **8,962** | annotations — captioning, binary, MCQ, referring boxes |
+| **8** | regions: Ahmedabad · Guwahati · Jaisalmer · Kochi · Ludhiana · Pune · Shimla · Sundarbans |
+| **100%** | India |
+
+Tropical monsoon, arid desert, savannah, humid subtropical and montane —
+**every Köppen zone absent from BigEarthNet**. Sentinel-2 (12 band) +
+Sentinel-1 (VV/VH) + WorldCover labels, co-registered, all from keyless public
+sources. Annotations use the BigEarthNet.txt schema, so the two corpora
+concatenate into one training mix.
+
+Splits come from a deterministic grid hash, so neighbouring — and therefore
+overlapping — patches never straddle train and test.
+
+---
+
+## 5. The models
+
+Eight specialists behind one backbone. **Every number below is measured on a
+held-out test split and reported next to a baseline**, because an accuracy with
+no baseline cannot answer the only question that matters: *is the model using
+the image at all?*
+
+| | model | task | metric | result | baseline |
+|---|---|---|---|---:|---:|
+| **M6** | `fusion` | Optical–SAR land cover | mAP | **0.9150** | 0.3424 class prior |
+| **M7** | `vlm` | Instruction-following VLM | MCQ exact match | **0.9074** | 0.5079 image zeroed |
+| **M3** | `caption` | Scene description | next-token acc | **0.9010** | 0.0743 modal token |
+| **M5b** | `change_vqa` | Bi-temporal change VQA | accuracy | **0.7947** | 0.4702 majority |
+| **M2** | `vqa` | Single-image VQA | overall acc | **0.7587** | 0.5749 majority |
+| **M5a** | `change_map` | Change mask | IoU | **0.4420** | — |
+| **M4** | `ground` | Referring-expression grounding | mean IoU | **0.3082** | 0.1983 mean box |
+| **M1** | `rsclip` | Image–text retrieval | R@1 (n=151) | **0.1391** | 0.0066 chance |
+
+M2 is measured on the RSVQA-LR held-out test split (10,004 QA pairs, 100 unseen
+tiles). Every other row is measured on the IndiaSat test split.
