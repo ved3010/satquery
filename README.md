@@ -349,3 +349,91 @@ Computed from the pixels, not from a model. Sentinel-2 L2A surface reflectance;
 NDVI / MNDWI (Xu 2006) / NDBI (Zha 2003). Ground sample distance 10 m.
 
 **2023-02-10 → 2024-03-15** · 18.075 km² compared.
+
+| class             | 2023-02-10 | 2024-03-15 |   Δ pp | Δ relative |  km² |
+| ----------------- | ---------: | ---------: | -----: | ---------: | ---: |
+| water             |      4.11% |      7.32% |  +3.21 |     +78.2% | 1.323 |
+| vegetation        |     23.97% |     17.58% |  −6.38 |     −26.6% | 3.178 |
+| sparse vegetation |     17.52% |     17.40% |  −0.12 |      −0.7% | 3.144 |
+| built-up          |     23.38% |     19.34% |  −4.05 |     −17.3% | 3.495 |
+| bare/other        |     31.03% |     38.37% |  +7.34 |     +23.7% | 6.935 |
+
+**Urbanisation.** 1.153 km² became built-up that was not before (6.38% of the
+scene), converted from bare/other 76.4%, sparse vegetation 19.6%, vegetation 2.7%.
+```
+
+Every run writes this to `vault/runs/<run_id>.md`, downloadable at
+`GET /runs/<run_id>/report.md`.
+
+---
+
+## 7. Running it
+
+### Requirements
+
+Python 3.12, Node 20+. **No GPU required** — everything trains and serves on CPU.
+
+```bash
+git clone https://github.com/sherlock2830/Satquery-unoff
+cd Satquery-unoff
+
+pip install -r requirements.txt
+# CPU-only torch, if pip tries to pull a CUDA wheel:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+```
+
+### Build the corpus and train
+
+```bash
+python scripts/fetch_worldcover.py       # 7 label tiles, ~940 MB
+python scripts/build_india_dataset.py    # IndiaSat from S2 + S1 + WorldCover
+python -m models.train_all               # M1 M3 M4 M5 M6  — reports in models/reports/
+python -m models.train_vlm               # M7              — ~47 min on 4 cores
+python scripts/export_norm.py            # normalisation stats next to the weights
+python scripts/export_site_data.py       # push measured metrics into web/
+```
+
+### Serve
+
+```bash
+uvicorn serve.api:app --reload --port 8000     # the agent + models
+npm --prefix web install
+npm --prefix web run dev                       # the site, on :3001
+```
+
+Open **http://localhost:3001** for the site and **/console** for the working
+console. Draw an area of interest, fetch live Sentinel imagery, ask a question.
+
+### Verify without the UI
+
+```bash
+python -m agent.registry     # registry table + mandatory-coverage check
+python -m agent.router       # routing over the PS representative queries
+python -m agent.graph        # all four task families, end to end, on real imagery
+python -m agent.trace        # regenerate the vault model and AOI notes
+```
+
+---
+
+## 8. Repository layout
+
+```
+satquery-core/
+│
+├── agent/                       the controller
+│   ├── registry.py              declarative ModelSpec table — the router's only source
+│   ├── router.py                task classification + refusal reasons
+│   ├── graph.py                 LangGraph state machine, 7 nodes
+│   ├── tools.py                 runtime dispatch (torch · onnx · llama.cpp)
+│   ├── torch_runtime.py         per-model adapters + M7 answer composition
+│   └── trace.py                 execution trace → JSON · Markdown · vault notes
+│
+├── models/                      one shared encoder, many heads
+│   ├── backbone.py              14-channel CNN encoder + 5 task heads
+│   ├── vlm.py                   M7 — frozen tower → visual prefix → decoder
+│   ├── train_all.py             trains M1 M3 M4 M5 M6, every metric baselined
+│   ├── train_vlm.py             trains M7 on the IndiaSat instruction mix
+│   ├── reports/                 measured metrics, written by the trainers
+│   └── weights/                 artefacts (gitignored) + vocabs and norm stats
+│
+├── serve/                       the service
