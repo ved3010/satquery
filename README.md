@@ -261,3 +261,91 @@ the image at all?*
 
 M2 is measured on the RSVQA-LR held-out test split (10,004 QA pairs, 100 unseen
 tiles). Every other row is measured on the IndiaSat test split.
+
+### M7 in full
+
+Frozen M1 vision tower → 17 visual prefix tokens → 4-layer causal decoder.
+**2.34 M trainable of 3.52 M.** Trained in 47 minutes on four CPU cores.
+
+| task | result | image zeroed | majority |
+|---|---:|---:|---:|
+| MCQ exact match | **0.9074** | 0.5079 | 0.2695 |
+| Binary exact match | **0.9412** | 0.8387 | 0.6016 |
+| Caption next-token | **0.9255** | 0.8464 | — |
+| Referring boxes | 0.0000 | 0.0000 | 0.0075 |
+
+The blind ablation is the same weights with the visual tokens zeroed. The
+language prior in this corpus is strong, so blind is already high — **the gap
+is the part of the answer that comes from the image**, and on multiple choice
+it is 40 points.
+
+The 0.0000 on referring boxes is real: M7 emits four coordinates as words and
+an exact string match on those is close to unwinnable. Grounding is M4's job,
+scored properly at 0.3082 mean IoU. The box questions stay in M7's training mix
+because they teach spatial language, not because M7 is the grounding model.
+
+### Why fusion exists — the cloud ablation
+
+Simulate 50% cloud cover and only the fused model survives:
+
+| M6 · mAP | clear | 50% cloud |
+|---|---:|---:|
+| Optical + SAR | 0.915 | **0.847** |
+| Optical only | 0.731 | 0.651 |
+| SAR only | 0.687 | 0.687 |
+
+SAR is unaffected — it sees through cloud, day or night — and the fused model
+degrades gracefully instead of failing. During a monsoon flood that difference
+is the difference between an assessment and a wait.
+
+---
+
+## 6. Measured, not generated
+
+**Every percentage in a report is computed from the pixels.** `serve/analysis.py`
+reads Sentinel-2 L2A surface reflectance and applies published spectral indices:
+
+| index | formula | reads | rule |
+|---|---|---|---|
+| **NDVI** | (NIR − RED) / (NIR + RED) | vegetation vigour | ≥ 0.30 dense · 0.18–0.30 sparse |
+| **MNDWI** | (GREEN − SWIR) / (GREEN + SWIR) | open water | > 0.00 — Xu 2006 |
+| **NDBI** | (SWIR − NIR) / (SWIR + NIR) | built-up | NDBI − NDVI > 0 — Zha 2003 |
+| **ΔIndex** | index(t₂) − index(t₁) | change between dates | \|Δ\| > 0.10 |
+
+Class assignment is a **decision cascade**, not four independent masks, so the
+percentages sum to 100 and no pixel is ever counted as both water and built-up.
+The thresholds are stated in every report, so a reader can disagree with a
+number by disagreeing with a threshold rather than by trusting the system.
+
+Bi-temporal runs report change **both** ways — 2% → 3% built-up is +1.0 pp *and*
++50% relative. Quoting only one of them is how a true number misleads.
+
+### M7 is never allowed to supply a figure
+
+A 2.34 M-parameter decoder trained on one corpus is good enough to describe a
+scene and bad enough that a percentage it invented would be indistinguishable
+from one that was measured.
+
+IndiaSat captions are written as `"<class> covers approximately N% of the
+scene"`, so M7 learned to emit percentages — from a 120×120 patch, not from the
+AOI the user asked about. `_strip_figures()` in `agent/torch_runtime.py` removes
+every generated number before the sentence reaches the answer, and where the
+generated description disagrees with the measured dominant class, the report
+says so:
+
+> ⚠ **Disagreement:** M7 describes the scene as predominantly built up, while
+> the measured indices make vegetation the largest class. The measured value is
+> the one to act on.
+
+If the bands an index needs are missing — a plain RGB upload has no NIR or SWIR
+— the report says **"not computable"** rather than producing a number.
+
+### A real report
+
+```markdown
+## Measured land cover
+
+Computed from the pixels, not from a model. Sentinel-2 L2A surface reflectance;
+NDVI / MNDWI (Xu 2006) / NDBI (Zha 2003). Ground sample distance 10 m.
+
+**2023-02-10 → 2024-03-15** · 18.075 km² compared.
