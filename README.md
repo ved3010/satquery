@@ -525,3 +525,62 @@ its least confident step.
 
 ---
 
+## 11. Deployment
+
+### Frontend (Vercel)
+
+The Next.js 15 web console is optimized for instant deployment on [Vercel](https://vercel.com):
+
+1. **Import Repository**: In your [Vercel Dashboard](https://vercel.com/new), select **Import Git Repository** and choose `ved3010/satquery`.
+2. **Project Settings**:
+   - **Root Directory**: Select `web`
+   - **Framework Preset**: Next.js (auto-detected)
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `.next-build`
+3. **Environment Variables**:
+   - `NEXT_PUBLIC_SATQUERY_API`: URL of your hosted backend (e.g. `https://api.yourdomain.com`). If omitted, the web console operates in standalone demo mode with built-in scene presets and interactive 3D Earth globe features.
+4. **Deploy**: Click **Deploy**. Vercel will assign your deployment a public `*.vercel.app` domain (e.g., `satquery.vercel.app`), and custom domains can be added under **Project Settings > Domains**.
+
+### Backend (Docker / Cloud Run / VPS)
+
+The **backend** runs as a containerized service with real disk for 12-band Sentinel GeoTIFFs and GDAL processing:
+
+```bash
+# Run with Docker Compose
+docker compose up --build -d
+```
+
+To point your deployed Vercel frontend to the live backend:
+```env
+NEXT_PUBLIC_SATQUERY_API=https://your-backend.example.com
+SATQUERY_ALLOWED_ORIGINS=https://your-site.vercel.app
+```
+
+---
+
+## 12. Team
+
+<div align="center">
+
+### Team TMS&lt;3
+
+**Smart India Hackathon 2026**
+Problem Statement **26167** · ISRO / Space Applications Centre
+
+</div>
+
+Imagery: Copernicus **Sentinel-1** and **Sentinel-2**, European Union / ESA —
+open data, zero acquisition cost.
+Labels: **ESA WorldCover** 10 m, CC-BY-4.0.
+Benchmarks: RSVQA-LR, LEVIR-CD, CDVQA, BigEarthNet.
+
+---
+
+<div align="center">
+
+*Metrics in this README are read from `models/reports/*.json`, written by the
+training scripts themselves. Nothing here is a placeholder.*
+
+**Team TMS&lt;3** 🛰️
+
+</div>
