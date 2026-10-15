@@ -437,3 +437,91 @@ satquery-core/
 │   └── weights/                 artefacts (gitignored) + vocabs and norm stats
 │
 ├── serve/                       the service
+│   ├── api.py                   FastAPI
+│   ├── aoi.py                   keyless STAC → live Sentinel-1 / Sentinel-2
+│   ├── analysis.py              NDVI · MNDWI · NDBI → measured land cover
+│   └── static/index.html        minimal zero-build test console
+│
+├── web/                         the site
+│   ├── app/page.tsx             landing — problem · solution · models · business
+│   ├── app/console/page.tsx     the working console
+│   ├── components/              Chrome · Hero · Sections · Models · Business
+│   ├── components/console/      AoiMap (Leaflet) · Results
+│   └── lib/                     api client · content · market · models.json
+│
+├── data/
+│   ├── india.py                 the 8 regions and their Köppen zones
+│   ├── annotate.py              annotation generation in the BigEarthNet schema
+│   └── indiasat/                the corpus (gitignored)
+│
+├── scripts/                     dataset fetchers, exporters, smoke tests
+├── notebooks/                   Kaggle path for the full ViT-B/32 M1
+├── docs/
+│   ├── MASTER_PLAN.md           architecture, training recipes, hosting decision
+│   ├── RESULTS.md               measured metrics, ablations, honest caveats
+│   └── OBSIDIAN_GUIDE.md        vault setup, graph view, Dataview queries
+└── vault/                       Obsidian vault — run · model · AOI notes
+```
+
+---
+
+## 9. API reference
+
+| method | path | purpose |
+|---|---|---|
+| `GET` | `/` | the zero-build test console |
+| `GET` | `/health` | service status, registered and trained models, mandatory coverage |
+| `GET` | `/models` | full registry with measured metrics |
+| `POST` | `/upload` | store one image, returns a path usable in `/query` |
+| `POST` | `/aoi/fetch` | live Sentinel fetch for a drawn bbox → image refs + scene provenance |
+| `GET` | `/preview?path=` | 8-bit PNG preview of a fetched or uploaded scene |
+| `POST` | `/query` | run one query end to end → answer, analysis, trace, markdown |
+| `GET` | `/runs` | recent runs from the vault |
+| `GET` | `/runs/{run_id}/report.md` | download one run's Markdown report |
+
+```bash
+curl -X POST localhost:8000/query -H 'Content-Type: application/json' -d '{
+  "query": "What changed between these two dates?",
+  "images": [
+    {"path": "…/t1.tif", "modality": "optical", "date": "2023-02-10"},
+    {"path": "…/t2.tif", "modality": "optical", "date": "2024-03-15"}
+  ]
+}'
+```
+
+---
+
+## 10. Design decisions worth knowing
+
+**Training runs on CPU, here.** This laptop has no NVIDIA GPU, so QLoRA on a 2B
+VLM is impossible locally — `bitsandbytes` is CUDA-only. Rather than ship a
+stub, M7 is the same architecture idea at a size that fits: a frozen vision
+tower whose features are cached once, and a small decoder that is the only thing
+learning. Swapping the frozen tower for the Kaggle ViT-B/32 is a constructor
+change, not a redesign.
+
+**A stub must never be mistakable for a real inference.** Every stubbed result
+carries `stub=True`, the graph stamps `STUB` into the trace, and the answer text
+says so. A development screenshot cannot masquerade as a measured result.
+
+**Inference reuses the training normalisation.** `models/weights/indiasat_norm.npz`
+is tracked in git. Recomputing statistics from whatever image a user uploads
+would shift the input distribution and quietly degrade every prediction — a
+failure with no error message, which is the worst kind.
+
+**Serving would use llama.cpp, not Ollama,** for the 2B variant. Ollama cannot
+load a separate `mmproj` vision projector for a custom fine-tuned VLM
+([ollama#14730](https://github.com/ollama/ollama/issues/14730),
+[ollama#9967](https://github.com/ollama/ollama/issues/9967)) — and it fails by
+silently dropping vision, the worst possible failure mode.
+
+**The vault is a folder of Markdown.** Obsidian only ever *reads* it; it is
+never in the request path. Open `vault/` as a vault and the graph view renders
+the live provenance network — every query, every model, every AOI. Everything
+works without it installed.
+
+**Confidence is the weakest link, not the average.** A chain is only as good as
+its least confident step.
+
+---
+
