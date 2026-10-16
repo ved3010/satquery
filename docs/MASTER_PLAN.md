@@ -126,3 +126,88 @@ I streamed the real dataset rather than assuming its shape
 | `ID` | `2` | row id |
 | `s1_name` | `S1B_IW_GRDH_1SDV_20170612T165809_33UUP_26_57` | **exact reBEN S1 patch to fetch** |
 | `patch_id` | `S2A_MSIL2A_20170613T101031_N9999_R022_T33UUP_26_57` | **exact reBEN S2 patch to fetch** |
+| `input` | `"Would you confirm that any broad-leaved forest borders upon pastures?"` | instruction / question |
+| `output` | `"no"` | target |
+| `type` | `binary` | answer format |
+| `category` | `adjacency`, `area` | question class — use to stratify |
+| `split` | `test` | **train/val/test/bench already assigned** |
+| `latitude`, `longitude` | `48.110`, `12.740` | AOI notes, geographic held-out splits |
+| `country`, `season`, `climate_zone` | `Austria`, `Summer`, `Cold, no dry season, warm summer` | domain-shift analysis |
+
+#### Measured contents (full parquet, 446 MB, downloaded and analysed)
+
+**9,553,962 rows over 464,044 unique patches — 20.4 annotations per patch.**
+
+| split | rows | unique patches |
+|---|---:|---:|
+| train | 4,674,281 (48.9%) | 229,114 |
+| validation | 2,454,690 (25.7%) | — |
+| test | 2,409,962 (25.2%) | — |
+| **bench** (human-verified) | **15,029** (0.2%) | **1,082** |
+
+| annotation type | rows | share | feeds | in bench |
+|---|---:|---:|---|---:|
+| binary (yes/no) | 3,625,160 | 37.9% | M2, M7 | 6,927 |
+| mcq | 3,259,184 | 34.1% | M2, M7 | 5,550 |
+| **bounding box** | **2,205,686** | **23.1%** | **M4 grounding** | 1,582 |
+| captioning | 463,932 | 4.9% | M1, M3 | 970 |
+
+Categories: `presence` / `area` / `count` ≈1.39 M each, `adjacency` 1.22 M,
+`point` 1.14 M, `reference` 1.06 M, `season` / `climate zone` / `country`
+≈464 k each, `relative pos` 99 k.
+
+**The 20.4-annotations-per-patch ratio is the most useful number here.** It
+collapses the download problem:
+
+| goal | samples | patches needed | est. imagery |
+|---|---:|---:|---:|
+| M7 QLoRA instruction mix | 150 k | **~7,400** | ~2 GB |
+| M4 grounding | 300 k | ~15,000 | ~4 GB |
+| M1 RS-CLIP contrastive | 80 k pairs | 80,000 † | ~21 GB |
+
+† Captioning is **one caption per patch** (463,932 captions / 464,044 patches),
+so contrastive training is the one job whose patch count equals its sample count.
+It dominates the download budget; everything else is nearly free. *(GB figures
+are estimates from the reBEN archive size ÷ patch count — verify in-session
+before relying on them.)*
+
+#### ⚠️ Domain shift: BigEarthNet.txt is entirely European
+
+This is the biggest scientific risk in the project and it needs stating plainly.
+
+Finland 31.6% · Portugal 19.1% · Serbia 15.5% · Lithuania 11.2% · Austria 9.5% ·
+Ireland 8.5% · Belgium 2.5% · Switzerland 1.1% · Luxembourg 0.8% · Kosovo 0.3%
+
+Ten countries. Every Köppen zone present is **Cold** or **Temperate**. There is
+**no tropical, arid, or monsoon zone anywhere in the dataset.**
+
+ISRO will evaluate on **Cartosat-2S + RISAT pairs over Indian scenes** — tropical,
+monsoonal, arid, and at a different ground sample distance from Sentinel. A model
+adapted purely on this corpus is being asked to generalise across a genuine
+distribution gap.
+
+This is not a reason to avoid BigEarthNet.txt — the PS mandates it, and it is the
+right primary corpus. But it changes three decisions:
+
+1. **Hold out Portugal, not a random split.** Portugal is the only
+   `Temperate, dry summer, hot summer` (Köppen Csa) region in the corpus and the
+   closest available analogue to Indian conditions. Training on the other nine
+   countries and reporting on Portugal measures the domain shift that actually
+   matters. A random split measures nothing and quietly overstates the result.
+2. **Never hardcode Sentinel band statistics.** Already flagged for M6; this makes
+   it non-negotiable for M1 too. Normalise per-sensor from metadata.
+3. **Say this out loud in the deck.** An ISRO judge will think of it within
+   thirty seconds. Naming the gap, quantifying it with the Portugal split, and
+   showing the mitigation is far stronger than being caught by the question.
+
+If time allows, supplementing with any tropical/Indian-subcontinent RS corpus
+would measurably de-risk the final evaluation. Worth doing with the spare week.
+
+---
+
+### IndiaSat — building the Indian corpus ourselves
+
+**There is no India subset of BigEarthNet to filter out.** Measured:
+
+```
+countries ..................... 10, all European
