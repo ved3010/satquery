@@ -211,3 +211,217 @@ would measurably de-risk the final evaluation. Worth doing with the spare week.
 
 ```
 countries ..................... 10, all European
+rows where country == "India" .. 0
+rows inside India's bbox ....... 0
+latitude range ................. 36.96 .. 67.98   (India:  6 .. 36)
+longitude range ................ -8.99 .. 31.59   (India: 68 .. 98)
+```
+
+The coordinate ranges do not even overlap.
+
+**Root cause, and the fix.** BigEarthNet's labels come from **CORINE Land Cover**,
+which is a Europe-only product. That is *why* the archive is European. Swap CORINE
+for **ESA WorldCover** — 10 m, global, 11 classes, CC-BY-4.0 — and the identical
+recipe produces an Indian equivalent.
+
+| layer | source | licence | key needed |
+|---|---|---|---|
+| Sentinel-2 L2A (12 band, optical) | Earth Search STAC → `sentinel-cogs` S3 | open | **no** |
+| Sentinel-1 GRD (VV/VH, SAR) | Earth Search STAC | open | **no** |
+| Land-cover labels (11 class) | ESA WorldCover v200 2021, public S3 | CC-BY-4.0 | **no** |
+
+All three are keyless — **no Copernicus or AWS account is required**, which
+removes a registration blocker from the critical path. (Copernicus stays the plan
+for *live* demo queries in §7; it is the better georeferenced source there.)
+
+PS 26167 permits this explicitly: *"adapted using BigEarthNet.txt **or the any
+open source training data**."*
+
+**Sampling design — eight regions spanning what BigEarthNet lacks:**
+
+| region | state | Köppen zone | why |
+|---|---|---|---|
+| Kochi | Kerala | Tropical, monsoon | coastal backwater, palm plantation |
+| Sundarbans | West Bengal | Tropical, savannah | tidal mangrove delta |
+| Jaisalmer | Rajasthan | Arid, desert, hot | true desert, bare surface |
+| Guwahati | Assam | Humid subtropical | Brahmaputra monsoon floodplain |
+| Ludhiana | Punjab | Arid, steppe, hot | intensive irrigated cropland |
+| Ahmedabad | Gujarat | Arid, steppe, hot | semi-arid urban growth |
+| Pune | Maharashtra | Tropical, savannah | Deccan plateau mixed |
+| Shimla | Himachal Pradesh | Temperate, dry winter | montane forest, snow |
+
+**Every Köppen zone in that table is absent from BigEarthNet.txt.** That is the
+entire point — it is the domain gap made trainable.
+
+Annotations are generated to the *same schema* as the BigEarthNet.txt parquet
+(`input`/`output`/`type`/`category`/`split` + geo columns), so the two corpora
+concatenate into one training mix: pretrain on 9.55 M European annotations for
+scale, fine-tune on IndiaSat for domain. Both PS requirements satisfied at once.
+
+Everything is derived from the label raster — no model in the loop, nothing
+hallucinated. Annotations are exactly as correct as WorldCover is.
+
+**Two bugs caught by testing the generator on real Kochi labels**, both of which
+would have silently poisoned training:
+
+1. *"Is grassland present? → no"* on a patch that was **2.5% grassland**. The
+   generator treated "below the 5% multilabel floor" as "absent". Absent now means
+   **zero pixels**.
+2. Bounding boxes covering **~99% of the frame**. Fragmented land cover makes the
+   largest connected component sprawl edge to edge; such a box teaches grounding
+   nothing and inflates IoU for free. Boxes over 85% of the frame are dropped.
+   Mean box area fell from ~0.99 to 0.28.
+
+**A third bug, in the fetcher.** STAC `bbox` search returns every scene whose
+footprint *overlaps* the box, but a Sentinel-2 tile is a 110 km square and the AOI
+can fall outside it entirely — producing `WindowError: Intersection is empty`
+with `col_off=13684` against a raster width of 10980. Fixed by intersecting an
+explicit **Point** and then verifying the window is in bounds before committing,
+since even a Point hit can land in an orbit-swath nodata region.
+
+#### Four further consequences worth acting on:
+
+1. **`s1_name` + `patch_id` are the download manifest.** Select rows first, then
+   fetch exactly those patches. This is what makes the 120 GB archive tractable.
+2. **`split` ships inside the parquet** — no separate split files, and no risk of
+   inventing our own splits and being accused of leakage.
+3. **`input`/`output` is already instruction-tuning format.** M7's training mix is
+   a filter and a reformat, not an annotation effort.
+4. **`country` / `climate_zone` enable a geographic held-out split** — the
+   Portugal hold-out described above. Note this is a *within-Europe* shift, not
+   an India-like one: measuring it is far better than a random split and almost
+   no team will do it, but it is a lower bound on the real evaluation gap, not
+   an estimate of it. Report it as such.
+
+### Everything else
+
+| Dataset | Size | Purpose | Where |
+|---|---|---|---|
+| **RSVQA-LR** | ~100 MB | Single-image VQA train + eval | ✅ already downloaded in `vqa/data/` |
+| **RSVQA-HR** | ~15 GB | VQA generalisation | Kaggle only |
+| **VRSBench** | ~12 GB | Eval: captioning, VQA, grounding | Kaggle only |
+| **CDVQA** | ~2 GB | Change VQA — 2,968 pairs from SECOND, ~122k QA, 19 answer classes | Local OK |
+| **LEVIR-CD** | ~2 GB | Change *masks* — 637 pairs @ 1024², 20 Texas regions | Local OK |
+| **BEN-v2 subset** | ~18 GB | Optical–SAR fusion, RS-CLIP | Kaggle only |
+
+Local footprint stays **under 10 GB**. Nothing threatens your 111 GB.
+
+---
+
+## 3. The seven models
+
+Each entry: what it is, why it exists, how it trains, and what number we expect.
+Models are numbered M1–M7 and referenced by those tags everywhere in the code.
+
+---
+
+### M1 — `rsclip` · Remote-Sensing CLIP (the domain-adaptation core)
+
+**This is the model that satisfies M-1 and unblocks four others.** It is the most
+important model in the project and should be trained first.
+
+A dual-encoder trained contrastively on BigEarthNet.txt image–caption pairs, so
+that satellite imagery and remote-sensing English land in one shared embedding
+space. Generic CLIP has never seen a VV/VH backscatter composite or a
+Sentinel-2 red-edge band; this fixes that.
+
+- **Init:** OpenCLIP ViT-B/32.
+- **The key surgery:** CLIP's patch-embed conv takes 3 channels. We inflate it to
+  **14** — 12 Sentinel-2 bands + 2 Sentinel-1 (VV, VH) — by replicating the RGB
+  kernels across the new bands and rescaling by `3/14` so activation magnitude is
+  preserved. Random init here destroys the pretrained features; this does not.
+- **Train:** InfoNCE, fp16, batch 256 (grad-accum on P100), AdamW lr 1e-5 on the
+  towers / 1e-4 on the new conv, ~10 epochs over an 80k-pair subset.
+- **Cost:** ~4 h on P100. **~4 of your 30 weekly hours.**
+- **Eval:** image↔text Recall@1/5/10 on the 1,082 verified pairs; zero-shot mAP
+  on the BEN-19 label set.
+- **Reuse:** its frozen image tower is the backbone of **M2, M3, M4 and M6**.
+  Train once, use four times — this is what makes the whole schedule fit.
+
+---
+
+### M2 — `vqa` · Single-image VQA *(mandatory M-2)*
+
+You already have a working, honestly-evaluated model here: **75.87% OA / 77.18%
+AA** on the held-out RSVQA-LR test split. Do not throw it away — it is a genuine
+asset and, importantly, its `RESULTS.md` already documents its own weakness,
+which is exactly the kind of thing that wins credibility with judges.
+
+Your own ablation found the real defect:
+
+> *`comp` **−0.8 pts** vs the blind model, i.e. the image does not help at all.
+> Mean-pooling the word embeddings discards word order, so "more roads than
+> forests?" and "more forests than roads?" are the same vector.*
+
+That diagnosis is correct, and it dictates the upgrade precisely:
+
+| | v1 (yours, done) | v2 (planned) |
+|---|---|---|
+| Image encoder | ImageNet MobileNetV2, frozen | **M1 RS-CLIP tower**, last block unfrozen |
+| Question encoder | 64-d bag-of-words, mean-pooled | **BiGRU** (order-aware) → fixes `comp` |
+| Fusion | concat → MLP | concat + gated attention over patches |
+| Training | CPU, 6.5 min | P100, ~40 min |
+| Overall accuracy | 75.87% | **target 80–83%** |
+
+The published RSVQA-LR baseline is ~79% OA, so 80%+ is a beat-the-paper claim we
+can actually defend. `comp` should move from 69.5% to the high 70s purely from
+the BiGRU; that single change is the headline.
+
+Keep v1 as a checked-in ablation. "Here is what we tried, here is why it failed,
+here is the fix" is worth more than a number without a story.
+
+---
+
+### M3 — `caption` · Scene captioning *(satisfies M-3)*
+
+Prefix-tuned captioner: M1's frozen image embedding is projected into *k=10*
+soft prompt tokens and prepended to a small causal LM decoder, which is trained
+with cross-entropy on BigEarthNet.txt captions. Only the projector and decoder
+train — ~25M parameters.
+
+- **Cost:** ~2 h on P100.
+- **Eval:** VRSBench captioning — BLEU-4, METEOR, ROUGE-L, CIDEr.
+- **Why separate from M7:** it runs in ~50 ms on CPU vs ~4 s for the VLM. The
+  agent calls M3 for the fast structured pass and M7 only when the user wants
+  discussion. It is also a working fallback if the VLM fails on demo day.
+
+---
+
+### M4 — `ground` · Text-guided region grounding *(also M-3)*
+
+Answers *"Highlight the water body referred to in the query"* with an actual box
+on an actual image. BigEarthNet.txt's referring-expression annotations are built
+for exactly this.
+
+- **Architecture:** M1 image tower (patch grid retained, not pooled) + M1 text
+  tower → 2-layer cross-attention → box head predicting `(cx, cy, w, h)`
+  normalised.
+- **Loss:** L1 + generalised IoU.
+- **Cost:** ~3 h on P100.
+- **Eval:** Acc@0.5 IoU on VRSBench referring expressions.
+
+Doing **both** M3 and M4 when the PS only requires one is deliberate: it is cheap
+(both reuse M1) and it visibly exceeds scope.
+
+---
+
+### M5 — `change` · Bi-temporal change detection + change-VQA *(mandatory M-4)*
+
+Two heads over one shared siamese encoder — the highest-risk, highest-value model.
+
+**M5a — change map.** Siamese M1 encoder → feature differencing → light U-Net
+decoder → per-pixel binary mask. Trained on LEVIR-CD (637 VHR pairs). Metric: F1
+and IoU. This produces the *visual evidence* the PS asks for.
+
+**M5b — change VQA.** Same siamese trunk, plus a question encoder, → classifier
+over CDVQA's 19 answer categories. Trained on CDVQA (2,968 SECOND pairs, ~122k
+QA). Answers *"Has the built-up area increased, decreased, or unchanged?"*
+
+- **Cost:** ~3 h total on P100.
+- Train jointly with a shared trunk: the mask supervision measurably improves the
+  VQA head, and it is one model to serve instead of two.
+
+---
+
+### M6 — `fusion` · Optical–SAR joint analysis *(mandatory M-5)*
+
