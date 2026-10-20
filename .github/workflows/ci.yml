@@ -1,0 +1,56 @@
+name: SatQuery AI CI
+
+on:
+  push:
+    branches: [main, ui-and-globe]
+  pull_request:
+    branches: [main, ui-and-globe]
+
+jobs:
+  python-tests:
+    name: Backend Tests & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Verify Model Registry Coverage
+        run: |
+          python -m agent.registry
+
+      - name: Verify Router Rule Classification
+        run: |
+          python -m agent.router
+
+  web-build:
+    name: Next.js Frontend Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install npm dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Run Next.js build validation
+        working-directory: web
+        run: npm run build
