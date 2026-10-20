@@ -639,3 +639,217 @@ later is one dict entry, not a code change.
 Short answer: **yes, and I recommend it — but not as an ML component.** Let me be
 precise, because there is a lot of nonsense written about this.
 
+**What Obsidian is not:** an inference engine, a vector database, a model server,
+or an agent framework. It cannot run or train any model. Anyone claiming
+otherwise is confused.
+
+**What it is:** a viewer over a folder of plain markdown files, with wikilinks
+and a force-directed graph view.
+
+**Why that turns out to be exactly what this PS needs.** Re-read the requirement:
+
+> *"provide an auditable execution summary containing the selected task,
+> model/tool names, and key parameters"* … *"downloadable reports"*
+
+Every other team will satisfy this with a JSON blob in a collapsible `<details>`
+panel. Here is the alternative:
+
+**Every agent run writes a markdown note into an Obsidian vault.**
+
+```markdown
+---
+run_id: 2026-09-07T18-42-11Z-a3f9
+query: "What changed between these two dates?"
+input_config: bi-temporal-pair
+models_invoked: [M5a-change-v1.2, M5b-changevqa-v1.2, M7-vlm-qlora-v1.0]
+confidence: 0.87
+latency_ms: 4820
+aoi: "[[AOI-Ahmedabad-23.02N-72.57E]]"
+---
+
+# Run a3f9 — bi-temporal change
+
+**Answer.** Built-up area increased. 1,204 px (3.2% of scene) changed,
+concentrated in the north-east quadrant.
+
+![[evidence/a3f9-changemap.png]]
+
+## Execution trace
+| step | model | key params | ms | conf |
+|---|---|---|---|---|
+| route   | rule-table       | intent=change, n_images=2 |    3 | — |
+| M5a     | [[M5-change]]    | thresh=0.5, tile=256      | 1180 | 0.91 |
+| M5b     | [[M5-change]]    | top_k=1                   |  240 | 0.83 |
+| M7      | [[M7-vlm]]       | temp=0.2, max_tok=256     | 3400 | — |
+
+Related: [[M5-change]] · [[CDVQA]] · [[AOI-Ahmedabad-23.02N-72.57E]]
+```
+
+Because every run links to model notes, dataset notes and AOI notes, **Obsidian's
+graph view renders the live provenance graph of the entire system** — every query
+ever run, every model that touched it, every region analysed, as a navigable
+network. Open that on the projector and it is immediately obvious that this is a
+real orchestrated system and not a wrapper around one API.
+
+Three reasons this is the right call:
+
+1. **It costs almost nothing.** We are writing markdown files. Maybe 150 lines.
+2. **Zero runtime dependency.** The vault is a folder. The backend writes files;
+   Obsidian only *reads* them. If Obsidian is not installed, everything still
+   works — you just lose the pretty view. Never put Obsidian in the request path.
+3. **It doubles as the report deliverable.** The same markdown renders to PDF for
+   the "downloadable reports" requirement.
+
+Optional extra: the community **Local REST API** plugin exposes the vault on
+localhost, so the agent can *read back* prior runs — "have we analysed this AOI
+before?" — giving the system genuine longitudinal memory across sessions. Nice if
+time allows; skip it if not.
+
+**Recommendation: build it.** Highest ratio of judge-impact to effort in the
+entire project.
+
+---
+
+## 7. Real-time satellite imagery
+
+**Copernicus Data Space Ecosystem** — free account, free tier with monthly quota.
+It is the only free source that provides genuine **co-registered Sentinel-1 SAR +
+Sentinel-2 optical** with real georeferencing, which is precisely the input the PS
+defines and what ISRO will evaluate against (Cartosat-2S + RISAT pairs).
+
+- **STAC API** — search by bounding box, date range, cloud cover.
+- **openEO API** — server-side band math and mosaicking; do the heavy lifting
+  before download so we pull megabytes, not gigabytes.
+- **S3** — bulk product access.
+
+Flow: user draws an AOI → STAC finds the nearest S2 and S1 scenes → openEO
+subsets and co-registers → GeoTIFF lands in the pipeline → agent routes it.
+
+Live queries against real imagery of *any* region on Earth, at demo time, is
+something almost no team will attempt.
+
+### Borrowing from `gods-eye-view`
+
+The repo you linked is **MIT-licensed** (so we can reuse it freely, with
+attribution) and built on CesiumJS. It is a real-time tracking visualiser, not an
+analysis tool, so we take the presentation layer and none of the analysis:
+
+| Take | Why | Cost |
+|---|---|---|
+| CesiumJS 3D globe | AOI selection on a real globe beats a bounding-box form | medium |
+| **NASA FIRMS** live fire detections | keyless; "analyse this active fire" is a spectacular live demo | low |
+| **USGS** earthquakes (24 h) | keyless; instant disaster-response scenario | low |
+| **CelesTrak** orbits | shows *which* satellite took the image, and when it passes next | low |
+| Sensor view modes (FLIR/night-vision) | pure aesthetics, but it is genuinely striking | low |
+
+**Skip:** the OpenAI Realtime voice layer (needs a paid key — violates the free
+constraint), aircraft/vessel tracking (irrelevant to the PS).
+
+The FIRMS integration is the standout: a judge picks a fire burning *right now*,
+we pull today's Sentinel pass over it, and the agent runs change detection
+against last month. That is a live, unscripted, end-to-end demonstration of every
+mandatory capability at once.
+
+---
+
+## 8. Repository layout
+
+```
+satquery-core/
+├── docs/
+│   ├── MASTER_PLAN.md          ← this file
+│   ├── MODEL_CARDS.md          per-model card: data, recipe, metrics, caveats
+│   └── EVAL_PROTOCOL.md        exact splits + metrics, frozen before training
+├── models/                     M1–M7 definitions (train + infer, shared code)
+├── notebooks/                  one Kaggle notebook per model
+├── agent/
+│   ├── registry.py             declarative model registry
+│   ├── graph.py                LangGraph state machine
+│   ├── router.py               hybrid rule + LLM routing
+│   ├── trace.py                execution trace → Obsidian markdown
+│   └── tools/                  one thin wrapper per model
+├── serve/
+│   ├── api.py                  FastAPI; mounts the graph
+│   └── onnx_pool.py            warm ONNX sessions
+├── data/                       loaders, band normalisation, GeoTIFF/CRS handling
+├── scripts/                    download, preprocess, export, benchmark
+└── vault/                      Obsidian vault (run notes, model notes, AOIs)
+```
+
+The dashboard stays in `satquery/` — Next.js 15 + React 19 + Tailwind 4, already
+built — and talks to `serve/api.py` over HTTP. Clean separation; no rewrite.
+
+---
+
+## 9. What no other team will have
+
+Ranked by how hard they are to copy:
+
+1. **The cloud-occlusion ablation (M6).** Empirical proof that SAR rescues optical
+   under cloud. One chart, unarguable, directly justifies the PS's premise.
+2. **The Obsidian provenance graph.** Every run, model and AOI as a live
+   navigable network. Nobody else will think of this.
+3. **Live FIRMS → Copernicus → analysis.** Unscripted, real, today's imagery.
+4. **The honest ablation table.** Blind baselines and majority baselines for every
+   model. Your existing `vqa/RESULTS.md` already does this, and it is the single
+   most credible artefact in the repo — most teams report one number with no
+   baseline and cannot answer "how do you know the image is being used at all?"
+5. **Correct refusal.** The system explains *why* an input cannot answer a query.
+6. **Both** M3 and M4 when the PS requires only one.
+
+---
+
+## 10. Immediate next steps
+
+### Kaggle phone verification — exactly where
+
+This is the one hard blocker: **without it the Accelerator dropdown stays greyed
+out and you get CPU only.**
+
+1. Sign in at **kaggle.com**
+2. Click your **avatar** (top right) → **Settings**
+3. Scroll to the **Phone Verification** section → enter your number → enter the SMS code
+4. Then, in any notebook: right sidebar → **Session options / Settings** →
+   **Accelerator** → pick **GPU P100** (or T4 ×2)
+
+Direct link: **https://www.kaggle.com/settings**
+
+Two known snags: **VoIP numbers (Google Voice, TextNow, most virtual numbers) are
+rejected** — use a real mobile SIM. And one number can only verify one account.
+Verification is usually instant; if the dropdown is still greyed out, reload the
+notebook page, as the session caches your entitlement at load time.
+
+Check your remaining quota any time at the same Settings page — the free tier is
+30 GPU-hours per week, resetting weekly (not monthly).
+
+| # | Task | Where | Blocking? |
+|---|---|---|---|
+| 1 | Create Kaggle account, verify phone (unlocks GPU) | kaggle.com/settings | **yes — do this first** |
+| 2 | Create Copernicus Data Space account | dataspace.copernicus.eu | for §7 |
+| 3 | Download BigEarthNet.txt parquet (467 MB) | local | no |
+| 4 | Freeze `EVAL_PROTOCOL.md` — splits and metrics, **before** training | local | no |
+| 5 | Build the M1 Kaggle notebook | notebooks/ | after 1 |
+| 6 | Scaffold registry + LangGraph with stub models | agent/ | no |
+
+Steps 3, 4 and 6 run on your laptop right now and do not need the GPU. Step 6 in
+particular is worth doing early: with stubbed models, the entire agent, API and
+dashboard can be built and demoed *before a single model finishes training*. That
+de-risks the schedule — if training slips, the system still runs.
+
+Phone verification on Kaggle is the one true blocker. Everything else is parallel.
+
+---
+
+## Sources
+
+- [BigEarthNet.txt (arXiv:2603.29630)](https://arxiv.org/abs/2603.29630) · [txt.bigearth.net](https://txt.bigearth.net) · [HF dataset](https://huggingface.co/datasets/BIFOLD-BigEarthNetv2-0/BigEarthNet.txt)
+- [BigEarthNet v2.0 / reBEN](https://bigearth.net/)
+- [RSVQA (Lobry et al., TGRS 2020)](https://arxiv.org/abs/2003.07333)
+- [CDVQA — Change Detection Meets VQA (arXiv:2112.06343)](https://arxiv.org/abs/2112.06343)
+- [Kaggle free GPU quota](https://www.kaggle.com/docs/notebooks)
+- [Unsloth — GGUF export](https://unsloth.ai/docs/basics/inference-and-deployment/saving-to-gguf) · [Qwen3.5 fine-tuning](https://unsloth.ai/docs/models/qwen3.5/fine-tune)
+- [ollama#14730 — mmproj import failure](https://github.com/ollama/ollama/issues/14730) · [ollama#9967 — Modelfile mmproj loses vision](https://github.com/ollama/ollama/issues/9967)
+- [llama.cpp `--mmproj`](https://github.com/ggml-org/llama.cpp/discussions/22190)
+- [LangGraph durable execution](https://docs.langchain.com/oss/python/langgraph/durable-execution)
+- [Copernicus Data Space APIs](https://dataspace.copernicus.eu/analyse/apis)
+- [bilawalsidhu/gods-eye-view (MIT)](https://github.com/bilawalsidhu/gods-eye-view)
