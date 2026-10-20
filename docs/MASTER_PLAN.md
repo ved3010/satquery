@@ -425,3 +425,217 @@ QA). Answers *"Has the built-up area increased, decreased, or unchanged?"*
 
 ### M6 — `fusion` · Optical–SAR joint analysis *(mandatory M-5)*
 
+BigEarthNet is *natively* co-registered S1+S2 — this is the single best-matched
+dataset for this requirement in existence, which is presumably why ISRO named it.
+
+- **Architecture:** S2 branch (12-band) + S1 branch (2-band VV/VH), fused by
+  cross-attention, → BEN-19 multilabel head, BCE loss.
+- **Init:** BIFOLD publishes reference checkpoints on HuggingFace
+  (`resnet50-s2-v0.1.1`, `resnet101-s1-v0.1.1`, `rdnet_base-all-v0.2.0`). Init
+  from these and we both save time *and* get a published number to benchmark
+  against.
+- **Cost:** ~3 h on P100.
+
+**The demo that wins this section.** Run three ablations — S2-only, S1-only,
+fused — then **synthetically occlude the S2 image with cloud** and re-run. Optical
+accuracy collapses; SAR is unaffected; fusion degrades gracefully. That is a
+single chart that proves *why* the PS insists on cross-modal analysis, and it is
+the most persuasive slide in the deck. Cost: one extra hour of eval.
+
+Evaluation will use **Cartosat-2S optical + RISAT SAR** pairs, not Sentinel. So
+the fusion branches must normalise per-sensor from metadata, never hardcode
+Sentinel band statistics. Build this in from day one — retrofitting it is painful.
+
+---
+
+### M7 — `vlm` · Qwen3.5-2B-VL + QLoRA adapter (the reasoning core)
+
+The conversational layer that turns specialist outputs into grounded prose and
+handles open-ended queries the specialists do not cover.
+
+- **Base:** Qwen3.5-2B-VL. Chosen for size, not fashion — per Unsloth, a 2B
+  bf16 LoRA needs ~5 GB VRAM, comfortable on a P100; and 2B Q4 is the largest
+  thing that runs at conversational speed on your CPU.
+- **Method:** QLoRA — base frozen in 4-bit NF4, LoRA adapters (r=16, α=32) on all
+  attention + MLP projections. Trainable params ≈ 0.5% of the model.
+- **Precision: fp16.** Not bf16 — see the P100/T4 warning in §0.
+- **Data:** BigEarthNet.txt captions + VQA + grounding, reformatted into a single
+  instruction-tuning chat mix (~150k samples), plus ~10k synthetic
+  *tool-result → natural answer* examples so the model learns to narrate M1–M6
+  outputs faithfully instead of inventing.
+- **Cost:** ~8 h on P100 = one full session. Budget **two sessions** for a
+  restart. This is the single largest compute item; schedule it first in the week.
+- **Output:** merged fp16 → GGUF Q4_K_M (~1.4 GB) + separate `mmproj` vision
+  projector (~600 MB).
+
+**On grounding the VLM:** M7 never sees raw imagery alone when specialists are
+available. The agent passes it *"M2 said 'yes, 4 buildings' at 0.91 confidence;
+M5a found 1,204 changed pixels in the NE quadrant"* and M7 writes the answer.
+This is what makes outputs evidence-grounded rather than hallucinated — and it is
+the difference between passing and failing the PS's core novelty claim.
+
+---
+
+### Training budget
+
+| Model | GPU-h | Depends on | Order |
+|---|---:|---|---|
+| M1 `rsclip` | 4 | — | **1st** |
+| M7 `vlm` | 8–16 | — (parallel-safe) | **1st** (own session) |
+| M2 `vqa` | 1 | M1 | 2nd |
+| M3 `caption` | 2 | M1 | 2nd |
+| M4 `ground` | 3 | M1 | 2nd |
+| M6 `fusion` | 3 | M1 | 2nd |
+| M5 `change` | 3 | M1 | 3rd |
+| Eval + ablations | 3 | all | 4th |
+| **Total** | **~27–35** | | **~2 weeks** at 30 h/week |
+
+Comfortable inside two weeks of Kaggle's free quota, with a whole week of slack.
+Since there is no time pressure, use the slack for the ablation table — that is
+where the marks are.
+
+---
+
+## 4. Hosting decision: **llama.cpp, not Ollama**
+
+You asked whether to run locally with Ollama. **Run locally — yes. With Ollama —
+no.** Here is the concrete, checkable reason.
+
+Fine-tuned vision models export as **two** GGUF files: the language model and a
+separate `mmproj` vision projector. **Ollama cannot load a separate mmproj for an
+imported custom model.** This is not speculation — it is two open issues on the
+Ollama repository:
+
+- [ollama#14730](https://github.com/ollama/ollama/issues/14730) — imported GGUF
+  with mmproj fails to load; *the same files work under llama.cpp's `--mmproj`*.
+- [ollama#9967](https://github.com/ollama/ollama/issues/9967) — Modelfiles
+  specifying mmproj GGUFs silently **lose vision capability**.
+
+Ollama's May 2026 multimodal rebuild covers *official* model families (Llama 4,
+Gemma 3, Qwen2.5-VL). **Our model is a custom fine-tune — the exact case that
+does not work.** Silent loss of vision is the worst possible failure mode: the
+model still answers, just blind, and you might not notice until a judge asks.
+
+`llama.cpp`'s `llama-server` supports `--mmproj` directly, serves an OpenAI-
+compatible HTTP API, and is a single binary with no daemon.
+
+### The serving stack
+
+| Layer | Runtime | Why | Latency (your CPU) |
+|---|---|---|---|
+| M1–M6 | **ONNX Runtime**, CPU | 10–100M params; already proven — your `export_onnx.py` works | 20–150 ms |
+| M7 | **llama.cpp `llama-server`**, Q4_K_M | only runtime that loads custom VLM + mmproj | ~4–8 s |
+| Agent | **LangGraph** in FastAPI | §5 | — |
+| Dashboard | **Next.js 15** (your existing stack) | already built | — |
+
+```bash
+llama-server -m models/m7-satquery-vlm-Q4_K_M.gguf \
+             --mmproj models/m7-mmproj-f16.gguf \
+             --host 127.0.0.1 --port 8080 -c 4096 -t 8
+```
+
+Everything runs offline on your laptop. **No API keys, no rate limits, no network
+on demo day** — which also means no way to lose the demo to venue wifi. Mention
+that when presenting; judges have watched too many demos die on a hotel network.
+
+### ⚠️ ONNX export: pass `dynamo=False`
+
+Found by testing, and it would have cost a Kaggle session. torch 2.12's default
+**dynamo exporter silently ignores `dynamic_axes`**. The export appears to
+succeed, loads fine, and returns a correctly-shaped unit-norm vector at
+batch size 1 — then fails at batch 2:
+
+```
+Reshape node 'node_view_2': input {50,2,2304}, requested {50,1,3,768}
+```
+
+It also splits the model into `m1.onnx` (1.2 MB graph) + `m1.onnx.data`
+(385.8 MB weights), so downloading only the `.onnx` from Kaggle gives you a
+weightless shell.
+
+`dynamo=False` uses the legacy exporter and fixes both: **one self-contained
+386 MB file**, batch 2 works, max abs diff vs PyTorch **1.3e-07**, cosine
+similarity **1.000000**.
+
+Two lessons baked into `scripts/smoke_test_m1.py`:
+
+- **Always verify an export at batch > 1.** The first version of that test
+  checked only batch 1, passed, and missed this entirely.
+- **Always compare ONNX output against PyTorch numerically.** Shape and unit
+  norm prove nothing — a randomly-initialised tower passes both.
+
+Run `python scripts/verify_onnx_export.py` after every export.
+
+Keep a free Groq or HF Inference endpoint wired behind a feature flag as a
+break-glass fallback, but demo local.
+
+---
+
+## 5. Wiring the seven models: LangGraph
+
+LangGraph 1.2 (May 2026) is the right choice, and specifically because of one
+feature that maps onto a PS requirement rather than because it is popular.
+
+**Every state transition is checkpointed.** That checkpoint stream *is* the
+"auditable execution summary containing the selected task, model/tool names, and
+key parameters" the PS demands. We get the deliverable as a by-product of the
+architecture instead of building a separate logging system that can drift out of
+sync with what actually ran.
+
+### Graph shape
+
+```
+                    ┌──────────────┐
+   query + images →│  INGEST      │  GeoTIFF parse, CRS check, co-registration,
+                    │              │  modality detect (optical/SAR/pair)
+                    └──────┬───────┘
+                           ↓
+                    ┌──────────────┐
+                    │  VALIDATE    │  → REJECT with a reason if incompatible
+                    └──────┬───────┘     (e.g. "change-VQA needs 2 images, got 1")
+                           ↓
+                    ┌──────────────┐
+                    │  ROUTE       │  intent × input-config → tool plan
+                    └──┬─┬─┬─┬─┬─┬─┘
+          ┌────────────┘ │ │ │ │ └────────────┐
+          ↓         ↓    ↓ ↓ ↓ ↓              ↓
+        [M2]      [M3] [M4][M5][M6]         (parallel where independent)
+          └────────────┬─┬─┬─┬─┴──────────────┘
+                       ↓
+                ┌──────────────┐
+                │  SYNTHESISE  │  M7 narrates specialist outputs
+                └──────┬───────┘
+                       ↓
+                ┌──────────────┐
+                │  EVIDENCE    │  overlays, confidence, trace, PDF report
+                └──────────────┘
+```
+
+**Routing is a hybrid, and deliberately so.** A hard table handles input
+compatibility — 2 images + "what changed" → M5, always, no LLM involved. M7 only
+disambiguates genuinely ambiguous *intent*. Pure-LLM routing is non-deterministic
+and will eventually pick the wrong tool in front of a judge; pure-rule routing
+cannot handle open language. The hybrid is both defensible and demoable, and when
+a judge asks "how do you know it picked the right model?", you can show them the
+table.
+
+The `REJECT` path matters more than it looks: the PS explicitly requires "input
+upload and compatibility checking". A system that *correctly refuses* a
+single-image change-detection request demonstrates real validation. Most teams
+will silently return garbage.
+
+### The registry
+
+`agent/registry.py` holds one declarative entry per model — name, version, task
+tags, accepted modalities, required image count, ONNX path, input spec, and
+published metrics. The router only ever selects from this registry, and the trace
+records exactly which registry entry ran with which parameters. Adding a model
+later is one dict entry, not a code change.
+
+---
+
+## 6. Obsidian — yes, and it is a genuine differentiator
+
+Short answer: **yes, and I recommend it — but not as an ML component.** Let me be
+precise, because there is a lot of nonsense written about this.
+
