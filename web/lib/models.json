@@ -1,0 +1,299 @@
+{
+  "generated_by": "scripts/export_site_data.py",
+  "models": [
+    {
+      "id": "M1",
+      "name": "rsclip",
+      "version": "1.0.0",
+      "tasks": [
+        "retrieval"
+      ],
+      "modalities": [
+        "optical",
+        "sar"
+      ],
+      "n_images": 1,
+      "runtime": "torch",
+      "params_m": 1.57,
+      "trained": true
+    },
+    {
+      "id": "M2",
+      "name": "vqa",
+      "version": "1.0.0",
+      "tasks": [
+        "vqa"
+      ],
+      "modalities": [
+        "optical"
+      ],
+      "n_images": 1,
+      "runtime": "onnx",
+      "params_m": 2.5,
+      "trained": true
+    },
+    {
+      "id": "M3",
+      "name": "caption",
+      "version": "1.0.0",
+      "tasks": [
+        "caption"
+      ],
+      "modalities": [
+        "optical",
+        "sar"
+      ],
+      "n_images": 1,
+      "runtime": "torch",
+      "params_m": 1.89,
+      "trained": true
+    },
+    {
+      "id": "M4",
+      "name": "ground",
+      "version": "1.0.0",
+      "tasks": [
+        "grounding"
+      ],
+      "modalities": [
+        "optical",
+        "sar"
+      ],
+      "n_images": 1,
+      "runtime": "torch",
+      "params_m": 1.67,
+      "trained": true
+    },
+    {
+      "id": "M5a",
+      "name": "change_map",
+      "version": "1.0.0",
+      "tasks": [
+        "change_map"
+      ],
+      "modalities": [
+        "optical",
+        "sar"
+      ],
+      "n_images": 2,
+      "runtime": "torch",
+      "params_m": 1.97,
+      "trained": true
+    },
+    {
+      "id": "M5b",
+      "name": "change_vqa",
+      "version": "1.0.0",
+      "tasks": [
+        "change_vqa"
+      ],
+      "modalities": [
+        "optical",
+        "sar"
+      ],
+      "n_images": 2,
+      "runtime": "torch",
+      "params_m": 1.97,
+      "trained": true
+    },
+    {
+      "id": "M6",
+      "name": "fusion",
+      "version": "1.0.0",
+      "tasks": [
+        "fusion"
+      ],
+      "modalities": [
+        "optical",
+        "sar"
+      ],
+      "n_images": 2,
+      "runtime": "torch",
+      "params_m": 2.48,
+      "trained": true
+    },
+    {
+      "id": "M7",
+      "name": "vlm",
+      "version": "1.0.0",
+      "tasks": [
+        "synthesis",
+        "vqa",
+        "caption"
+      ],
+      "modalities": [
+        "any"
+      ],
+      "n_images": 1,
+      "runtime": "torch",
+      "params_m": 2.34,
+      "trained": true
+    }
+  ],
+  "trained_count": 8,
+  "headline": [
+    {
+      "id": "M6",
+      "name": "fusion",
+      "task": "Optical\u2013SAR land cover",
+      "metric": "mAP",
+      "value": 0.9149570621718361,
+      "baseline": 0.3423946125551708,
+      "baseline_label": "class prior",
+      "n": 151
+    },
+    {
+      "id": "M3",
+      "name": "caption",
+      "task": "Scene description",
+      "metric": "next-token accuracy",
+      "value": 0.9005385392123864,
+      "baseline": 0.07434761201378631,
+      "baseline_label": "most frequent token",
+      "n": 151
+    },
+    {
+      "id": "M5b",
+      "name": "change_vqa",
+      "task": "Bi-temporal change VQA",
+      "metric": "accuracy",
+      "value": 0.7947019867549668,
+      "baseline": 0.47019867549668876,
+      "baseline_label": "majority class",
+      "n": 151
+    },
+    {
+      "id": "M2",
+      "name": "vqa",
+      "task": "Single-image VQA",
+      "metric": "overall accuracy",
+      "value": 0.7587,
+      "baseline": 0.5749,
+      "baseline_label": "majority answer",
+      "n": 10004
+    },
+    {
+      "id": "M5a",
+      "name": "change_map",
+      "task": "Change mask",
+      "metric": "IoU",
+      "value": 0.4419672566231462,
+      "baseline": null,
+      "baseline_label": null,
+      "n": 151
+    },
+    {
+      "id": "M4",
+      "name": "ground",
+      "task": "Referring-expression grounding",
+      "metric": "mean IoU",
+      "value": 0.30823880434036255,
+      "baseline": 0.19834666209956447,
+      "baseline_label": "mean training box",
+      "n": 180
+    },
+    {
+      "id": "M1",
+      "name": "rsclip",
+      "task": "Image\u2013text retrieval",
+      "metric": "R@1",
+      "value": 0.13907285034656525,
+      "baseline": 0.006622516556291391,
+      "baseline_label": "chance",
+      "n": 151
+    },
+    {
+      "id": "M7",
+      "name": "vlm",
+      "task": "Instruction-following VLM",
+      "metric": "MCQ exact match",
+      "value": 0.9074,
+      "baseline": 0.5079,
+      "baseline_label": "same weights, image zeroed",
+      "n": 443
+    }
+  ],
+  "coverage": {
+    "M-2 single-image VQA": [
+      "M2",
+      "M7"
+    ],
+    "M-3 caption or grounding": [
+      "M3",
+      "M4",
+      "M7"
+    ],
+    "M-4 change analysis": [
+      "M5b"
+    ],
+    "M-5 optical-SAR fusion": [
+      "M6"
+    ]
+  },
+  "cloud_ablation": {
+    "fused": 0.915,
+    "s2_only": 0.7306,
+    "s1_only": 0.6869,
+    "fused_cloud50": 0.8467,
+    "s2_only_cloud50": 0.6508,
+    "s1_only_cloud50": 0.6869
+  },
+  "vlm": {
+    "architecture": "frozen M1 vision tower -> 17 visual tokens -> 4-layer causal decoder (d=256, 2.34M trainable)",
+    "epochs": 20,
+    "seconds": 2850.2,
+    "test": {
+      "captioning": {
+        "n": 151,
+        "majority_baseline": 0.0409,
+        "next_token_acc": 0.9255
+      },
+      "binary": {
+        "n": 595,
+        "majority_baseline": 0.6016,
+        "exact_match": 0.9412
+      },
+      "mcq": {
+        "n": 443,
+        "majority_baseline": 0.2695,
+        "exact_match": 0.9074
+      },
+      "bounding box": {
+        "n": 180,
+        "majority_baseline": 0.0075,
+        "exact_match": 0.0
+      }
+    },
+    "blind_ablation": {
+      "captioning": {
+        "n": 151,
+        "majority_baseline": 0.0409,
+        "next_token_acc": 0.8464
+      },
+      "binary": {
+        "n": 595,
+        "majority_baseline": 0.6016,
+        "exact_match": 0.8387
+      },
+      "mcq": {
+        "n": 443,
+        "majority_baseline": 0.2695,
+        "exact_match": 0.5079
+      },
+      "bounding box": {
+        "n": 180,
+        "majority_baseline": 0.0075,
+        "exact_match": 0.0
+      }
+    },
+    "caveat": "Word-level vocabulary of 265 tokens over one corpus. It answers IndiaSat-style instructions about Indian Sentinel patches; it is not a general-purpose VLM. Quantitative percentages in a report come from the measured spectral indices, never from this model."
+  },
+  "dataset": {
+    "name": "IndiaSat",
+    "patches": 985,
+    "annotations": 8962,
+    "regions": 8,
+    "bands": "Sentinel-2 (12) + Sentinel-1 (VV/VH) + ESA WorldCover",
+    "note": "BigEarthNet contains zero Indian data \u2014 its labels come from CORINE, a Europe-only product. Swapping CORINE for ESA WorldCover reproduces the recipe over India."
+  }
+}

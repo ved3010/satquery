@@ -1,0 +1,136 @@
+{
+  "model": "M7",
+  "architecture": "frozen M1 vision tower -> 17 visual tokens -> 4-layer causal decoder (d=256, 2.34M trainable)",
+  "train_data": "IndiaSat instruction mix, 985 patches, 6196 train / 1369 test",
+  "epochs": 20,
+  "batch_size": 32,
+  "lr": 0.0003,
+  "test": {
+    "captioning": {
+      "n": 151,
+      "majority_baseline": 0.0409,
+      "next_token_acc": 0.9255
+    },
+    "binary": {
+      "n": 595,
+      "majority_baseline": 0.6016,
+      "exact_match": 0.9412
+    },
+    "mcq": {
+      "n": 443,
+      "majority_baseline": 0.2695,
+      "exact_match": 0.9074
+    },
+    "bounding box": {
+      "n": 180,
+      "majority_baseline": 0.0075,
+      "exact_match": 0.0
+    }
+  },
+  "blind_ablation": {
+    "captioning": {
+      "n": 151,
+      "majority_baseline": 0.0409,
+      "next_token_acc": 0.8464
+    },
+    "binary": {
+      "n": 595,
+      "majority_baseline": 0.6016,
+      "exact_match": 0.8387
+    },
+    "mcq": {
+      "n": 443,
+      "majority_baseline": 0.2695,
+      "exact_match": 0.5079
+    },
+    "bounding box": {
+      "n": 180,
+      "majority_baseline": 0.0075,
+      "exact_match": 0.0
+    }
+  },
+  "history": [
+    {
+      "epoch": 0,
+      "loss": 3.8615733582738767
+    },
+    {
+      "epoch": 1,
+      "loss": 0.963977172275899
+    },
+    {
+      "epoch": 2,
+      "loss": 0.6017805036794336
+    },
+    {
+      "epoch": 3,
+      "loss": 0.5318148436478383
+    },
+    {
+      "epoch": 4,
+      "loss": 0.49360619369566133
+    },
+    {
+      "epoch": 5,
+      "loss": 0.4596995068955298
+    },
+    {
+      "epoch": 6,
+      "loss": 0.42938965894860925
+    },
+    {
+      "epoch": 7,
+      "loss": 0.4063235312854688
+    },
+    {
+      "epoch": 8,
+      "loss": 0.38161537954535507
+    },
+    {
+      "epoch": 9,
+      "loss": 0.3675059031482805
+    },
+    {
+      "epoch": 10,
+      "loss": 0.34829959420033685
+    },
+    {
+      "epoch": 11,
+      "loss": 0.32508965693607234
+    },
+    {
+      "epoch": 12,
+      "loss": 0.3061434927690832
+    },
+    {
+      "epoch": 13,
+      "loss": 0.28976508735683915
+    },
+    {
+      "epoch": 14,
+      "loss": 0.2750955926630781
+    },
+    {
+      "epoch": 15,
+      "loss": 0.2600500459729699
+    },
+    {
+      "epoch": 16,
+      "loss": 0.2515829555265644
+    },
+    {
+      "epoch": 17,
+      "loss": 0.24524398441450584
+    },
+    {
+      "epoch": 18,
+      "loss": 0.23810606739372786
+    },
+    {
+      "epoch": 19,
+      "loss": 0.23556715388989818
+    }
+  ],
+  "seconds": 2850.2,
+  "caveat": "Word-level vocabulary of 265 tokens over one corpus. It answers IndiaSat-style instructions about Indian Sentinel patches; it is not a general-purpose VLM. Quantitative percentages in a report come from the measured spectral indices, never from this model."
+}
